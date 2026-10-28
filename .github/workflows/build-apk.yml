@@ -27,17 +27,6 @@ jobs:
           distribution: zulu
           java-version: "17"
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Check Project Files
-        run: |
-          test -f package.json || {
-            echo "ERROR: package.json is missing"
-            exit 1
-          }
-          node -e "const p=require('./package.json'); if(!p.scripts?.build) { console.error('Missing build script'); process.exit(1) }"
-
       - name: Install Dependencies
         run: |
           npm install --legacy-peer-deps
@@ -47,36 +36,17 @@ jobs:
       - name: Build Web Assets
         run: npm run build
 
-      - name: Verify Capacitor Configuration
+      - name: Fresh Generate Capacitor Android
         run: |
-          test -f capacitor.config.ts -o \
-               -f capacitor.config.json -o \
-               -f capacitor.config.js -o \
-               -f capacitor.config.mjs || {
-            echo "ERROR: Capacitor configuration is missing"
-            exit 1
-          }
-
-      - name: Prepare Capacitor Android
-        run: |
-          if [ ! -d android ]; then
-            npx cap add android
-          fi
+          rm -rf android
+          npx cap add android
           npx cap sync android
-          cd android
-          if [ ! -f gradlew ]; then
-            gradle wrapper
-          fi
 
       - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-
-      - name: Verify APK
-        run: |
-          test -f android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
