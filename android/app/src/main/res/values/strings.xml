@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">تدبيرة – Tedbeera Egypt</string>
+    <string name="app_tagline">دبّر بيتك وأكلك ومصاريفك بذكاء</string>
+    <string name="nav_food">تدبيرة الأكل</string>
+    <string name="nav_budget">تدبيرة الفلوس</string>
+    <string name="nav_daily">تدبيرة اليوم</string>
+    <string name="nav_saved">المحفوظات والنواقص</string>
+
+    <string name="budget_disclaimer">حسبة استرشادية لمساعدتك في الترتيب وليست استشارة مالية ملزمة.</string>
+    <string name="estimated_cost_label">تكلفة تقديرية وغير ملزمة</string>
+    <string name="clear_data_warning">مسح جميع بيانات التطبيق سيؤدي لحذف كل الوجبات المحفوظة، خطط الميزانية، وتحديات الأيام السابقة وقائمة النواقص نهائياً من هاتفك. هل أنت متأكد؟</string>
+</resources>

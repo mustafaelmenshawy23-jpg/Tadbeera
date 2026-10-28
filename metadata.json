@@ -1,0 +1,6 @@
+{
+  "name": "تدبيرة — كل جنيه ليه قيمة",
+  "description": "تدبيرة — تطبيق أندرويد مصري أصيل لتدبير ميزانية البيت والأكل والمصاريف. وفّر بذكاء، ودبّر بيتك، وخلي كل جنيه في مكانه.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,64 @@
+{
+  "id": "/",
+  "name": "تدبيرة — كل جنيه ليه قيمة",
+  "short_name": "تدبيرة",
+  "description": "تدبيرة — تطبيق أندرويد مصري أصيل لتدبير ميزانية البيت والأكل والمصاريف. وفّر بذكاء، ودبّر بيتك، وخلي كل جنيه في مكانه.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0D47A1",
+  "background_color": "#0D47A1",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/assets/aistudio/launchericon-48x48_08576b00.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/aistudio/launchericon-72x72_e4abd8ef.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/aistudio/launchericon-96x96_4d503cd4.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/aistudio/launchericon-144x144_b3711091.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/aistudio/launchericon-192x192_a1111b2e.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/aistudio/launchericon-512x512_fdb81f54.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

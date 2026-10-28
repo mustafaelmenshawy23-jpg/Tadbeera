@@ -1,0 +1,8 @@
+{
+  "appId": "com.tedbeera.egypt",
+  "appName": "Tedbeera Egypt",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
