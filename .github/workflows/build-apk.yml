@@ -1,8 +1,8 @@
-name: Build Android APK
+name: Build Tedbeera Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -19,35 +19,71 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
+          cache: npm
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: zulu
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Check Project Files
+        run: |
+          test -f package.json || {
+            echo "ERROR: package.json is missing"
+            exit 1
+          }
+          node -e "const p=require('./package.json'); if(!p.scripts?.build) { console.error('Missing build script'); process.exit(1) }"
 
       - name: Install Dependencies
         run: |
           npm install --legacy-peer-deps
-          npm install @capacitor/cli @capacitor/core @capacitor/android --legacy-peer-deps
+          npm install --save @capacitor/core @capacitor/android --legacy-peer-deps
+          npm install --save-dev @capacitor/cli --legacy-peer-deps
 
       - name: Build Web Assets
-        run: |
-          npm run build
+        run: npm run build
 
-      - name: Sync Capacitor Android
+      - name: Verify Capacitor Configuration
         run: |
+          test -f capacitor.config.ts -o \
+               -f capacitor.config.json -o \
+               -f capacitor.config.js -o \
+               -f capacitor.config.mjs || {
+            echo "ERROR: Capacitor configuration is missing"
+            exit 1
+          }
+
+      - name: Prepare Capacitor Android
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
           npx cap sync android
+          cd android
+          if [ ! -f gradlew ]; then
+            gradle wrapper
+          fi
 
-      - name: Build Android Debug APK
+      - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
+
+      - name: Verify APK
+        run: |
+          test -f android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: Tedbeera-Debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
