@@ -27,9 +27,6 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Dependencies
         run: |
           npm install --legacy-peer-deps
@@ -47,11 +44,10 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: Tedbeera-Debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
