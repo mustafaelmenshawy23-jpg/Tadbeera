@@ -21,30 +21,42 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Setup Java JDK 21
+      - name: Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: "21"
+          java-version: "17"
 
       - name: Install Dependencies
         run: |
           npm install --legacy-peer-deps
-          npm install --save @capacitor/core @capacitor/android --legacy-peer-deps
-          npm install --save-dev @capacitor/cli --legacy-peer-deps
 
       - name: Build Web Assets
         run: npm run build
 
-      - name: Setup Clean Android Project
+      - name: Sync Capacitor Android Project
         run: |
-          rm -rf android
-          npx cap add android
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
           npx cap sync android
+          if [ -d "public/assets/aistudio" ]; then
+            mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi
+            cp public/assets/aistudio/launchericon-48x48_08576b00.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png 2>/dev/null || true
+            cp public/assets/aistudio/launchericon-48x48_08576b00.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png 2>/dev/null || true
+            cp public/assets/aistudio/launchericon-72x72_e4abd8ef.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png 2>/dev/null || true
+            cp public/assets/aistudio/launchericon-72x72_e4abd8ef.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png 2>/dev/null || true
+            cp public/assets/aistudio/launchericon-96x96_4d503cd4.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 2>/dev/null || true
+            cp public/assets/aistudio/launchericon-96x96_4d503cd4.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png 2>/dev/null || true
+            cp public/assets/aistudio/launchericon-144x144_b3711091.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 2>/dev/null || true
+            cp public/assets/aistudio/launchericon-144x144_b3711091.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 2>/dev/null || true
+            cp public/assets/aistudio/launchericon-192x192_a1111b2e.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
+            cp public/assets/aistudio/launchericon-192x192_a1111b2e.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 2>/dev/null || true
+          fi
 
-      - name: Accept Android SDK Licenses & Update Wrapper
+      - name: Accept Android SDK Licenses & Prepare Gradle
         run: |
-          yes | sdkmanager --licenses || true
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || yes | sdkmanager --licenses 2>/dev/null || true
           cd android
           chmod +x gradlew
           ./gradlew wrapper --gradle-version 8.7
@@ -53,6 +65,21 @@ jobs:
         run: |
           cd android
           ./gradlew assembleDebug --no-daemon
+
+      - name: Verify APK Generated and Non-Empty
+        run: |
+          APK_FILE="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$APK_FILE" ]; then
+            echo "::error file=$APK_FILE::Build failed: APK output file does not exist at $APK_FILE!"
+            exit 1
+          fi
+          FILE_SIZE=$(stat -c%s "$APK_FILE" 2>/dev/null || stat -f%z "$APK_FILE" 2>/dev/null || wc -c < "$APK_FILE")
+          if [ "$FILE_SIZE" -le 1024 ]; then
+            echo "::error file=$APK_FILE::Build failed: APK file is empty or corrupted (size: ${FILE_SIZE} bytes)!"
+            exit 1
+          fi
+          echo "✅ APK successfully verified at $APK_FILE (${FILE_SIZE} bytes)"
+          ls -lh "$APK_FILE"
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
