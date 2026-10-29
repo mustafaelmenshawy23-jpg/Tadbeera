@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,10 +72,12 @@ fun SavedScreen(
                     containerColor = SurfaceWhite,
                     contentColor = PrimaryBlue,
                     indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.currentTab.ordinal]),
-                            color = PrimaryBlue
-                        )
+                        if (uiState.currentTab.ordinal < tabPositions.size) {
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.currentTab.ordinal]),
+                                color = PrimaryBlue
+                            )
+                        }
                     }
                 ) {
                     SavedTab.values().forEach { tab ->
