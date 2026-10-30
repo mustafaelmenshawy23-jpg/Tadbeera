@@ -47,7 +47,7 @@ export function OnlineRecipeSearch() {
     try {
       const searchUrl = new URL(API);
       searchUrl.search = new URLSearchParams({
-        action: 'query', list: 'search', srsearch: term, srnamespace: '0',
+        action: 'query', list: 'search', srsearch: term,
         srlimit: '12', format: 'json', origin: '*'
       }).toString();
       const searchResponse = await fetch(searchUrl.toString());
