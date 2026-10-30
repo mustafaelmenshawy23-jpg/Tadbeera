@@ -10,8 +10,90 @@ type OnlineRecipe = {
   imageCredit?: string;
 };
 
+type MealDbMeal = {
+  idMeal: string;
+  strMeal: string;
+  strMealThumb?: string;
+  strInstructions?: string;
+  strSource?: string;
+  [key: string]: string | undefined;
+};
+
 const SAVED_KEY = 'tadbeera_online_recipes_v1';
-const API = 'https://en.wikibooks.org/w/api.php';
+const MEAL_DB_API = 'https://www.themealdb.com/api/json/v1/1/search.php';
+const WIKIBOOKS_API = 'https://en.wikibooks.org/w/api.php';
+
+const ARABIC_ALIASES: Array<{ terms: string[]; english: string }> = [
+  { terms: ['كبسة', 'كبسه', 'كبسة دجاج', 'كبسة فراخ'], english: 'kabsa' },
+  { terms: ['كشري', 'كشرى'], english: 'koshari' },
+  { terms: ['ملوخية', 'ملوخيه'], english: 'molokhia' },
+  { terms: ['محشي', 'محشى', 'ورق عنب'], english: 'stuffed vegetables' },
+  { terms: ['فتة', 'فته'], english: 'fatteh' },
+  { terms: ['طعمية', 'فلافل'], english: 'falafel' },
+  { terms: ['شكشوكة'], english: 'shakshuka' },
+  { terms: ['برياني', 'بريانى'], english: 'biryani' },
+  { terms: ['مكرونة بشاميل', 'بشاميل'], english: 'macaroni bechamel' },
+  { terms: ['مسقعة'], english: 'moussaka' },
+  { terms: ['شاورما'], english: 'shawarma' },
+  { terms: ['بامية'], english: 'okra' },
+];
+
+const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
+  {
+    terms: ['كبسة', 'kabsa'],
+    recipe: {
+      title: 'كبسة دجاج',
+      pageId: 900001,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات (تكفي 4 أفراد): دجاجة مقطعة، 2 كوب أرز بسمتي، بصلة مفرومة، 2 حبة طماطم، ملعقة معجون طماطم، 2 فص ثوم، لومي، ورق غار، قرفة، حبهان، بهارات كبسة، ملح وفلفل وزيت.\n\nالطريقة: شوّح البصل في الزيت حتى يذبل، ثم أضف الثوم والطماطم ومعجون الطماطم والبهارات. أضف الدجاج والماء واتركه حتى ينضج. ارفع الدجاج وحمّره حسب الرغبة، ثم أضف الأرز المغسول إلى المرق واضبط كمية السائل واتركه على نار هادئة حتى ينضج. قدّم الأرز مع الدجاج.',
+    },
+  },
+  {
+    terms: ['كشري', 'koshari', 'koshary'],
+    recipe: {
+      title: 'كشري مصري',
+      pageId: 900002,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): كوب أرز، كوب عدس بجبة، كوب مكرونة صغيرة، نصف كوب شعرية، حمص مسلوق، بصلتان، عصير طماطم، ثوم، خل، كمون، ملح وزيت.\n\nالطريقة: اسلق العدس حتى يقارب النضج، ثم أضف الأرز والشعرية المحمرة والماء والملح حتى ينضجوا. اسلق المكرونة والحمص. حضّر صلصة الطماطم بالثوم والخل والكمون، وحمّر البصل شرائح حتى يصبح مقرمشًا. قدّم الأرز والعدس ثم المكرونة والحمص والصلصة والبصل.',
+    },
+  },
+  {
+    terms: ['ملوخية', 'molokhia'],
+    recipe: {
+      title: 'ملوخية مصرية',
+      pageId: 900003,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): نصف كيلو ملوخية مفرومة، 4 أكواب شوربة دجاج أو لحم، 5 فصوص ثوم، ملعقة كزبرة ناشفة، ملعقة سمن، ملح.\n\nالطريقة: سخّن الشوربة حتى الغليان ثم أضف الملوخية وقلّب على نار هادئة دون تركها تغلي بقوة. حمّر الثوم والكزبرة في السمن حتى تظهر الرائحة، ثم أضف التقلية إلى الملوخية وقلّب وقدّمها ساخنة.',
+    },
+  },
+  {
+    terms: ['شكشوكة', 'shakshuka'],
+    recipe: {
+      title: 'شكشوكة بالبيض',
+      pageId: 900004,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات (2 أفراد): 4 بيضات، 2 طماطم، فلفلة، بصلة صغيرة، فص ثوم، ملح، فلفل، كمون وملعقة زيت.\n\nالطريقة: شوّح البصل والفلفل في الزيت، ثم أضف الثوم والطماطم والتوابل واترك الخليط حتى يتسبك. اصنع فراغات صغيرة واكسر البيض فيها، غطِّ المقلاة حتى ينضج البيض حسب الرغبة.',
+    },
+  },
+  {
+    terms: ['طعمية', 'فلافل', 'falafel'],
+    recipe: {
+      title: 'طعمية مصرية',
+      pageId: 900005,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات: 500 جم فول مدشوش منقوع، بصلة، حزمة بقدونس، حزمة كزبرة خضراء، شبت، 4 فصوص ثوم، كمون، كزبرة ناشفة، ملح وسمسم.\n\nالطريقة: صفِّ الفول وافرمه مع البصل والخضرة والثوم. أضف التوابل واخلط حتى تتماسك العجينة. شكّل أقراصًا، زيّن بالسمسم واقلِ في زيت ساخن حتى تصبح ذهبية. تُطهى جيدًا من الداخل.',
+    },
+  },
+  {
+    terms: ['مكرونة بشاميل', 'بشاميل', 'macaroni bechamel'],
+    recipe: {
+      title: 'مكرونة بالبشاميل',
+      pageId: 900006,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): نصف كيلو مكرونة قلم، 300 جم لحم مفروم، بصلة، 3 ملاعق دقيق، 3 ملاعق زبدة، 3 أكواب حليب، ملح وفلفل وجوزة الطيب.\n\nالطريقة: اسلق المكرونة نصف سلقة. شوّح البصل واللحم وتبّله. حضّر البشاميل بتحمير الدقيق في الزبدة ثم أضف الحليب تدريجيًا مع التقليب. ضع طبقة بشاميل ثم المكرونة واللحم وباقي البشاميل، واخبز حتى يحمر الوجه.',
+    },
+  },
+];
 
 function readSaved(): OnlineRecipe[] {
   try {
@@ -20,6 +102,34 @@ function readSaved(): OnlineRecipe[] {
   } catch {
     return [];
   }
+}
+
+function normalize(value: string): string {
+  return value.toLocaleLowerCase('ar').replace(/[\u064B-\u065F\u0670]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').trim();
+}
+
+function getEnglishSearchTerm(term: string): string {
+  const normalized = normalize(term);
+  return ARABIC_ALIASES.find(alias => alias.terms.some(item => normalize(item) === normalized))?.english || term;
+}
+
+function mapMeal(meal: MealDbMeal): OnlineRecipe {
+  const ingredients: string[] = [];
+  for (let index = 1; index <= 20; index += 1) {
+    const ingredient = meal[`strIngredient${index}`]?.trim();
+    const measure = meal[`strMeasure${index}`]?.trim();
+    if (ingredient) ingredients.push(`• ${ingredient}${measure ? ` — ${measure}` : ''}`);
+  }
+  const instructions = (meal.strInstructions || '').replace(/\r/g, '').trim();
+  return {
+    title: meal.strMeal,
+    pageId: Number(meal.idMeal),
+    url: meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`,
+    imageUrl: meal.strMealThumb,
+    imageCredit: 'TheMealDB',
+    imageLicense: 'راجع مصدر الوصفة الأصلي وشروط استخدام الصورة',
+    extract: `${ingredients.length ? `المكونات:\n${ingredients.join('\n')}\n\n` : ''}طريقة التحضير:\n${instructions || 'راجع صفحة المصدر للتعليمات.'}`,
+  };
 }
 
 export function OnlineRecipeSearch() {
@@ -44,71 +154,71 @@ export function OnlineRecipeSearch() {
     setSelected(null);
     setShowSaved(false);
     setResults([]);
-    try {
-      const searchUrl = new URL(API);
-      searchUrl.search = new URLSearchParams({
-        action: 'query', list: 'search', srsearch: term,
-        srlimit: '12', format: 'json', origin: '*'
-      }).toString();
-      const searchResponse = await fetch(searchUrl.toString());
-      if (!searchResponse.ok) throw new Error('search');
-      const searchData = await searchResponse.json();
-      const hits = ((searchData.query?.search || []) as Array<{ title: string; pageid: number }>).filter(hit => /^Cookbook:/i.test(hit.title));
-      if (!hits.length) {
-        setError('ملقيناش وصفة مطابقة في كتب الطبخ المفتوحة. جرّب الاسم بالإنجليزي أو اسمًا أبسط.');
-        return;
-      }
 
-      const pagesUrl = new URL(API);
-      pagesUrl.search = new URLSearchParams({
-        action: 'query', prop: 'extracts', explaintext: '1',
-        exchars: '9000', pageids: hits.map(hit => String(hit.pageid)).join('|'),
-        format: 'json', origin: '*'
-      }).toString();
-      const pagesResponse = await fetch(pagesUrl.toString());
-      if (!pagesResponse.ok) throw new Error('pages');
-      const pagesData = await pagesResponse.json();
-      const pages = Object.values(pagesData.query?.pages || {}) as Array<{ pageid: number; title: string; extract?: string }>;
-      const mapped = pages.map(page => ({
-        title: page.title.replace(/^Cookbook:/i, '').replace(/_/g, ' '),
-        pageId: page.pageid,
-        url: 'https://en.wikibooks.org/wiki/' + encodeURIComponent(page.title.replace(/ /g, '_')),
-        extract: (page.extract || '').trim()
-      })).filter(page => page.extract.length > 0);
+    try {
+      const englishTerm = getEnglishSearchTerm(term);
+      const mealUrl = new URL(MEAL_DB_API);
+      mealUrl.searchParams.set('s', englishTerm);
+      const mealResponse = await fetch(mealUrl.toString());
+      if (!mealResponse.ok) throw new Error('meal-service');
+      const mealData = await mealResponse.json();
+      const meals = (Array.isArray(mealData.meals) ? mealData.meals : []) as MealDbMeal[];
+      let mapped = meals.map(mapMeal);
 
       if (!mapped.length) {
-        setError('المصدر رجّع عناوين، لكن تفاصيل الوصفات غير متاحة حاليًا.');
-        return;
+        const localMatches = LOCAL_RECIPES.filter(item =>
+          item.terms.some(alias => normalize(alias) === normalize(term) || normalize(alias) === normalize(englishTerm))
+        ).map(item => item.recipe);
+        mapped = localMatches;
       }
-      setResults(mapped);
-      setSelected(mapped[0]);
 
-      // Wikimedia Commons is a free, community-maintained image source.
-      try {
-        const imageUrl = new URL('https://commons.wikimedia.org/w/api.php');
-        imageUrl.search = new URLSearchParams({
-          action: 'query', generator: 'search', gsrsearch: term + ' food dish',
-          gsrnamespace: '6', gsrlimit: '1', prop: 'imageinfo',
-          iiprop: 'url|extmetadata', iiurlwidth: '900', format: 'json', origin: '*'
+      if (!mapped.length) {
+        const wikiUrl = new URL(WIKIBOOKS_API);
+        wikiUrl.search = new URLSearchParams({
+          action: 'query',
+          list: 'search',
+          srsearch: `"${englishTerm}" recipe OR cookbook`,
+          srlimit: '8',
+          format: 'json',
+          origin: '*',
         }).toString();
-        const imageResponse = await fetch(imageUrl.toString());
-        if (imageResponse.ok) {
-          const imageData = await imageResponse.json();
-          const imagePage = Object.values(imageData.query?.pages || {})[0] as any;
-          const info = imagePage?.imageinfo?.[0];
-          if (info?.thumburl) {
-            const image = {
-              imageUrl: info.thumburl,
-              imageLicense: String(info.extmetadata?.LicenseShortName?.value || 'راجع صفحة الملف للترخيص'),
-              imageCredit: String(info.extmetadata?.Artist?.value || 'Wikimedia Commons')
-            };
-            setResults(current => current.map(item => ({ ...item, ...image })));
-            setSelected(current => current ? { ...current, ...image } : current);
+        const wikiResponse = await fetch(wikiUrl.toString());
+        if (wikiResponse.ok) {
+          const wikiData = await wikiResponse.json();
+          const hits = (wikiData.query?.search || []) as Array<{ title: string; pageid: number; snippet?: string }>;
+          const recipeHits = hits.filter(hit => /cookbook|recipe|food/i.test(`${hit.title} ${hit.snippet || ''}`));
+          if (recipeHits.length) {
+            const pageUrl = new URL(WIKIBOOKS_API);
+            pageUrl.search = new URLSearchParams({
+              action: 'query', prop: 'extracts', explaintext: '1', exchars: '7000',
+              pageids: recipeHits.slice(0, 8).map(hit => String(hit.pageid)).join('|'),
+              format: 'json', origin: '*',
+            }).toString();
+            const pageResponse = await fetch(pageUrl.toString());
+            if (pageResponse.ok) {
+              const pageData = await pageResponse.json();
+              mapped = (Object.values(pageData.query?.pages || {}) as Array<{ pageid: number; title: string; extract?: string }>)
+                .filter(page => (page.extract || '').trim().length > 40)
+                .map(page => ({
+                  title: page.title.replace(/^Cookbook:/i, '').replace(/_/g, ' '),
+                  pageId: page.pageid,
+                  url: `https://en.wikibooks.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
+                  extract: (page.extract || '').trim(),
+                }));
+            }
           }
         }
-      } catch { /* recipe text remains available if image lookup fails */ }
+      }
+
+      if (!mapped.length) {
+        setError('ملقيناش وصفة بالاسم ده في المصادر المتاحة. جرّب اسم أكلة مشهور أو اكتب الاسم بالإنجليزي. البحث يدعم العربي للأكلات الموجودة في قاموس تدبيرة.');
+        return;
+      }
+
+      setResults(mapped);
+      setSelected(mapped[0]);
     } catch {
-      setError('تعذر الاتصال بمصدر الوصفات المجاني. راجع الإنترنت وحاول مرة أخرى.');
+      setError('تعذر الاتصال بمكتبة الوصفات المجانية. تأكد من الإنترنت وحاول مرة أخرى؛ تقدر تستخدم الوصفات المحفوظة بدون اتصال.');
     } finally {
       setLoading(false);
     }
@@ -125,7 +235,7 @@ export function OnlineRecipeSearch() {
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-black text-gray-900">🌍 ابحث عن وصفة من العالم</h3>
-          <p className="text-[10px] text-gray-500 mt-1">بحث مجاني في كتب الطبخ المفتوحة — بدون مفتاح API أو اشتراك</p>
+          <p className="text-[10px] text-gray-500 mt-1">بحث مجاني بالعربي والإنجليزي — بدون اشتراك أو مفتاح مدفوع</p>
         </div>
         <button type="button" onClick={() => { setShowSaved(value => !value); setSelected(null); }}
           className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">
@@ -153,7 +263,7 @@ export function OnlineRecipeSearch() {
             <button key={item.pageId} type="button" onClick={() => setSelected(item)}
               className={`rounded-xl border p-3 text-right text-xs font-bold transition ${selected?.pageId === item.pageId ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 bg-gray-50'}`}>
               {item.title}
-              <span className="mt-1 block text-[10px] font-normal text-gray-500">من كتاب طبخ مفتوح</span>
+              <span className="mt-1 block text-[10px] font-normal text-gray-500">وصفة ومكونات وطريقة التحضير</span>
             </button>
           ))}
         </div>
@@ -165,7 +275,7 @@ export function OnlineRecipeSearch() {
           <div className="space-y-3 p-3">
             <h4 className="text-base font-black text-gray-900">{selected.title}</h4>
             <p className="whitespace-pre-wrap break-words text-xs leading-7 text-gray-700">{selected.extract}</p>
-            {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit} — الترخيص الظاهر: {selected.imageLicense}. راجع صفحة الصورة قبل إعادة النشر.</p>}
+            {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit || 'TheMealDB'} — {selected.imageLicense || 'راجع المصدر الأصلي'}</p>}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => saveRecipe(selected)}
                 className="rounded-xl bg-amber-100 px-3 py-2 text-[11px] font-bold text-amber-900">
@@ -176,13 +286,12 @@ export function OnlineRecipeSearch() {
               <a href={selected.url} target="_blank" rel="noreferrer"
                 className="rounded-xl bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-800">المصدر الأصلي ↗</a>
             </div>
-            <p className="text-[9px] leading-5 text-gray-400">المحتوى من Wikibooks (مرخّص غالبًا وفق CC BY-SA مع استثناءات موضحة في صفحة المصدر). قد تختلف طريقة عرض المقادير والخطوات حسب الصفحة؛ راجع المصدر للتفاصيل الدقيقة.</p>
           </div>
         </article>
       )}
 
       {!loading && showSaved && saved.length === 0 && <p className="rounded-xl bg-gray-50 p-4 text-center text-xs text-gray-500">لسه مفيش وصفات أونلاين محفوظة.</p>}
-      {!loading && !showSaved && results.length === 0 && !error && <p className="text-[10px] leading-5 text-gray-400">اكتب اسم الأكلة بالعربي أو الإنجليزي. تغطية البحث حسب الوصفات المنشورة في المصدر المفتوح.</p>}
+      {!loading && !showSaved && results.length === 0 && !error && <p className="text-[10px] leading-5 text-gray-400">اكتب اسم الأكلة بالعربي أو الإنجليزي، وهندور في مكتبة الوصفات المجانية.</p>}
     </section>
   );
 }
