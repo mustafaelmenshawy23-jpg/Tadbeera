@@ -1991,6 +1991,9 @@ export default function App() {
                     ) : (
                       /* Unlocked State: Full 7-Day Interactive Plan & Consolidated Shopping */
                       <div className="space-y-3 pt-1 border-t border-gray-100">
+                        <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-2 text-[10px] leading-5 text-emerald-900">
+                          الخطة بتتظبط تلقائيًا حسب عدد أفراد البيت، ميزانية الطعام، والمخزون المسجل. الأسعار تقديرية وراجعي سعر السوق قبل الشراء.
+                        </div>
                         {/* Days Horizontal Chips */}
                         <div className="flex gap-1 overflow-x-auto pb-1 text-[11px]">
                           {weeklySchedule.map(day => (
