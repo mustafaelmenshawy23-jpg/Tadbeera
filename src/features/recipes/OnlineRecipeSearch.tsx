@@ -155,12 +155,12 @@ async function getEnglishSearchTerm(term: string): Promise<string> {
 async function mapMeal(meal: MealDbMeal): Promise<OnlineRecipe> {
   const ingredients: string[] = [];
   for (let index = 1; index <= 20; index += 1) {
-    const ingredient = meal[\`strIngredient\${index}\`]?.trim();
-    const measure = meal[\`strMeasure\${index}\`]?.trim();
-    if (ingredient) ingredients.push(\`• \${ingredient}\${measure ? \` — \${measure}\` : ''}\`);
+    const ingredient = meal[`strIngredient${index}`]?.trim();
+    const measure = meal[`strMeasure${index}`]?.trim();
+    if (ingredient) ingredients.push(`• ${ingredient}${measure ? ` — ${measure}` : ''}`);
   }
   const instructions = (meal.strInstructions || '').replace(/\r/g, '').trim();
-  const rawExtract = \`\${ingredients.length ? \`المكونات:\\n\${ingredients.join('\\n')}\\n\\n\` : ''}طريقة التحضير:\\n\${instructions || 'راجع صفحة المصدر للتعليمات.'}\`;
+  const rawExtract = `${ingredients.length ? `المكونات:\\n${ingredients.join('\\n')}\\n\\n` : ''}طريقة التحضير:\\n${instructions || 'راجع صفحة المصدر للتعليمات.'}`;
   const [arabicTitle, arabicExtract] = await Promise.all([
     translateText(meal.strMeal, 'en', 'ar'),
     translateText(rawExtract, 'en', 'ar'),
@@ -168,7 +168,7 @@ async function mapMeal(meal: MealDbMeal): Promise<OnlineRecipe> {
   return {
     title: arabicTitle || meal.strMeal,
     pageId: Number(meal.idMeal),
-    url: meal.strSource || \`https://www.themealdb.com/meal/\${meal.idMeal}\`,
+    url: meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`,
     imageUrl: meal.strMealThumb,
     imageCredit: 'TheMealDB',
     imageLicense: 'راجع مصدر الوصفة الأصلي وشروط استخدام الصورة',
