@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import {
   Utensils,
   Wallet,
@@ -261,6 +262,7 @@ function renderCategoryIcon(iconName?: string, className = "w-4 h-4") {
 }
 
 export default function App() {
+  const isNativeApp = Capacitor.isNativePlatform();
   const [viewMode, setViewMode] = useState<ViewMode>('emulator');
   const [activeTab, setActiveTab] = useState<ActiveTab>('food');
   const [savedSubTab, setSavedSubTab] = useState<SavedSubTab>('shopping');
@@ -1613,7 +1615,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F0F2F5] text-[#1E293B] font-['Cairo',sans-serif] flex flex-col items-center">
       {/* Top Header & View Mode Switcher */}
-      <header className="w-full bg-[#0D47A1] text-white shadow-md sticky top-0 z-50">
+      {!isNativeApp && <header className="w-full bg-[#0D47A1] text-white shadow-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FFB300] text-[#0D47A1] font-black flex items-center justify-center text-xl shadow-inner">
@@ -1672,7 +1674,7 @@ export default function App() {
             </a>
           </div>
         </div>
-      </header>
+      </header>}
 
       {/* Toast Notification */}
       {toastMessage && (
@@ -1683,7 +1685,7 @@ export default function App() {
       )}
 
       {/* MAIN CONTAINER */}
-      <main className="w-full max-w-6xl flex-1 px-4 py-6 flex justify-center">
+      <main className={isNativeApp ? "w-full flex-1 min-h-0 flex justify-center p-0" : "w-full max-w-6xl flex-1 px-4 py-6 flex justify-center"}>
 
         {/* ---------------- VIEW 1: LIVE PHONE EMULATOR ---------------- */}
         {viewMode === 'emulator' && (
@@ -1735,7 +1737,7 @@ export default function App() {
             </div>
 
             {/* Scrollable Screen Content with shared layout clearance ensuring 70-90px breathing room */}
-            <div className={`flex-1 overflow-y-auto p-4 space-y-4 bg-[#F9FAFB] ${getBottomScrollPaddingClass(adStatus)}`}>
+            <div className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 bg-[#F9FAFB] ${getBottomScrollPaddingClass(adStatus)} ${isNativeApp ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}>
 
               {/* ======================================================== */}
               {/* === TAB 1: تدبيرة الأكل === */}
@@ -3686,7 +3688,7 @@ export default function App() {
             </div>
 
             {/* Android Bottom Navigation Bar */}
-            <div className="bg-white border-t border-gray-200 px-3 py-2 flex items-center justify-around text-[10px] select-none">
+            <div className="bg-white border-t border-gray-200 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center justify-around text-[10px] select-none shrink-0">
               <button
                 onClick={() => setActiveTab('food')}
                 className={`flex flex-col items-center gap-0.5 transition ${
@@ -5432,7 +5434,7 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="w-full text-center py-4 text-xs text-gray-500 font-medium">
+      {!isNativeApp && <footer className="w-full text-center py-4 text-xs text-gray-500 font-medium">
         تدبيرة — كل جنيه ليه قيمة 💛 • وفّر بذكاء ودبّر بيتك وخلي كل جنيه في مكانه © {new Date().getFullYear()} 🇪🇬
       </footer>
     </div>
