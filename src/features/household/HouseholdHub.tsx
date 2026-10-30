@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { inventoryRepository } from './inventory/inventoryRepository';
-import { getLowStockItems, type InventoryItem, type InventoryUnit } from './inventory/inventoryModels';
-import { householdTasksRepository } from './household/householdTaskRepository';
-import { sortHouseholdTasks, type HouseholdTask } from './household/householdTaskModels';
-import { savingsGoalsRepository } from './savings/savingsRepository';
-import { getSavingsProgress, type SavingsGoal } from './savings/savingsModels';
+import { inventoryRepository } from '../inventory/inventoryRepository';
+import { getLowStockItems, type InventoryItem, type InventoryUnit } from '../inventory/inventoryModels';
+import { householdTasksRepository } from './householdTaskRepository';
+import { sortHouseholdTasks, type HouseholdTask } from './householdTaskModels';
+import { savingsGoalsRepository } from '../savings/savingsRepository';
+import { getSavingsProgress, type SavingsGoal } from '../savings/savingsModels';
 
 const units: InventoryUnit[] = ['قطعة', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'رغيف'];
 
