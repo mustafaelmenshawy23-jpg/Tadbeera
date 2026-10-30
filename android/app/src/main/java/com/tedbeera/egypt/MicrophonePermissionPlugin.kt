@@ -102,7 +102,7 @@ class MicrophonePermissionPlugin : Plugin() {
                 call.resolve()
             } catch (error: Exception) {
                 stopRecognizer()
-                call.reject("Unable to start speech recognition: ${error.message}", error)
+                call.reject("Unable to start speech recognition: ${error.message}")
             }
         }
     }
