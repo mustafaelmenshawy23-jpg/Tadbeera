@@ -61,7 +61,6 @@ android {
         compose = true
     }
 
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -71,6 +70,7 @@ android {
 
 dependencies {
     implementation(project(":capacitor-android"))
+    implementation("androidx.appcompat:appcompat:1.7.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
