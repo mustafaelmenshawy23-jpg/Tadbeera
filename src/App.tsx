@@ -3266,7 +3266,6 @@ export default function App() {
                             )}
                           </div>
                         </div>
-                      </div>
 
                       {/* Empty State */}
                       {shoppingItems.length === 0 ? (
