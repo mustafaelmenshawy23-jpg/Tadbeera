@@ -132,6 +132,7 @@ import {
 } from './data/affiliateDeals';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
+import { householdProfileRepository } from './features/household/householdRepository';
 
 import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
 
@@ -528,6 +529,10 @@ export default function App() {
 
   // Settings & Safety Modals
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [householdName, setHouseholdName] = useState(() => householdProfileRepository.read().name);
+  const [householdGovernorate, setHouseholdGovernorate] = useState(() => householdProfileRepository.read().governorate);
+  const [householdCity, setHouseholdCity] = useState(() => householdProfileRepository.read().city);
+
   const [isClearShoppingConfirmOpen, setIsClearShoppingConfirmOpen] = useState(false);
   const [isWipeModalOpen, setIsWipeModalOpen] = useState(false);
   const [isRestoreConfirmModalOpen, setIsRestoreConfirmModalOpen] = useState(false);
@@ -4698,6 +4703,61 @@ export default function App() {
               </div>
               <button onClick={() => setIsSettingsModalOpen(false)} className="text-gray-400 hover:text-gray-600 font-bold">
                 ✕
+              </button>
+            </div>
+
+            {/* Household profile: saved locally and available offline */}
+            <div className="space-y-2 rounded-2xl border border-blue-100 bg-blue-50/50 p-3">
+              <div className="flex items-center gap-2 text-[#0D47A1]">
+                <Users className="w-4 h-4" />
+                <span className="text-xs font-extrabold">بيانات الأسرة</span>
+                <span className="mr-auto text-[10px] text-gray-500">محفوظة على جهازك</span>
+              </div>
+              <input
+                type="text"
+                value={householdName}
+                onChange={(e) => setHouseholdName(e.target.value)}
+                placeholder="اسم الأسرة (اختياري)"
+                maxLength={60}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs outline-none focus:border-blue-400"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={householdGovernorate}
+                  onChange={(e) => setHouseholdGovernorate(e.target.value)}
+                  placeholder="المحافظة"
+                  maxLength={40}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs outline-none focus:border-blue-400"
+                />
+                <input
+                  type="text"
+                  value={householdCity}
+                  onChange={(e) => setHouseholdCity(e.target.value)}
+                  placeholder="المدينة / المركز"
+                  maxLength={40}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs outline-none focus:border-blue-400"
+                />
+              </div>
+              <div className="text-[10px] text-gray-600">عدد أفراد الأسرة: {familySize} · العملة: جنيه مصري</div>
+              <button
+                type="button"
+                onClick={() => {
+                  const saved = householdProfileRepository.write({
+                    name: householdName.trim(),
+                    familySize: Math.min(30, Math.max(1, familySize)),
+                    governorate: householdGovernorate.trim(),
+                    city: householdCity.trim(),
+                    currency: 'EGP',
+                    locale: 'ar-EG',
+                    paydayDay,
+                    createdAt: householdProfileRepository.read().createdAt || new Date().toISOString()
+                  });
+                  showToast(saved ? 'تم حفظ بيانات الأسرة على هذا الجهاز ✓' : 'تعذر حفظ البيانات. تحققي من مساحة التخزين بالجهاز.');
+                }}
+                className="w-full rounded-xl bg-[#0D47A1] px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-800"
+              >
+                حفظ بيانات الأسرة
               </button>
             </div>
 
