@@ -141,6 +141,7 @@ import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/nav
 
 interface MicrophonePermissionPlugin {
   request(): Promise<{ granted: boolean }>;
+  recognize(): Promise<{ transcript: string }>;
 }
 
 const microphonePermission = registerPlugin<MicrophonePermissionPlugin>('MicrophonePermission');
@@ -1023,6 +1024,23 @@ export default function App() {
           setVoiceFeedback('لازم تسمح لتطبيق تدبيرة باستخدام الميكروفون علشان الإدخال الصوتي يشتغل. افتح إعدادات التطبيق وفعّل إذن الميكروفون لو كنت رفضته قبل كده.');
           return;
         }
+      }
+
+      if (Capacitor.isNativePlatform()) {
+        setVoiceState('listening');
+        setVoiceFeedback('افتح نافذة الاستماع واتكلم بالمكونات بالمصري 🎙️');
+        const nativeResult = await microphonePermission.recognize();
+        const nativeMatch = matchSpokenIngredients(nativeResult.transcript || '', COMMON_INGREDIENTS);
+        if (nativeMatch.matchedIngredients.length > 0) {
+          setSelectedIngredients(prev => Array.from(new Set([...prev, ...nativeMatch.matchedIngredients])));
+          setVoiceState('success');
+          setVoiceFeedback(nativeMatch.feedbackMessage);
+          showToast(nativeMatch.feedbackMessage);
+        } else {
+          setVoiceState('no-match');
+          setVoiceFeedback('سمعنا الكلام لكن ملقيناش مكونات مطابقة. جرّبي أسماء زي بيض وطماطم وبطاطس.');
+        }
+        return;
       }
 
       if (!isVoiceSupported) {
