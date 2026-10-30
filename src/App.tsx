@@ -111,10 +111,12 @@ import {
   getLocalNotificationService,
   DAILY_REMINDER_NOTIFICATION_ID,
   DEFAULT_REMINDER_HOUR,
-  DEFAULT_REMINDER_MINUTE
+  DEFAULT_REMINDER_MINUTE,
+  REMINDER_TIME_KEY
 } from './services/localNotificationService';
 import {
   WEEKLY_DAYS_SCHEDULE,
+  buildBudgetAwareWeeklyPlan,
   getRecipeById,
   calculateRecipeScaledCost,
   calculateWeeklyPlanTotalCost,
@@ -133,6 +135,8 @@ import {
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
 import { HouseholdHub } from './features/household/HouseholdHub';
+import { TodayMealAssistant } from './features/meal-planning/TodayMealAssistant';
+import { inventoryRepository } from './features/inventory/inventoryRepository';
 import { householdProfileRepository } from './features/household/householdRepository';
 
 import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
@@ -140,6 +144,7 @@ import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/nav
 
 interface MicrophonePermissionPlugin {
   request(): Promise<{ granted: boolean }>;
+  recognize(): Promise<{ transcript: string }>;
 }
 
 const microphonePermission = registerPlugin<MicrophonePermissionPlugin>('MicrophonePermission');
@@ -741,7 +746,7 @@ export default function App() {
 
   // Phase 4D: Add Consolidated Meal Plan Ingredients to Shopping List
   const handleAddConsolidatedPlanToShopping = () => {
-    const consolidated = consolidateWeeklyPlanIngredients(familySize);
+    const consolidated = consolidateWeeklyPlanIngredients(familySize, weeklySchedule);
     const newItems = convertConsolidatedToShoppingItems(consolidated);
 
     setShoppingItems(prev => {
@@ -1024,6 +1029,23 @@ export default function App() {
         }
       }
 
+      if (Capacitor.isNativePlatform()) {
+        setVoiceState('listening');
+        setVoiceFeedback('افتح نافذة الاستماع واتكلم بالمكونات بالمصري 🎙️');
+        const nativeResult = await microphonePermission.recognize();
+        const nativeMatch = matchSpokenIngredients(nativeResult.transcript || '', COMMON_INGREDIENTS);
+        if (nativeMatch.matchedIngredients.length > 0) {
+          setSelectedIngredients(prev => Array.from(new Set([...prev, ...nativeMatch.matchedIngredients])));
+          setVoiceState('success');
+          setVoiceFeedback(nativeMatch.feedbackMessage);
+          showToast(nativeMatch.feedbackMessage);
+        } else {
+          setVoiceState('no-match');
+          setVoiceFeedback('سمعنا الكلام لكن ملقيناش مكونات مطابقة. جرّبي أسماء زي بيض وطماطم وبطاطس.');
+        }
+        return;
+      }
+
       if (!isVoiceSupported) {
         setVoiceState('unsupported');
         setVoiceFeedback('ميزة تحويل الكلام إلى نص غير مدعومة على هذا الجهاز حالياً. يمكنك اختيار المكونات يدوياً.');
@@ -1162,6 +1184,17 @@ export default function App() {
   // Strict 100% Budget Redistribution Engine
   // ==========================================
   const parsedBudgetAmount = Math.max(0, isNaN(parseFloat(budgetAmount)) ? 0 : parseFloat(budgetAmount));
+  const [inventoryRevision, setInventoryRevision] = useState(0);
+  useEffect(() => {
+    const refreshInventory = () => setInventoryRevision(value => value + 1);
+    window.addEventListener('tedbeera:inventory-updated', refreshInventory);
+    return () => window.removeEventListener('tedbeera:inventory-updated', refreshInventory);
+  }, []);
+  const weeklySchedule = useMemo(() => buildBudgetAwareWeeklyPlan(
+    familySize,
+    parsedBudgetAmount * ((categoryPercentages.find((_, index) => categories[index]?.id === 'food') ?? 40) / 100),
+    inventoryRepository.read()
+  ), [familySize, parsedBudgetAmount, categoryPercentages, categories, inventoryRevision]);
 
   const redistributePercentages = (targetIndex: number, newPct: number, current: number[]): number[] => {
     const size = current.length;
@@ -1479,6 +1512,7 @@ export default function App() {
         paydayDay,
         weeklyPlanUnlocked: isWeeklyPlanUnlocked,
         reminderEnabled: isDailyReminderEnabled,
+        reminderTime: localStorage.getItem(REMINDER_TIME_KEY) || '11:00',
         householdProfile: readFeatureBackupValue<Record<string, unknown> | null>('tedbeera_household_profile_v1', null),
         inventoryItems: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_inventory_v1', []),
         householdTasks: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_household_tasks_v1', []),
@@ -1539,7 +1573,7 @@ export default function App() {
       'tedbeera_expenses', 'tedbeera_shopping_items', 'tedbeera_saved_recipes',
       'tedbeera_phase4c_saved_tips', 'tedbeera_saved_tips', 'tedbeera_saved_budgets',
       'tedbeera_custom_pantry', 'tedbeera_phase4c_tried_tips', 'tedbeera_payday_day',
-      REWARD_PLAN_STORAGE_KEY, REMINDER_STORAGE_KEY, 'tedbeera_daily_completed',
+      REWARD_PLAN_STORAGE_KEY, REMINDER_STORAGE_KEY, REMINDER_TIME_KEY, 'tedbeera_daily_completed',
       'tedbeera_household_profile_v1', 'tedbeera_inventory_v1',
       'tedbeera_household_tasks_v1', 'tedbeera_savings_goals_v1'
     ];
@@ -1560,7 +1594,8 @@ export default function App() {
       triedTipIds,
       paydayDay,
       weeklyPlanUnlocked: isWeeklyPlanUnlocked,
-      reminderEnabled: isDailyReminderEnabled
+      reminderEnabled: isDailyReminderEnabled,
+      reminderTime
     };
 
     try {
@@ -1581,6 +1616,7 @@ export default function App() {
       if (d.paydayDay !== undefined) setPaydayDay(d.paydayDay);
       if (d.weeklyPlanUnlocked !== undefined) setIsWeeklyPlanUnlocked(d.weeklyPlanUnlocked);
       if (d.reminderEnabled !== undefined) setIsDailyReminderEnabled(d.reminderEnabled);
+      if (d.reminderTime) setReminderTime(d.reminderTime);
 
       // 3. Immediate LocalStorage Synchronization Across All Keys
       localStorage.setItem('tedbeera_family_size', String(d.familySize));
@@ -1605,6 +1641,13 @@ export default function App() {
       }
       if (d.reminderEnabled !== undefined) {
         localStorage.setItem(REMINDER_STORAGE_KEY, String(d.reminderEnabled));
+      }
+      if (d.reminderTime) {
+        localStorage.setItem(REMINDER_TIME_KEY, d.reminderTime);
+      }
+      if (d.reminderEnabled && d.reminderTime) {
+        const [restoredHour, restoredMinute] = d.reminderTime.split(':').map(Number);
+        void getLocalNotificationService().scheduleDailyReminder(restoredHour, restoredMinute);
       }
       if (d.dailyCompleted) {
         localStorage.setItem('tedbeera_daily_completed', JSON.stringify(d.dailyCompleted));
@@ -1651,6 +1694,7 @@ export default function App() {
       setPaydayDay(preRestoreSnapshot.paydayDay);
       setIsWeeklyPlanUnlocked(preRestoreSnapshot.weeklyPlanUnlocked);
       setIsDailyReminderEnabled(preRestoreSnapshot.reminderEnabled);
+      setReminderTime(preRestoreSnapshot.reminderTime);
 
       setPendingRestoreData(null);
       setIsRestoreConfirmModalOpen(false);
@@ -1674,7 +1718,9 @@ export default function App() {
     setPaydayDay(null);
     setIsWeeklyPlanUnlocked(false);
     setIsDailyReminderEnabled(false);
+    setReminderTime(`${String(DEFAULT_REMINDER_HOUR).padStart(2, '0')}:${String(DEFAULT_REMINDER_MINUTE).padStart(2, '0')}`);
 
+    localStorage.removeItem(REMINDER_TIME_KEY);
     localStorage.removeItem('tedbeera_saved_recipes');
     localStorage.removeItem('tedbeera_phase4c_saved_tips');
     localStorage.removeItem('tedbeera_saved_tips');
@@ -1847,6 +1893,7 @@ export default function App() {
                     </div>
                     <span className="text-xs bg-[#FFB300] text-[#0D47A1] font-black px-2 py-0.5 rounded-lg">ج.م EGP</span>
                   </div>
+                  <TodayMealAssistant familySize={familySize} monthlyFoodBudget={parsedBudgetAmount * ((categoryPercentages.find((_, index) => categories[index]?.id === 'food') ?? 40) / 100)} onAddMissingToShopping={handleAddMissingToShopping} />
                   {/* Family Size Scaler Bar */}
                   <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs">
@@ -1950,9 +1997,12 @@ export default function App() {
                     ) : (
                       /* Unlocked State: Full 7-Day Interactive Plan & Consolidated Shopping */
                       <div className="space-y-3 pt-1 border-t border-gray-100">
+                        <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-2 text-[10px] leading-5 text-emerald-900">
+                          الخطة بتتظبط تلقائيًا حسب عدد أفراد البيت، ميزانية الطعام، والمخزون المسجل. الأسعار تقديرية وراجعي سعر السوق قبل الشراء.
+                        </div>
                         {/* Days Horizontal Chips */}
                         <div className="flex gap-1 overflow-x-auto pb-1 text-[11px]">
-                          {WEEKLY_DAYS_SCHEDULE.map(day => (
+                          {weeklySchedule.map(day => (
                             <button
                               key={day.dayId}
                               type="button"
@@ -1970,7 +2020,7 @@ export default function App() {
 
                         {/* Selected Day Content */}
                         {(() => {
-                          const activeDay = WEEKLY_DAYS_SCHEDULE.find(d => d.dayId === selectedPlanDayId) || WEEKLY_DAYS_SCHEDULE[0];
+                          const activeDay = weeklySchedule.find(d => d.dayId === selectedPlanDayId) || weeklySchedule[0];
                           const bRecipe = getRecipeById(activeDay.breakfastRecipeId);
                           const lRecipe = getRecipeById(activeDay.lunchRecipeId);
                           const dRecipe = getRecipeById(activeDay.dinnerRecipeId);
@@ -3332,6 +3382,22 @@ export default function App() {
                           </div>
                         </div>
 
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-bold text-gray-500">إضافة سريعة لأشهر النواقص:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {['بيض', 'طماطم', 'بطاطس', 'بصل', 'أرز', 'مكرونة'].map(name => (
+                              <button key={name} type="button" onClick={() => {
+                                setShoppingItems(prev => {
+                                  const existing = prev.find(item => item.name === name && !item.isChecked);
+                                  if (existing) return prev.map(item => item.id === existing.id ? { ...item, quantity: item.quantity + 1 } : item);
+                                  return [...prev, { id: 'quick_' + Math.random().toString(36).slice(2, 9), name, quantity: 1, unit: name === 'بيض' ? 'بيضة' : name === 'مكرونة' ? 'كوب' : name === 'أرز' ? 'كوب' : 'حبة', unitPrice: null, isChecked: false }];
+                                });
+                                showToast('اتضاف ' + name + ' لقائمة المشتريات');
+                              }} className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-bold text-[#0D47A1]">+ {name}</button>
+                            ))}
+                          </div>
+                        </div>
+
                         <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
                           <button
                             onClick={() => {
@@ -4597,10 +4663,20 @@ export default function App() {
                   placeholder="مثال: 120"
                   className="w-full border border-gray-300 rounded-xl p-2.5 font-bold text-[#0D47A1] focus:outline-none focus:border-[#0D47A1]"
                 />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {[50, 100, 150, 200, 300, 500].map(amount => (
+                    <button key={amount} type="button" onClick={() => setExpenseAmount(String(amount))} className={`rounded-lg border px-3 py-1.5 text-[10px] font-bold ${expenseAmount === String(amount) ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>{amount} ج.م</button>
+                  ))}
+                </div>
               </div>
 
               <div>
                 <label className="block text-gray-700 font-bold mb-1">بند المصروف:</label>
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {categories.slice(0, 4).map(category => (
+                    <button key={category.id} type="button" onClick={() => setExpenseCategoryId(category.id)} className={`rounded-lg px-2.5 py-1.5 text-[10px] font-bold ${expenseCategoryId === category.id ? 'bg-blue-100 text-blue-900' : 'bg-gray-100 text-gray-600'}`}>{category.name}</button>
+                  ))}
+                </div>
                 <select
                   value={expenseCategoryId}
                   onChange={(e) => setExpenseCategoryId(e.target.value)}

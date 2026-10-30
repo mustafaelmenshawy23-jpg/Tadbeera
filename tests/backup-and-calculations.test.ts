@@ -72,3 +72,18 @@ test('shopping totals keep unpriced items separate', () => {
   assert.equal(totals.pendingKnownTotal, 20);
   assert.equal(totals.unpricedCount, 1);
 });
+
+
+test('backup round-trip preserves a valid reminder time and rejects invalid clock values', () => {
+  const payload = createBackupPayload({ ...base, reminderEnabled: true, reminderTime: '07:45' });
+  const restored = validateBackupPayload(payload);
+  assert.equal(restored.normalizedData?.reminderTime, '07:45');
+
+  const invalid = validateBackupPayload({
+    app: 'Tedbeera Egypt',
+    backupVersion: 1,
+    data: { familySize: 4, budgetAmount: '2500', reminderTime: '27:90' }
+  });
+  assert.equal(invalid.isValid, true);
+  assert.equal(invalid.normalizedData?.reminderTime, undefined);
+});

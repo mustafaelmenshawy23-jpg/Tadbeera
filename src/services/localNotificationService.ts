@@ -111,11 +111,11 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       if (perm !== 'granted') {
         const granted = await this.requestPermission();
         if (!granted) {
+          this.saveStoredConfig({ enabled: false, hour, minute });
           return {
             success: false,
             message: 'لم يتم منح إذن الإشعارات من النظام. يمكنك تفعيلها من إعدادات الهاتف.'
           };
-          this.saveStoredConfig({ enabled: false, hour, minute });
         }
       }
 

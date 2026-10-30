@@ -1,4 +1,4 @@
-export type InventoryUnit = 'قطعة' | 'كيلو' | 'جرام' | 'لتر' | 'عبوة' | 'علبة' | 'رغيف';
+export type InventoryUnit = 'قطعة' | 'كيلو' | 'جرام' | 'لتر' | 'عبوة' | 'علبة' | 'رغيف' | 'كوب' | 'حبة' | 'بيضة' | 'كيس';
 
 export interface InventoryItem {
   id: string;
@@ -27,7 +27,8 @@ export function getLowStockItems(items: InventoryItem[]): InventoryItem[] {
 export function getExpiringInventoryItems(items: InventoryItem[], withinDays = 7, today = new Date()): InventoryItem[] {
   const end = new Date(today);
   end.setDate(end.getDate() + Math.max(0, withinDays));
-  const todayKey = today.toISOString().slice(0, 10);
-  const endKey = end.toISOString().slice(0, 10);
+  const toLocalDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const todayKey = toLocalDateKey(today);
+  const endKey = toLocalDateKey(end);
   return items.filter(item => item.expiresOn !== null && item.expiresOn >= todayKey && item.expiresOn <= endKey);
 }

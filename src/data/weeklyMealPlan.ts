@@ -1,5 +1,6 @@
 import { RECIPES, Recipe, Ingredient } from './seedData';
 import { ShoppingItem } from './calculationUtils';
+import type { InventoryItem } from '../features/inventory/inventoryModels';
 
 export interface DayMealPlan {
   dayId: string;
@@ -99,6 +100,68 @@ const ESTIMATED_INGREDIENT_PRICES: Record<string, number> = {
 };
 
 /**
+ * Builds a practical weekly schedule using household stock and the monthly food budget.
+ * Market costs remain estimates; unknown stock is treated as unavailable rather than assumed.
+ */
+export function buildBudgetAwareWeeklyPlan(
+  familySize: number,
+  monthlyFoodBudget: number,
+  inventory: InventoryItem[]
+): DayMealPlan[] {
+  const safeFamilySize = Math.max(1, familySize);
+  const dailyFoodBudget = Math.max(0, monthlyFoodBudget) / 30;
+  const perMealBudget = dailyFoodBudget / 3;
+  const remainingStock = new Map<string, number>();
+  const unitGroup = (unit: string) => {
+    if (unit === 'كيلو' || unit === 'جرام') return 'mass';
+    if (unit === 'قطعة' || unit === 'حبة') return 'piece';
+    return unit;
+  };
+  const stockKey = (name: string, unit: string) => name.trim().toLocaleLowerCase('ar-EG') + '|' + unitGroup(unit);
+  const toBaseQuantity = (quantity: number, unit: string) => unit === 'كيلو' ? quantity * 1000 : quantity;
+  inventory.forEach(item => {
+    const key = stockKey(item.name, item.unit);
+    remainingStock.set(key, (remainingStock.get(key) || 0) + toBaseQuantity(item.quantity, item.unit));
+  });
+  const available = (name: string, unit: string) => (remainingStock.get(stockKey(name, unit)) || 0) / (unit === 'كيلو' ? 1000 : 1);
+
+  return WEEKLY_DAYS_SCHEDULE.map(day => {
+    const usedToday = new Set<string>();
+    const choose = (mealType: Recipe['mealType']) => {
+      const candidates = RECIPES.filter(recipe => recipe.mealType === mealType).map(recipe => {
+        const scale = safeFamilySize / Math.max(1, recipe.baseServings);
+        const missing = recipe.ingredients.filter(ingredient => available(ingredient.name, ingredient.unit) < ingredient.baseAmount * scale).length;
+        const coverage = recipe.ingredients.length ? (recipe.ingredients.length - missing) / recipe.ingredients.length : 0;
+        const cost = calculateRecipeScaledCost(recipe, safeFamilySize);
+        const fitsBudget = cost <= perMealBudget;
+        const score = coverage * 100 + (fitsBudget ? 35 : 0) + (recipe.usesLeftovers ? 8 : 0)
+          - (perMealBudget > 0 ? Math.min(45, (cost / perMealBudget) * 8) : cost / 10)
+          - (usedToday.has(recipe.id) ? 12 : 0) - recipe.prepTimeMinutes / 30;
+        return { recipe, score };
+      }).sort((a, b) => b.score - a.score);
+      const chosen = candidates[0]?.recipe;
+      if (chosen) {
+        usedToday.add(chosen.id);
+        const scale = safeFamilySize / Math.max(1, chosen.baseServings);
+        chosen.ingredients.forEach(ingredient => {
+          const key = stockKey(ingredient.name, ingredient.unit);
+          const consumedBase = toBaseQuantity(ingredient.baseAmount * scale, ingredient.unit);
+          remainingStock.set(key, Math.max(0, (remainingStock.get(key) || 0) - consumedBase));
+        });
+      }
+      return chosen?.id || '';
+    };
+
+    return {
+      ...day,
+      breakfastRecipeId: choose('breakfast'),
+      lunchRecipeId: choose('lunch'),
+      dinnerRecipeId: choose('dinner')
+    };
+  });
+}
+
+/**
  * Resolves a Recipe by ID from RECIPES catalog.
  */
 export function getRecipeById(id: string): Recipe | undefined {
@@ -116,9 +179,9 @@ export function calculateRecipeScaledCost(recipe: Recipe, familySize: number): n
 /**
  * Calculates total weekly plan cost for family size.
  */
-export function calculateWeeklyPlanTotalCost(familySize: number): number {
+export function calculateWeeklyPlanTotalCost(familySize: number, schedule: DayMealPlan[] = WEEKLY_DAYS_SCHEDULE): number {
   let total = 0;
-  WEEKLY_DAYS_SCHEDULE.forEach(day => {
+  schedule.forEach(day => {
     const b = getRecipeById(day.breakfastRecipeId);
     const l = getRecipeById(day.lunchRecipeId);
     const d = getRecipeById(day.dinnerRecipeId);
@@ -134,11 +197,11 @@ export function calculateWeeklyPlanTotalCost(familySize: number): number {
  * scaling quantities accurately according to family size,
  * merging duplicate ingredient rows, and attaching estimated prices.
  */
-export function consolidateWeeklyPlanIngredients(familySize: number): ConsolidatedPlanIngredient[] {
+export function consolidateWeeklyPlanIngredients(familySize: number, schedule: DayMealPlan[] = WEEKLY_DAYS_SCHEDULE): ConsolidatedPlanIngredient[] {
   const safeFamilySize = Math.max(1, familySize);
   const ingredientMap = new Map<string, { quantity: number; unit: string; count: number }>();
 
-  WEEKLY_DAYS_SCHEDULE.forEach(day => {
+  schedule.forEach(day => {
     const mealIds = [day.breakfastRecipeId, day.lunchRecipeId, day.dinnerRecipeId];
     mealIds.forEach(id => {
       const recipe = getRecipeById(id);

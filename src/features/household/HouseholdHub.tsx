@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { inventoryRepository } from '../inventory/inventoryRepository';
-import { getLowStockItems, type InventoryItem, type InventoryUnit } from '../inventory/inventoryModels';
+import { getLowStockItems, getExpiringInventoryItems, type InventoryItem, type InventoryUnit } from '../inventory/inventoryModels';
 import { householdTasksRepository } from './householdTaskRepository';
 import { sortHouseholdTasks, type HouseholdTask } from './householdTaskModels';
 import { savingsGoalsRepository } from '../savings/savingsRepository';
 import { getSavingsProgress, type SavingsGoal } from '../savings/savingsModels';
+import { refreshInventoryAlerts } from '../../services/inventoryAlertService';
 
-const units: InventoryUnit[] = ['قطعة', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'رغيف'];
+const units: InventoryUnit[] = ['قطعة', 'حبة', 'بيضة', 'كوب', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'كيس', 'رغيف'];
 
 export function HouseholdHub() {
   const [items, setItems] = useState<InventoryItem[]>(() => inventoryRepository.read());
@@ -15,21 +16,29 @@ export function HouseholdHub() {
   const [itemName, setItemName] = useState('');
   const [itemQty, setItemQty] = useState('1');
   const [itemUnit, setItemUnit] = useState<InventoryUnit>('قطعة');
+  const [itemMinimum, setItemMinimum] = useState('1');
+  const [itemExpiry, setItemExpiry] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [goalTitle, setGoalTitle] = useState('');
   const [goalTarget, setGoalTarget] = useState('');
   const [contributions, setContributions] = useState<Record<string, string>>({});
 
-  const persistItems = (next: InventoryItem[]) => { setItems(next); inventoryRepository.write(next); };
+  const persistItems = (next: InventoryItem[]) => {
+    setItems(next);
+    inventoryRepository.write(next);
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('tedbeera:inventory-updated'));
+  };
+  useEffect(() => { void refreshInventoryAlerts(items); }, [items]);
   const persistTasks = (next: HouseholdTask[]) => { setTasks(sortHouseholdTasks(next)); householdTasksRepository.write(next); };
   const persistGoals = (next: SavingsGoal[]) => { setGoals(next); savingsGoalsRepository.write(next); };
 
   const addItem = () => {
     const name = itemName.trim();
     const quantity = Number(itemQty);
-    if (!name || !Number.isFinite(quantity) || quantity < 0) return;
-    persistItems([...items, { id: crypto.randomUUID(), name, quantity, unit: itemUnit, minimumQuantity: 1, updatedAt: new Date().toISOString(), expiresOn: null }]);
-    setItemName(''); setItemQty('1');
+    const minimumQuantity = Number(itemMinimum);
+    if (!name || !Number.isFinite(quantity) || quantity < 0 || !Number.isFinite(minimumQuantity) || minimumQuantity < 0) return;
+    persistItems([...items, { id: crypto.randomUUID(), name, quantity, unit: itemUnit, minimumQuantity, updatedAt: new Date().toISOString(), expiresOn: itemExpiry || null }]);
+    setItemName(''); setItemQty('1'); setItemMinimum('1'); setItemExpiry('');
   };
 
   const addTask = () => {
@@ -66,17 +75,26 @@ export function HouseholdHub() {
           <h4 className="font-extrabold text-sm">مخزون البيت 🧺</h4>
           <span className="text-[10px] rounded-full bg-amber-50 px-2 py-1 text-amber-800">نواقص: {getLowStockItems(items).length}</span>
         </div>
+        {(getLowStockItems(items).length > 0 || getExpiringInventoryItems(items, 7).length > 0) && <div className="rounded-xl bg-amber-50 border border-amber-100 p-2 text-[11px] text-amber-900">
+          {getLowStockItems(items).length > 0 && <p>⚠️ أصناف قربت تخلص: {getLowStockItems(items).map(item => item.name).join('، ')}</p>}
+          {getExpiringInventoryItems(items, 7).length > 0 && <p className="mt-1">⏰ أصناف صلاحيتها خلال 7 أيام: {getExpiringInventoryItems(items, 7).map(item => item.name).join('، ')}</p>}
+        </div>}
         <div className="grid grid-cols-2 gap-2">
           <input value={itemName} onChange={e => setItemName(e.target.value)} placeholder="اسم الصنف" maxLength={60} className="rounded-xl border p-2 text-xs min-w-0" />
           <input value={itemQty} onChange={e => setItemQty(e.target.value)} type="number" min="0" step="0.1" placeholder="الكمية" className="rounded-xl border p-2 text-xs min-w-0" />
           <select value={itemUnit} onChange={e => setItemUnit(e.target.value as InventoryUnit)} className="rounded-xl border p-2 text-xs">{units.map(unit => <option key={unit}>{unit}</option>)}</select>
+          <input value={itemMinimum} onChange={e => setItemMinimum(e.target.value)} type="number" min="0" step="0.1" placeholder="حد التنبيه" className="rounded-xl border p-2 text-xs min-w-0" />
+          <input value={itemExpiry} onChange={e => setItemExpiry(e.target.value)} type="date" aria-label="تاريخ الصلاحية" className="rounded-xl border p-2 text-xs min-w-0" />
           <button type="button" onClick={addItem} className="rounded-xl bg-[#0D47A1] text-white text-xs font-bold p-2">إضافة للمخزون</button>
         </div>
         {items.length === 0 ? <p className="text-xs text-gray-500">لسه مفيش أصناف في المخزون.</p> : items.map(item => (
           <div key={item.id} className="flex items-center justify-between gap-2 border-t pt-2 text-xs">
             <span className="font-bold">{item.name} <span className="font-normal text-gray-500">({item.quantity} {item.unit})</span></span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button type="button" aria-label={'تقليل ' + item.name} onClick={() => persistItems(items.map(x => x.id === item.id ? { ...x, quantity: Math.max(0, Math.round((x.quantity - 1) * 10) / 10), updatedAt: new Date().toISOString() } : x))} className="rounded bg-gray-100 px-2 py-1">−</button>
+              <button type="button" aria-label={'زيادة ' + item.name} onClick={() => persistItems(items.map(x => x.id === item.id ? { ...x, quantity: Math.round((x.quantity + 1) * 10) / 10, updatedAt: new Date().toISOString() } : x))} className="rounded bg-gray-100 px-2 py-1">+</button>
               {item.quantity <= item.minimumQuantity && <span className="text-[10px] text-amber-700">قارب يخلص</span>}
+              {item.expiresOn && <span className="text-[10px] text-orange-700">الصلاحية: {item.expiresOn}</span>}
               <button type="button" onClick={() => persistItems(items.filter(x => x.id !== item.id))} className="text-red-600">حذف</button>
             </div>
           </div>
