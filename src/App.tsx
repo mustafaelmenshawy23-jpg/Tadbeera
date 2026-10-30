@@ -116,6 +116,7 @@ import {
 } from './services/localNotificationService';
 import {
   WEEKLY_DAYS_SCHEDULE,
+  buildBudgetAwareWeeklyPlan,
   getRecipeById,
   calculateRecipeScaledCost,
   calculateWeeklyPlanTotalCost,
@@ -135,6 +136,7 @@ import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
 import { HouseholdHub } from './features/household/HouseholdHub';
 import { TodayMealAssistant } from './features/meal-planning/TodayMealAssistant';
+import { inventoryRepository } from './features/inventory/inventoryRepository';
 import { householdProfileRepository } from './features/household/householdRepository';
 
 import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
@@ -744,7 +746,7 @@ export default function App() {
 
   // Phase 4D: Add Consolidated Meal Plan Ingredients to Shopping List
   const handleAddConsolidatedPlanToShopping = () => {
-    const consolidated = consolidateWeeklyPlanIngredients(familySize);
+    const consolidated = consolidateWeeklyPlanIngredients(familySize, weeklySchedule);
     const newItems = convertConsolidatedToShoppingItems(consolidated);
 
     setShoppingItems(prev => {
@@ -1182,6 +1184,11 @@ export default function App() {
   // Strict 100% Budget Redistribution Engine
   // ==========================================
   const parsedBudgetAmount = Math.max(0, isNaN(parseFloat(budgetAmount)) ? 0 : parseFloat(budgetAmount));
+  const weeklySchedule = useMemo(() => buildBudgetAwareWeeklyPlan(
+    familySize,
+    parsedBudgetAmount * ((categoryPercentages.find((_, index) => categories[index]?.id === 'food') ?? 40) / 100),
+    inventoryRepository.read()
+  ), [familySize, parsedBudgetAmount, categoryPercentages, categories]);
 
   const redistributePercentages = (targetIndex: number, newPct: number, current: number[]): number[] => {
     const size = current.length;
@@ -1986,7 +1993,7 @@ export default function App() {
                       <div className="space-y-3 pt-1 border-t border-gray-100">
                         {/* Days Horizontal Chips */}
                         <div className="flex gap-1 overflow-x-auto pb-1 text-[11px]">
-                          {WEEKLY_DAYS_SCHEDULE.map(day => (
+                          {weeklySchedule.map(day => (
                             <button
                               key={day.dayId}
                               type="button"
@@ -2004,7 +2011,7 @@ export default function App() {
 
                         {/* Selected Day Content */}
                         {(() => {
-                          const activeDay = WEEKLY_DAYS_SCHEDULE.find(d => d.dayId === selectedPlanDayId) || WEEKLY_DAYS_SCHEDULE[0];
+                          const activeDay = weeklySchedule.find(d => d.dayId === selectedPlanDayId) || weeklySchedule[0];
                           const bRecipe = getRecipeById(activeDay.breakfastRecipeId);
                           const lRecipe = getRecipeById(activeDay.lunchRecipeId);
                           const dRecipe = getRecipeById(activeDay.dinnerRecipeId);
