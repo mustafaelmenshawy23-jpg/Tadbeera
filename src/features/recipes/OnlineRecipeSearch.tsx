@@ -108,12 +108,55 @@ function normalize(value: string): string {
   return value.toLocaleLowerCase('ar').replace(/[\u064B-\u065F\u0670]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').trim();
 }
 
-function getEnglishSearchTerm(term: string): string {
-  const normalized = normalize(term);
-  return ARABIC_ALIASES.find(alias => alias.terms.some(item => normalize(item) === normalized))?.english || term;
+function hasArabic(value: string): boolean {
+  return /[\\u0600-\\u06FF]/.test(value);
 }
 
-function mapMeal(meal: MealDbMeal): OnlineRecipe {
+async function translateText(value: string, source: 'ar' | 'en', target: 'ar' | 'en'): Promise<string> {
+  const text = value.trim();
+  if (!text || (source === target)) return text;
+  // Google Translate's public web endpoint needs no API key. Split long recipes
+  // into sentence-sized requests to stay within URL limits.
+  const sentences = text.match(/[^.!?。！？\\n]+[.!?。！？\\n]*/g) || [text];
+  const chunks: string[] = [];
+  let current = '';
+  for (const sentence of sentences) {
+    if (current.length + sentence.length > 350 && current) {
+      chunks.push(current);
+      current = sentence;
+    } else current += sentence;
+  }
+  if (current) chunks.push(current);
+
+  const translated: string[] = [];
+  for (const chunk of chunks) {
+    try {
+      const url = new URL('https://translate.googleapis.com/translate_a/single');
+      url.search = new URLSearchParams({ client: 'gtx', sl: source, tl: target, dt: 't', q: chunk }).toString();
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error('translation-failed');
+      const data = await response.json();
+      const output = Array.isArray(data?.[0])
+        ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('')
+        : '';
+      if (!output.trim()) throw new Error('empty-translation');
+      translated.push(output);
+    } catch {
+      // Keep the original text rather than losing a usable recipe.
+      translated.push(chunk);
+    }
+  }
+  return translated.join('');
+}
+
+async function getEnglishSearchTerm(term: string): Promise<string> {
+  const normalized = normalize(term);
+  const known = ARABIC_ALIASES.find(alias => alias.terms.some(item => normalize(item) === normalized))?.english;
+  if (known) return known;
+  return hasArabic(term) ? await translateText(term, 'ar', 'en') : term;
+}
+
+async function mapMeal(meal: MealDbMeal): Promise<OnlineRecipe> {
   const ingredients: string[] = [];
   for (let index = 1; index <= 20; index += 1) {
     const ingredient = meal[`strIngredient${index}`]?.trim();
@@ -156,14 +199,14 @@ export function OnlineRecipeSearch() {
     setResults([]);
 
     try {
-      const englishTerm = getEnglishSearchTerm(term);
+      const englishTerm = await getEnglishSearchTerm(term);
       const mealUrl = new URL(MEAL_DB_API);
       mealUrl.searchParams.set('s', englishTerm);
       const mealResponse = await fetch(mealUrl.toString());
       if (!mealResponse.ok) throw new Error('meal-service');
       const mealData = await mealResponse.json();
       const meals = (Array.isArray(mealData.meals) ? mealData.meals : []) as MealDbMeal[];
-      let mapped = meals.map(mapMeal);
+      let mapped = await Promise.all(meals.map(mapMeal));
 
       if (!mapped.length) {
         const localMatches = LOCAL_RECIPES.filter(item =>
@@ -211,14 +254,14 @@ export function OnlineRecipeSearch() {
       }
 
       if (!mapped.length) {
-        setError('ملقيناش وصفة بالاسم ده في المصادر المتاحة. جرّب اسم أكلة مشهور أو اكتب الاسم بالإنجليزي. البحث يدعم العربي للأكلات الموجودة في قاموس تدبيرة.');
+        setError('ملقيناش وصفة مطابقة في المكتبات المجانية حاليًا. جرّب اسمًا أوضح أو اسم الأكلة بالإنجليزي، وتأكد من اتصال الإنترنت.');
         return;
       }
 
       setResults(mapped);
       setSelected(mapped[0]);
     } catch {
-      const englishTerm = getEnglishSearchTerm(term);
+      const englishTerm = await getEnglishSearchTerm(term);
       const localMatches = LOCAL_RECIPES.filter(item =>
         item.terms.some(alias => normalize(alias) === normalize(term) || normalize(alias) === normalize(englishTerm))
       ).map(item => item.recipe);
