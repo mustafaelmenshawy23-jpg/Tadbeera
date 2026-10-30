@@ -1613,7 +1613,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] text-[#1E293B] font-['Cairo',sans-serif] flex flex-col items-center">
+    <div className={isNativeApp ? "h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F9FAFB] text-[#1E293B] font-['Cairo',sans-serif] flex flex-col" : "min-h-screen bg-[#F0F2F5] text-[#1E293B] font-['Cairo',sans-serif] flex flex-col items-center"}>
       {/* Top Header & View Mode Switcher */}
       {!isNativeApp && <header className="w-full bg-[#0D47A1] text-white shadow-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
