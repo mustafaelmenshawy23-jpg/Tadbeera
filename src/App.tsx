@@ -111,7 +111,8 @@ import {
   getLocalNotificationService,
   DAILY_REMINDER_NOTIFICATION_ID,
   DEFAULT_REMINDER_HOUR,
-  DEFAULT_REMINDER_MINUTE
+  DEFAULT_REMINDER_MINUTE,
+  REMINDER_TIME_KEY
 } from './services/localNotificationService';
 import {
   WEEKLY_DAYS_SCHEDULE,
@@ -1498,6 +1499,7 @@ export default function App() {
         paydayDay,
         weeklyPlanUnlocked: isWeeklyPlanUnlocked,
         reminderEnabled: isDailyReminderEnabled,
+        reminderTime: localStorage.getItem(REMINDER_TIME_KEY) || '11:00',
         householdProfile: readFeatureBackupValue<Record<string, unknown> | null>('tedbeera_household_profile_v1', null),
         inventoryItems: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_inventory_v1', []),
         householdTasks: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_household_tasks_v1', []),
@@ -1558,7 +1560,7 @@ export default function App() {
       'tedbeera_expenses', 'tedbeera_shopping_items', 'tedbeera_saved_recipes',
       'tedbeera_phase4c_saved_tips', 'tedbeera_saved_tips', 'tedbeera_saved_budgets',
       'tedbeera_custom_pantry', 'tedbeera_phase4c_tried_tips', 'tedbeera_payday_day',
-      REWARD_PLAN_STORAGE_KEY, REMINDER_STORAGE_KEY, 'tedbeera_daily_completed',
+      REWARD_PLAN_STORAGE_KEY, REMINDER_STORAGE_KEY, REMINDER_TIME_KEY, 'tedbeera_daily_completed',
       'tedbeera_household_profile_v1', 'tedbeera_inventory_v1',
       'tedbeera_household_tasks_v1', 'tedbeera_savings_goals_v1'
     ];
@@ -1624,6 +1626,9 @@ export default function App() {
       }
       if (d.reminderEnabled !== undefined) {
         localStorage.setItem(REMINDER_STORAGE_KEY, String(d.reminderEnabled));
+      }
+      if (d.reminderTime) {
+        localStorage.setItem(REMINDER_TIME_KEY, d.reminderTime);
       }
       if (d.dailyCompleted) {
         localStorage.setItem('tedbeera_daily_completed', JSON.stringify(d.dailyCompleted));
