@@ -7,7 +7,7 @@ import { savingsGoalsRepository } from '../savings/savingsRepository';
 import { getSavingsProgress, type SavingsGoal } from '../savings/savingsModels';
 import { refreshInventoryAlerts } from '../../services/inventoryAlertService';
 
-const units: InventoryUnit[] = ['قطعة', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'رغيف'];
+const units: InventoryUnit[] = ['قطعة', 'حبة', 'بيضة', 'كوب', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'كيس', 'رغيف'];
 
 export function HouseholdHub() {
   const [items, setItems] = useState<InventoryItem[]>(() => inventoryRepository.read());
