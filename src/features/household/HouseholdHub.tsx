@@ -9,7 +9,7 @@ import { financeTransactionsRepository } from '../finance/financeRepository';
 import { createFinanceTransaction, summarizeMonthlyFinance, type FinanceTransaction } from '../finance/financeModels';
 
 const units: InventoryUnit[] = ['قطعة', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'رغيف'];
-const todayKey = () => new Date().toLocaleDateString('en-CA');
+const todayKey = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; };
 
 export function HouseholdHub() {
   const [items, setItems] = useState<InventoryItem[]>(() => inventoryRepository.read());
@@ -37,6 +37,7 @@ export function HouseholdHub() {
   const persistTransactions = (next: FinanceTransaction[]) => { setTransactions(next); financeTransactionsRepository.write(next); };
   const lowStock = useMemo(() => getLowStockItems(items), [items]);
   const expiring = useMemo(() => getExpiringInventoryItems(items, 7), [items]);
+  const expired = useMemo(() => items.filter(item => item.expiresOn !== null && item.expiresOn < todayKey()), [items]);
   const month = todayKey().slice(0, 7);
   const finance = useMemo(() => summarizeMonthlyFinance(transactions, month), [transactions, month]);
 
@@ -84,16 +85,17 @@ export function HouseholdHub() {
           <h4 className="font-extrabold text-sm">مخزون البيت 🧺</h4>
           <span className="text-[10px] rounded-full bg-amber-50 px-2 py-1 text-amber-800">نواقص: {lowStock.length}</span>
         </div>
-        {(lowStock.length > 0 || expiring.length > 0) && <div className="rounded-xl bg-amber-50 p-2 text-[11px] text-amber-900 space-y-1">
+        {(lowStock.length > 0 || expiring.length > 0 || expired.length > 0) && <div className="rounded-xl bg-amber-50 p-2 text-[11px] text-amber-900 space-y-1">
           {lowStock.length > 0 && <p>⚠️ أصناف وصلت للحد الأدنى: {lowStock.map(x => x.name).join('، ')}</p>}
           {expiring.length > 0 && <p>⏳ أصناف تنتهي خلال 7 أيام: {expiring.map(x => x.name).join('، ')}</p>}
+          {expired.length > 0 && <p className="font-bold text-red-700">⛔ أصناف منتهية الصلاحية: {expired.map(x => x.name).join('، ')}</p>}
         </div>}
         <div className="grid grid-cols-2 gap-2">
           <input value={itemName} onChange={e => setItemName(e.target.value)} placeholder="اسم الصنف" maxLength={60} className="rounded-xl border p-2 text-xs min-w-0" />
           <input value={itemQty} onChange={e => setItemQty(e.target.value)} type="number" min="0" step="0.1" placeholder="الكمية الحالية" className="rounded-xl border p-2 text-xs min-w-0" />
           <input value={itemMin} onChange={e => setItemMin(e.target.value)} type="number" min="0" step="0.1" placeholder="حد التنبيه" className="rounded-xl border p-2 text-xs min-w-0" />
           <select value={itemUnit} onChange={e => setItemUnit(e.target.value as InventoryUnit)} className="rounded-xl border p-2 text-xs">{units.map(unit => <option key={unit}>{unit}</option>)}</select>
-          <label className="col-span-2 text-[11px] text-gray-600">تاريخ الصلاحية (اختياري)<input type="date" min={todayKey()} value={itemExpiry} onChange={e => setItemExpiry(e.target.value)} className="mt-1 block w-full rounded-xl border p-2 text-xs" /></label>
+          <label className="col-span-2 text-[11px] text-gray-600">تاريخ الصلاحية (اختياري)<input type="date" value={itemExpiry} onChange={e => setItemExpiry(e.target.value)} className="mt-1 block w-full rounded-xl border p-2 text-xs" /></label>
           <button type="button" onClick={addItem} className="col-span-2 rounded-xl bg-[#0D47A1] text-white text-xs font-bold p-2">إضافة للمخزون</button>
         </div>
         {items.length === 0 ? <p className="text-xs text-gray-500">لسه مفيش أصناف في المخزون.</p> : items.map(item => (
@@ -105,7 +107,7 @@ export function HouseholdHub() {
             <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-600">
               <label>الكمية <input aria-label={'كمية ' + item.name} type="number" min="0" step="0.1" value={item.quantity} onChange={e => updateItem(item.id, { quantity: Math.max(0, Number(e.target.value) || 0) })} className="w-16 rounded border p-1" /></label>
               <label>حد التنبيه <input aria-label={'حد التنبيه ' + item.name} type="number" min="0" step="0.1" value={item.minimumQuantity} onChange={e => updateItem(item.id, { minimumQuantity: Math.max(0, Number(e.target.value) || 0) })} className="w-16 rounded border p-1" /></label>
-              <label>الصلاحية <input aria-label={'صلاحية ' + item.name} type="date" min={todayKey()} value={item.expiresOn || ''} onChange={e => updateItem(item.id, { expiresOn: e.target.value || null })} className="rounded border p-1" /></label>
+              <label>الصلاحية <input aria-label={'صلاحية ' + item.name} type="date" value={item.expiresOn || ''} onChange={e => updateItem(item.id, { expiresOn: e.target.value || null })} className="rounded border p-1" /></label>
               {item.quantity <= item.minimumQuantity && <span className="font-bold text-amber-700">ناقص</span>}
             </div>
           </div>
