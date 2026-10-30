@@ -403,7 +403,8 @@ export default function App() {
   );
   const [voiceState, setVoiceState] = useState<VoiceRecognitionState>('idle');
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);\n  const nativeSpeechListenersRef = useRef<any[]>([]);
+  const recognitionRef = useRef<any>(null);
+  const nativeSpeechListenersRef = useRef<any[]>([]);
 
   const [savedBudgets, setSavedBudgets] = useState<SavedBudgetPlan[]>(() => {
     try {
