@@ -702,7 +702,7 @@ export default function App() {
     const service = getLocalNotificationService();
     if (enable) {
       const res = await service.scheduleDailyReminder(DEFAULT_REMINDER_HOUR, DEFAULT_REMINDER_MINUTE);
-      setIsDailyReminderEnabled(true);
+      setIsDailyReminderEnabled(res.success);
       setReminderFeedbackMessage(res.message);
       showToast(res.message);
     } else {
