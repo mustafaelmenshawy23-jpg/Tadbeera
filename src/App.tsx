@@ -1409,6 +1409,19 @@ export default function App() {
   // Feature 3: Export User Data as Standardized Versioned JSON Backup
   const handleExportData = () => {
     try {
+      const readFeatureBackupValue = <T,>(key: string, fallback: T): T => {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return fallback;
+          const parsed = JSON.parse(raw);
+          const value = parsed && typeof parsed === 'object' && 'schemaVersion' in parsed && 'data' in parsed
+            ? parsed.data
+            : parsed;
+          return value as T;
+        } catch {
+          return fallback;
+        }
+      };
       let completedMap: Record<string, boolean> = {};
       try {
         completedMap = JSON.parse(localStorage.getItem('tedbeera_daily_completed') || '{}');
@@ -1430,10 +1443,10 @@ export default function App() {
         paydayDay,
         weeklyPlanUnlocked: isWeeklyPlanUnlocked,
         reminderEnabled: isDailyReminderEnabled,
-        householdProfile: JSON.parse(localStorage.getItem('tedbeera_household_profile_v1') || 'null'),
-        inventoryItems: JSON.parse(localStorage.getItem('tedbeera_inventory_v1') || '[]'),
-        householdTasks: JSON.parse(localStorage.getItem('tedbeera_household_tasks_v1') || '[]'),
-        savingsGoals: JSON.parse(localStorage.getItem('tedbeera_savings_goals_v1') || '[]')
+        householdProfile: readFeatureBackupValue<Record<string, unknown> | null>('tedbeera_household_profile_v1', null),
+        inventoryItems: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_inventory_v1', []),
+        householdTasks: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_household_tasks_v1', []),
+        savingsGoals: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_savings_goals_v1', [])
       });
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
