@@ -133,6 +133,7 @@ import {
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
 import { HouseholdHub } from './features/household/HouseholdHub';
+import { TodayMealAssistant } from './features/meal-planning/TodayMealAssistant';
 import { householdProfileRepository } from './features/household/householdRepository';
 
 import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
@@ -1847,6 +1848,7 @@ export default function App() {
                     </div>
                     <span className="text-xs bg-[#FFB300] text-[#0D47A1] font-black px-2 py-0.5 rounded-lg">ج.م EGP</span>
                   </div>
+                  <TodayMealAssistant familySize={familySize} monthlyFoodBudget={parsedBudgetAmount * ((categoryPercentages.find((_, index) => categories[index]?.id === 'food') ?? 40) / 100)} onAddMissingToShopping={handleAddMissingToShopping} />
                   {/* Family Size Scaler Bar */}
                   <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs">
