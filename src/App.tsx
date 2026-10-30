@@ -4631,10 +4631,20 @@ export default function App() {
                   placeholder="مثال: 120"
                   className="w-full border border-gray-300 rounded-xl p-2.5 font-bold text-[#0D47A1] focus:outline-none focus:border-[#0D47A1]"
                 />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {[50, 100, 150, 200, 300, 500].map(amount => (
+                    <button key={amount} type="button" onClick={() => setExpenseAmount(String(amount))} className={`rounded-lg border px-3 py-1.5 text-[10px] font-bold ${expenseAmount === String(amount) ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>{amount} ج.م</button>
+                  ))}
+                </div>
               </div>
 
               <div>
                 <label className="block text-gray-700 font-bold mb-1">بند المصروف:</label>
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {categories.slice(0, 4).map(category => (
+                    <button key={category.id} type="button" onClick={() => setExpenseCategoryId(category.id)} className={`rounded-lg px-2.5 py-1.5 text-[10px] font-bold ${expenseCategoryId === category.id ? 'bg-blue-100 text-blue-900' : 'bg-gray-100 text-gray-600'}`}>{category.name}</button>
+                  ))}
+                </div>
                 <select
                   value={expenseCategoryId}
                   onChange={(e) => setExpenseCategoryId(e.target.value)}
