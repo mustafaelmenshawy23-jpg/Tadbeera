@@ -1632,6 +1632,10 @@ export default function App() {
       if (d.reminderTime) {
         localStorage.setItem(REMINDER_TIME_KEY, d.reminderTime);
       }
+      if (d.reminderEnabled && d.reminderTime) {
+        const [restoredHour, restoredMinute] = d.reminderTime.split(':').map(Number);
+        void getLocalNotificationService().scheduleDailyReminder(restoredHour, restoredMinute);
+      }
       if (d.dailyCompleted) {
         localStorage.setItem('tedbeera_daily_completed', JSON.stringify(d.dailyCompleted));
       }
