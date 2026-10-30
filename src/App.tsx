@@ -134,6 +134,7 @@ import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
 import { HouseholdHub } from './features/household/HouseholdHub';
 import { OnlineRecipeSearch } from './features/recipes/OnlineRecipeSearch';
+import { IngredientRecipeFinder } from './features/recipes/IngredientRecipeFinder';
 import { householdProfileRepository } from './features/household/householdRepository';
 
 import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
@@ -2242,6 +2243,8 @@ export default function App() {
                         );
                       })}
                     </div>
+
+                    <IngredientRecipeFinder availableIngredients={selectedIngredients} />
 
                     {/* Quick Filters */}
                     <div className="flex flex-wrap gap-2 pt-3 mt-3 border-t border-gray-100 text-[11px]">
