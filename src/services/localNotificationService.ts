@@ -87,6 +87,13 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     hour: number = DEFAULT_REMINDER_HOUR,
     minute: number = DEFAULT_REMINDER_MINUTE
   ): Promise<{ success: boolean; message: string }> {
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+      return {
+        success: false,
+        message: 'وقت التذكير غير صحيح. اختار ساعة من 0 إلى 23 ودقيقة من 0 إلى 59.'
+      };
+    }
+
     if (!this.isPluginAvailable()) {
       // Web preview cannot schedule an Android notification; do not report it as enabled.
       this.saveStoredConfig({ enabled: false, hour, minute });
@@ -163,9 +170,12 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       });
 
       this.saveStoredConfig({ enabled: true, hour, minute });
+      const period = hour < 12 ? 'صباحاً' : 'مساءً';
+      const displayHour = hour % 12 || 12;
+      const displayMinute = minute < 10 ? `0${minute}` : String(minute);
       return {
         success: true,
-        message: `تم ضبط تذكير تدبيرة اليوم بنجاح في تمام الساعة ${hour}:${minute < 10 ? '0' + minute : minute} صباحاً.`
+        message: `تم ضبط تذكير تدبيرة اليوم بنجاح في تمام الساعة ${displayHour}:${displayMinute} ${period}.`
       };
     } catch (err: any) {
       this.saveStoredConfig({ enabled: false, hour, minute });
