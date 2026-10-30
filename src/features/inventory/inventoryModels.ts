@@ -24,10 +24,14 @@ export function getLowStockItems(items: InventoryItem[]): InventoryItem[] {
   return items.filter(item => item.quantity <= item.minimumQuantity);
 }
 
+function toLocalDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 export function getExpiringInventoryItems(items: InventoryItem[], withinDays = 7, today = new Date()): InventoryItem[] {
-  const end = new Date(today);
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   end.setDate(end.getDate() + Math.max(0, withinDays));
-  const todayKey = today.toISOString().slice(0, 10);
-  const endKey = end.toISOString().slice(0, 10);
+  const todayKey = toLocalDateKey(today);
+  const endKey = toLocalDateKey(end);
   return items.filter(item => item.expiresOn !== null && item.expiresOn >= todayKey && item.expiresOn <= endKey);
 }
