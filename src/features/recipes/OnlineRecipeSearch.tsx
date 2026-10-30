@@ -53,7 +53,7 @@ export function OnlineRecipeSearch() {
       const searchResponse = await fetch(searchUrl.toString());
       if (!searchResponse.ok) throw new Error('search');
       const searchData = await searchResponse.json();
-      const hits = (searchData.query?.search || []) as Array<{ title: string; pageid: number }>;
+      const hits = ((searchData.query?.search || []) as Array<{ title: string; pageid: number }>).filter(hit => /^Cookbook:/i.test(hit.title));
       if (!hits.length) {
         setError('ملقيناش وصفة مطابقة في كتب الطبخ المفتوحة. جرّب الاسم بالإنجليزي أو اسمًا أبسط.');
         return;
