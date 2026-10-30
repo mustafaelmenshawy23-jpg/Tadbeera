@@ -16,9 +16,10 @@ function getAvailableQuantity(name: string, items: ReturnType<typeof inventoryRe
     .reduce((sum, item) => sum + item.quantity, 0);
 }
 
-function getMissingIngredients(recipe: Recipe, inventory: ReturnType<typeof inventoryRepository.read>): Ingredient[] {
+function getMissingIngredients(recipe: Recipe, inventory: ReturnType<typeof inventoryRepository.read>, familySize: number): Ingredient[] {
+  const scale = Math.max(1, familySize) / Math.max(1, recipe.baseServings);
   return recipe.ingredients.filter(ingredient =>
-    getAvailableQuantity(ingredient.name, inventory) < ingredient.baseAmount * 1
+    getAvailableQuantity(ingredient.name, inventory) < ingredient.baseAmount * scale
   );
 }
 
@@ -32,7 +33,7 @@ export function TodayMealAssistant({ familySize, monthlyFoodBudget, onAddMissing
     .filter(recipe => recipe.mealType === 'lunch' || recipe.mealType === 'dinner')
     .map(recipe => {
       const cost = calculateRecipeScaledCost(recipe, familySize);
-      const missing = getMissingIngredients(recipe, inventory);
+      const missing = getMissingIngredients(recipe, inventory, familySize);
       const availableCount = recipe.ingredients.length - missing.length;
       const coverage = recipe.ingredients.length ? availableCount / recipe.ingredients.length : 0;
       const withinBudget = cost <= dailyBudget;
