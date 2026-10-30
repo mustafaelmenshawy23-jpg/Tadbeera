@@ -3390,7 +3390,7 @@ export default function App() {
                                 setShoppingItems(prev => {
                                   const existing = prev.find(item => item.name === name && !item.isChecked);
                                   if (existing) return prev.map(item => item.id === existing.id ? { ...item, quantity: item.quantity + 1 } : item);
-                                  return [...prev, { id: 'quick_' + Math.random().toString(36).slice(2, 9), name, quantity: 1, unit: name === 'بيض' ? 'بيضة' : name === 'مكرونة' ? 'كيس' : 'كيلو', unitPrice: null, isChecked: false }];
+                                  return [...prev, { id: 'quick_' + Math.random().toString(36).slice(2, 9), name, quantity: 1, unit: name === 'بيض' ? 'بيضة' : name === 'مكرونة' ? 'كوب' : name === 'أرز' ? 'كوب' : 'حبة', unitPrice: null, isChecked: false }];
                                 });
                                 showToast('اتضاف ' + name + ' لقائمة المشتريات');
                               }} className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-bold text-[#0D47A1]">+ {name}</button>
