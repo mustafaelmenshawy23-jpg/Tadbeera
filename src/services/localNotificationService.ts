@@ -118,8 +118,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
           name: 'تدبيرة اليوم - توفير الميزانية',
           description: 'تنبيهات يومية بنواقص البيت وحيل التوفير الذكية',
           importance: 4,
-          visibility: 1,
-          sound: 'beep.wav'
+          visibility: 1
         });
       } catch {
         // Channel creation may be a no-op on non-Android or older SDKs
@@ -169,6 +168,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         message: `تم ضبط تذكير تدبيرة اليوم بنجاح في تمام الساعة ${hour}:${minute < 10 ? '0' + minute : minute} صباحاً.`
       };
     } catch (err: any) {
+      this.saveStoredConfig({ enabled: false, hour, minute });
       return {
         success: false,
         message: err?.message || 'تعذر جدولة الإشعار على الجهاز.'
