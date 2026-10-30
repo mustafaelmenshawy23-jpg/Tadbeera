@@ -617,6 +617,14 @@ export default function App() {
       return false;
     }
   });
+  const [reminderTime, setReminderTime] = useState<string>(() => {
+    try {
+      const config = getLocalNotificationService().getStoredConfig();
+      return `${String(config.hour).padStart(2, '0')}:${String(config.minute).padStart(2, '0')}`;
+    } catch {
+      return `${String(DEFAULT_REMINDER_HOUR).padStart(2, '0')}:${String(DEFAULT_REMINDER_MINUTE).padStart(2, '0')}`;
+    }
+  });
   const [reminderFeedbackMessage, setReminderFeedbackMessage] = useState<string | null>(null);
 
   // Phase 4D: Rewarded Ad Simulation Playback Timer
@@ -708,7 +716,8 @@ export default function App() {
   const handleToggleReminder = async (enable: boolean) => {
     const service = getLocalNotificationService();
     if (enable) {
-      const res = await service.scheduleDailyReminder(DEFAULT_REMINDER_HOUR, DEFAULT_REMINDER_MINUTE);
+      const [hour, minute] = reminderTime.split(':').map(Number);
+      const res = await service.scheduleDailyReminder(hour, minute);
       setIsDailyReminderEnabled(res.success);
       setReminderFeedbackMessage(res.message);
       showToast(res.message);
@@ -718,6 +727,16 @@ export default function App() {
       setReminderFeedbackMessage(res.message);
       showToast(res.message);
     }
+  };
+
+  const handleReminderTimeChange = async (value: string) => {
+    setReminderTime(value);
+    if (!isDailyReminderEnabled || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(value)) return;
+    const [hour, minute] = value.split(':').map(Number);
+    const res = await getLocalNotificationService().scheduleDailyReminder(hour, minute);
+    setIsDailyReminderEnabled(res.success);
+    setReminderFeedbackMessage(res.message);
+    showToast(res.message);
   };
 
   // Phase 4D: Add Consolidated Meal Plan Ingredients to Shopping List
@@ -4878,7 +4897,7 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                   <Bell className="w-3.5 h-3.5 text-[#0D47A1]" />
-                  <span>تذكير تدبيرة اليوم (11:00 صباحاً):</span>
+                  <span>تذكير تدبيرة اليوم:</span>
                 </span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -4893,17 +4912,29 @@ export default function App() {
 
               <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100 text-[11px] text-gray-600 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#0D47A1]">الموعد الافتراضي: 11:00 ص</span>
+                  <label className="flex items-center gap-2 font-bold text-[#0D47A1]">
+                    <span>وقت التذكير اليومي:</span>
+                    <input
+                      type="time"
+                      value={reminderTime}
+                      onChange={(e) => handleReminderTimeChange(e.target.value)}
+                      className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs text-gray-800"
+                      aria-label="وقت التذكير اليومي"
+                    />
+                  </label>
                   <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${isDailyReminderEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>
                     {isDailyReminderEnabled ? 'مفعل ✓' : 'معطل'}
                   </span>
                 </div>
                 <p className="text-[10px] text-gray-500 leading-relaxed">
-                  "تفقدي النواقص قبل نزول السوق لتجنب مصاريف إضافية!"
+                  "راجع نواقص البيت قبل نزول السوق لتجنب مصاريف إضافية!"
                 </p>
                 <p className="text-[10px] text-blue-900 font-medium">
                   التذكيرات اليومية متاحة عند تشغيل التطبيق في نسخة تدعم إشعارات الجهاز.
                 </p>
+                {reminderFeedbackMessage && (
+                  <p role="status" className="text-[10px] text-gray-700">{reminderFeedbackMessage}</p>
+                )}
               </div>
 
               <button
