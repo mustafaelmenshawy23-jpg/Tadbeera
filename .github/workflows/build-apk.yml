@@ -25,7 +25,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: "17"
+          java-version: "21"
 
       - name: Install Dependencies
         run: |
@@ -59,7 +59,7 @@ jobs:
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || yes | sdkmanager --licenses 2>/dev/null || true
           cd android
           chmod +x gradlew
-          ./gradlew wrapper --gradle-version 8.7
+          ./gradlew wrapper --gradle-version 8.14.3
 
       - name: Build Debug APK
         run: |
