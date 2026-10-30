@@ -1581,7 +1581,8 @@ export default function App() {
       triedTipIds,
       paydayDay,
       weeklyPlanUnlocked: isWeeklyPlanUnlocked,
-      reminderEnabled: isDailyReminderEnabled
+      reminderEnabled: isDailyReminderEnabled,
+      reminderTime
     };
 
     try {
@@ -1602,6 +1603,7 @@ export default function App() {
       if (d.paydayDay !== undefined) setPaydayDay(d.paydayDay);
       if (d.weeklyPlanUnlocked !== undefined) setIsWeeklyPlanUnlocked(d.weeklyPlanUnlocked);
       if (d.reminderEnabled !== undefined) setIsDailyReminderEnabled(d.reminderEnabled);
+      if (d.reminderTime) setReminderTime(d.reminderTime);
 
       // 3. Immediate LocalStorage Synchronization Across All Keys
       localStorage.setItem('tedbeera_family_size', String(d.familySize));
@@ -1675,6 +1677,7 @@ export default function App() {
       setPaydayDay(preRestoreSnapshot.paydayDay);
       setIsWeeklyPlanUnlocked(preRestoreSnapshot.weeklyPlanUnlocked);
       setIsDailyReminderEnabled(preRestoreSnapshot.reminderEnabled);
+      setReminderTime(preRestoreSnapshot.reminderTime);
 
       setPendingRestoreData(null);
       setIsRestoreConfirmModalOpen(false);
@@ -1698,7 +1701,9 @@ export default function App() {
     setPaydayDay(null);
     setIsWeeklyPlanUnlocked(false);
     setIsDailyReminderEnabled(false);
+    setReminderTime(`${String(DEFAULT_REMINDER_HOUR).padStart(2, '0')}:${String(DEFAULT_REMINDER_MINUTE).padStart(2, '0')}`);
 
+    localStorage.removeItem(REMINDER_TIME_KEY);
     localStorage.removeItem('tedbeera_saved_recipes');
     localStorage.removeItem('tedbeera_phase4c_saved_tips');
     localStorage.removeItem('tedbeera_saved_tips');
