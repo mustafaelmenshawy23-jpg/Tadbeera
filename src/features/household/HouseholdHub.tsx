@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { inventoryRepository } from '../inventory/inventoryRepository';
 import { getLowStockItems, getExpiringInventoryItems, type InventoryItem, type InventoryUnit } from '../inventory/inventoryModels';
 import { householdTasksRepository } from './householdTaskRepository';
 import { sortHouseholdTasks, type HouseholdTask } from './householdTaskModels';
 import { savingsGoalsRepository } from '../savings/savingsRepository';
 import { getSavingsProgress, type SavingsGoal } from '../savings/savingsModels';
+import { refreshInventoryAlerts } from '../../services/inventoryAlertService';
 
 const units: InventoryUnit[] = ['قطعة', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'رغيف'];
 
@@ -23,6 +24,7 @@ export function HouseholdHub() {
   const [contributions, setContributions] = useState<Record<string, string>>({});
 
   const persistItems = (next: InventoryItem[]) => { setItems(next); inventoryRepository.write(next); };
+  useEffect(() => { void refreshInventoryAlerts(items); }, [items]);
   const persistTasks = (next: HouseholdTask[]) => { setTasks(sortHouseholdTasks(next)); householdTasksRepository.write(next); };
   const persistGoals = (next: SavingsGoal[]) => { setGoals(next); savingsGoalsRepository.write(next); };
 
