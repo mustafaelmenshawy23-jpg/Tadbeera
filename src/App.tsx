@@ -3382,6 +3382,22 @@ export default function App() {
                           </div>
                         </div>
 
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-bold text-gray-500">إضافة سريعة لأشهر النواقص:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {['بيض', 'طماطم', 'بطاطس', 'بصل', 'أرز', 'مكرونة'].map(name => (
+                              <button key={name} type="button" onClick={() => {
+                                setShoppingItems(prev => {
+                                  const existing = prev.find(item => item.name === name && !item.isChecked);
+                                  if (existing) return prev.map(item => item.id === existing.id ? { ...item, quantity: item.quantity + 1 } : item);
+                                  return [...prev, { id: 'quick_' + Math.random().toString(36).slice(2, 9), name, quantity: 1, unit: name === 'بيض' ? 'بيضة' : 'حبة', unitPrice: null, isChecked: false }];
+                                });
+                                showToast('اتضاف ' + name + ' لقائمة المشتريات');
+                              }} className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-bold text-[#0D47A1]">+ {name}</button>
+                            ))}
+                          </div>
+                        </div>
+
                         <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
                           <button
                             onClick={() => {
