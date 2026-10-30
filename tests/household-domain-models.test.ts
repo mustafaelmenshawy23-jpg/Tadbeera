@@ -26,6 +26,7 @@ test('inventory validators and low-stock/expiry selectors work', () => {
   assert.equal(isInventoryItem({ ...items[0], quantity: Number.NaN }), false);
   assert.deepEqual(getLowStockItems(items).map(x => x.id), ['a']);
   assert.deepEqual(getExpiringInventoryItems(items, 7, new Date('2026-10-30T12:00:00Z')).map(x => x.id), ['b']);
+  assert.deepEqual(getExpiringInventoryItems(items, 0, new Date(2026, 9, 30, 23, 59)).map(x => x.id), []);
 });
 
 test('household tasks sort pending before completed and validate shape', () => {
