@@ -1497,7 +1497,19 @@ export default function App() {
   const handleConfirmRestore = () => {
     if (!pendingRestoreData) return;
 
-    // 1. Create Pre-Restore Snapshot for Rollback Protection
+    // 1. Snapshot every affected storage key so a partial write can be rolled back atomically.
+    const restoreStorageKeys = [
+      'tedbeera_family_size', 'tedbeera_budget_amount', 'tedbeera_categories', 'tedbeera_percentages',
+      'tedbeera_expenses', 'tedbeera_shopping_items', 'tedbeera_saved_recipes',
+      'tedbeera_phase4c_saved_tips', 'tedbeera_saved_tips', 'tedbeera_saved_budgets',
+      'tedbeera_custom_pantry', 'tedbeera_phase4c_tried_tips', 'tedbeera_payday_day',
+      REWARD_PLAN_STORAGE_KEY, REMINDER_STORAGE_KEY, 'tedbeera_daily_completed',
+      'tedbeera_household_profile_v1', 'tedbeera_inventory_v1',
+      'tedbeera_household_tasks_v1', 'tedbeera_savings_goals_v1'
+    ];
+    const storageSnapshot = new Map(restoreStorageKeys.map(key => [key, localStorage.getItem(key)]));
+
+    // 2. Create Pre-Restore React State Snapshot for Rollback Protection
     const preRestoreSnapshot = {
       familySize,
       budgetAmount,
@@ -1579,7 +1591,16 @@ export default function App() {
       setIsRestoreConfirmModalOpen(false);
       showToast('تمت استعادة النسخة الاحتياطية بنجاح وتحديث كافة الأقسام! 🎉');
     } catch {
-      // 4. Safe Rollback on Storage/State Error
+      // 4. Restore all previous storage values, including feature repositories.
+      for (const [key, value] of storageSnapshot) {
+        try {
+          if (value === null) localStorage.removeItem(key);
+          else localStorage.setItem(key, value);
+        } catch {
+          // Continue best-effort rollback for remaining keys.
+        }
+      }
+      // Restore React state snapshot as well.
       setFamilySize(preRestoreSnapshot.familySize);
       setBudgetAmount(preRestoreSnapshot.budgetAmount);
       setCategories(preRestoreSnapshot.categories);
