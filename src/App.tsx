@@ -132,10 +132,7 @@ import {
 } from './data/affiliateDeals';
 import { PWAInstallButton } from './components/PWAInstallButton';
 
-type ActiveTab = 'food' | 'budget' | 'daily' | 'saved';
-type ViewMode = 'emulator' | 'code' | 'tests';
-type SavedSubTab = 'shopping' | 'recipes' | 'tips' | 'budgets';
-type MealTypeFilter = 'all' | 'breakfast' | 'lunch' | 'dinner';
+import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
 
 export interface SavedBudgetPlan {
   id: string;
