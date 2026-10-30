@@ -3,7 +3,7 @@
  */
 export type ActiveTab = 'food' | 'budget' | 'daily' | 'saved';
 export type ViewMode = 'emulator' | 'code' | 'tests';
-export type SavedSubTab = 'shopping' | 'recipes' | 'tips' | 'budgets';
+export type SavedSubTab = 'shopping' | 'recipes' | 'tips' | 'budgets' | 'household';
 export type MealTypeFilter = 'all' | 'breakfast' | 'lunch' | 'dinner';
 
 /** Human-readable labels for the current primary tabs.
