@@ -3,6 +3,8 @@ package com.tedbeera.egypt
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -22,6 +24,7 @@ import com.getcapacitor.annotation.PermissionCallback
     ]
 )
 class MicrophonePermissionPlugin : Plugin() {
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var speechRecognizer: SpeechRecognizer? = null
 
     @PluginMethod
@@ -40,73 +43,83 @@ class MicrophonePermissionPlugin : Plugin() {
 
     @PluginMethod
     fun startListening(call: PluginCall) {
-        if (getPermissionState("microphone") != PermissionState.GRANTED) {
-            call.reject("Microphone permission has not been granted")
-            return
-        }
-        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
-            call.reject("Speech recognition service is unavailable on this device")
-            return
-        }
+        // Android SpeechRecognizer must be created and used on the main application thread.
+        mainHandler.post {
+            try {
+                if (getPermissionState("microphone") != PermissionState.GRANTED) {
+                    call.reject("Microphone permission has not been granted")
+                    return@post
+                }
+                if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+                    call.reject("Speech recognition service is unavailable on this device")
+                    return@post
+                }
 
-        stopRecognizer()
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).also { recognizer ->
-            recognizer.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    notifyListeners("speechStatus", JSObject().put("status", "listening"))
-                }
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
-                override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() {
-                    notifyListeners("speechStatus", JSObject().put("status", "processing"))
-                }
-                override fun onError(error: Int) {
-                    val message = when (error) {
-                        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "no-speech"
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "not-allowed"
-                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "network"
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "busy"
-                        else -> "recognition-error-$error"
+                stopRecognizer()
+                val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+                speechRecognizer = recognizer
+                recognizer.setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        notifyListeners("speechStatus", JSObject().put("status", "listening"))
                     }
-                    notifyListeners("speechError", JSObject().put("error", message))
-                    stopRecognizer()
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {
+                        notifyListeners("speechStatus", JSObject().put("status", "processing"))
+                    }
+                    override fun onError(error: Int) {
+                        val message = when (error) {
+                            SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "no-speech"
+                            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "not-allowed"
+                            SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "network"
+                            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "busy"
+                            else -> "recognition-error-$error"
+                        }
+                        notifyListeners("speechError", JSObject().put("error", message))
+                        stopRecognizer()
+                    }
+                    override fun onResults(results: Bundle?) {
+                        val transcript = results
+                            ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                            ?.firstOrNull().orEmpty()
+                        notifyListeners("speechResult", JSObject().put("transcript", transcript))
+                        stopRecognizer()
+                    }
+                    override fun onPartialResults(partialResults: Bundle?) {}
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-EG")
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ar-EG")
+                    putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
                 }
-                override fun onResults(results: Bundle?) {
-                    val transcript = results
-                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        ?.firstOrNull().orEmpty()
-                    notifyListeners("speechResult", JSObject().put("transcript", transcript))
-                    stopRecognizer()
-                }
-                override fun onPartialResults(partialResults: Bundle?) {}
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-EG")
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ar-EG")
-                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+                recognizer.startListening(intent)
+                call.resolve()
+            } catch (error: Exception) {
+                stopRecognizer()
+                call.reject("Unable to start speech recognition: ${error.message}", error)
             }
-            recognizer.startListening(intent)
         }
-        call.resolve()
     }
 
     @PluginMethod
     fun stopListening(call: PluginCall) {
-        stopRecognizer()
-        call.resolve()
+        mainHandler.post {
+            stopRecognizer()
+            call.resolve()
+        }
     }
 
     private fun stopRecognizer() {
-        speechRecognizer?.let {
-            try { it.cancel() } catch (_: Exception) {}
-            try { it.destroy() } catch (_: Exception) {}
-        }
+        val current = speechRecognizer ?: return
         speechRecognizer = null
+        try { current.cancel() } catch (_: Exception) {}
+        try { current.destroy() } catch (_: Exception) {}
     }
 
     private fun resolvePermission(call: PluginCall, granted: Boolean) {
@@ -114,7 +127,7 @@ class MicrophonePermissionPlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
-        stopRecognizer()
+        mainHandler.post { stopRecognizer() }
         super.handleOnDestroy()
     }
 }
