@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RECIPES, type Recipe, type Ingredient } from '../../data/seedData';
 import { calculateRecipeScaledCost } from '../../data/weeklyMealPlan';
 import { inventoryRepository } from '../inventory/inventoryRepository';
