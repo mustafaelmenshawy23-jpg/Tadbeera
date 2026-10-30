@@ -218,7 +218,16 @@ export function OnlineRecipeSearch() {
       setResults(mapped);
       setSelected(mapped[0]);
     } catch {
-      setError('تعذر الاتصال بمكتبة الوصفات المجانية. تأكد من الإنترنت وحاول مرة أخرى؛ تقدر تستخدم الوصفات المحفوظة بدون اتصال.');
+      const englishTerm = getEnglishSearchTerm(term);
+      const localMatches = LOCAL_RECIPES.filter(item =>
+        item.terms.some(alias => normalize(alias) === normalize(term) || normalize(alias) === normalize(englishTerm))
+      ).map(item => item.recipe);
+      if (localMatches.length) {
+        setResults(localMatches);
+        setSelected(localMatches[0]);
+      } else {
+        setError('تعذر الاتصال بمكتبة الوصفات المجانية. تأكد من الإنترنت وحاول مرة أخرى؛ تقدر تستخدم الوصفات المحفوظة بدون اتصال.');
+      }
     } finally {
       setLoading(false);
     }
