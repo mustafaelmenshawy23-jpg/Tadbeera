@@ -5436,7 +5436,7 @@ export default function App() {
       {/* Footer */}
       {!isNativeApp && <footer className="w-full text-center py-4 text-xs text-gray-500 font-medium">
         تدبيرة — كل جنيه ليه قيمة 💛 • وفّر بذكاء ودبّر بيتك وخلي كل جنيه في مكانه © {new Date().getFullYear()} 🇪🇬
-      </footer>
+      </footer>}
     </div>
   );
 }
