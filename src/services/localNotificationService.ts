@@ -35,7 +35,7 @@ export interface LocalNotificationService {
   checkPermission(): Promise<NotificationPermissionStatus>;
   /** Requests notification permission from user / operating system */
   requestPermission(): Promise<boolean>;
-  /** Schedules the 11:00 AM daily savings reminder using stable ID 101 */
+  /** Schedules the daily reminder at the selected local time using stable ID 101 */
   scheduleDailyReminder(hour?: number, minute?: number): Promise<{ success: boolean; message: string }>;
   /** Cancels the scheduled daily reminder */
   cancelDailyReminder(): Promise<{ success: boolean; message: string }>;
@@ -132,7 +132,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         // Channel creation may be a no-op on non-Android or older SDKs
       }
 
-      // 3. Cancel existing reminder first to guarantee strictly no duplicates
+      // 3. Cancel the existing reminder first to prevent duplicate schedules
       await LocalNotifications.cancel({
         notifications: [{ id: DAILY_REMINDER_NOTIFICATION_ID }]
       });
