@@ -1429,7 +1429,11 @@ export default function App() {
         triedTipIds,
         paydayDay,
         weeklyPlanUnlocked: isWeeklyPlanUnlocked,
-        reminderEnabled: isDailyReminderEnabled
+        reminderEnabled: isDailyReminderEnabled,
+        householdProfile: JSON.parse(localStorage.getItem('tedbeera_household_profile_v1') || 'null'),
+        inventoryItems: JSON.parse(localStorage.getItem('tedbeera_inventory_v1') || '[]'),
+        householdTasks: JSON.parse(localStorage.getItem('tedbeera_household_tasks_v1') || '[]'),
+        savingsGoals: JSON.parse(localStorage.getItem('tedbeera_savings_goals_v1') || '[]')
       });
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -1544,6 +1548,19 @@ export default function App() {
       if (d.dailyCompleted) {
         localStorage.setItem('tedbeera_daily_completed', JSON.stringify(d.dailyCompleted));
       }
+      // Restore the newer household-management domains; absent fields in legacy backups remain untouched.
+      if (d.householdProfile !== undefined && d.householdProfile !== null) {
+        localStorage.setItem('tedbeera_household_profile_v1', JSON.stringify(d.householdProfile));
+      }
+      if (d.inventoryItems !== undefined) {
+        localStorage.setItem('tedbeera_inventory_v1', JSON.stringify(d.inventoryItems));
+      }
+      if (d.householdTasks !== undefined) {
+        localStorage.setItem('tedbeera_household_tasks_v1', JSON.stringify(d.householdTasks));
+      }
+      if (d.savingsGoals !== undefined) {
+        localStorage.setItem('tedbeera_savings_goals_v1', JSON.stringify(d.savingsGoals));
+      }
 
       setPendingRestoreData(null);
       setIsRestoreConfirmModalOpen(false);
@@ -1603,6 +1620,10 @@ export default function App() {
     localStorage.removeItem('tedbeera_payday_day');
     localStorage.removeItem(REWARD_PLAN_STORAGE_KEY);
     localStorage.removeItem(REMINDER_STORAGE_KEY);
+    localStorage.removeItem('tedbeera_household_profile_v1');
+    localStorage.removeItem('tedbeera_inventory_v1');
+    localStorage.removeItem('tedbeera_household_tasks_v1');
+    localStorage.removeItem('tedbeera_savings_goals_v1');
 
     setIsWipeModalOpen(false);
     setIsSettingsModalOpen(false);
