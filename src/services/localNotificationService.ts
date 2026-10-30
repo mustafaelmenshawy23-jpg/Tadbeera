@@ -5,7 +5,7 @@
  * ========================================================
  * Provides a safe, modular local notifications layer.
  * - Detects presence of Capacitor LocalNotifications plugin.
- * - Configures recurring daily reminder at 11:00 AM (default).
+ * - Configures a recurring daily reminder at the user's selected local time (11:00 AM by default).
  * - Uses a stable notification ID (101) to strictly prevent duplicate schedules.
  * - Graceful fallback in web preview with non-intrusive Arabic guidance.
  */
@@ -115,6 +115,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
             success: false,
             message: 'لم يتم منح إذن الإشعارات من النظام. يمكنك تفعيلها من إعدادات الهاتف.'
           };
+          this.saveStoredConfig({ enabled: false, hour, minute });
         }
       }
 
@@ -136,12 +137,12 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         notifications: [{ id: DAILY_REMINDER_NOTIFICATION_ID }]
       });
 
-      // 4. Calculate next occurrence of 11:00 AM
+      // 4. Calculate the next occurrence of the selected local time
       const now = new Date();
       const scheduledTime = new Date();
       scheduledTime.setHours(hour, minute, 0, 0);
 
-      // If 11:00 AM has already passed today, schedule for tomorrow
+      // If the selected time has already passed today, schedule for tomorrow
       if (scheduledTime <= now) {
         scheduledTime.setDate(scheduledTime.getDate() + 1);
       }
