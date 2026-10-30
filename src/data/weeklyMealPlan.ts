@@ -112,18 +112,25 @@ export function buildBudgetAwareWeeklyPlan(
   const dailyFoodBudget = Math.max(0, monthlyFoodBudget) / 30;
   const perMealBudget = dailyFoodBudget / 3;
   const remainingStock = new Map<string, number>();
+  const unitGroup = (unit: string) => {
+    if (unit === 'كيلو' || unit === 'جرام') return 'mass';
+    if (unit === 'قطعة' || unit === 'حبة') return 'piece';
+    return unit;
+  };
+  const stockKey = (name: string, unit: string) => name.trim().toLocaleLowerCase('ar-EG') + '|' + unitGroup(unit);
+  const toBaseQuantity = (quantity: number, unit: string) => unit === 'كيلو' ? quantity * 1000 : quantity;
   inventory.forEach(item => {
-    const key = item.name.trim().toLocaleLowerCase('ar-EG');
-    remainingStock.set(key, (remainingStock.get(key) || 0) + item.quantity);
+    const key = stockKey(item.name, item.unit);
+    remainingStock.set(key, (remainingStock.get(key) || 0) + toBaseQuantity(item.quantity, item.unit));
   });
-  const available = (name: string) => remainingStock.get(name.trim().toLocaleLowerCase('ar-EG')) || 0;
+  const available = (name: string, unit: string) => (remainingStock.get(stockKey(name, unit)) || 0) / (unit === 'كيلو' ? 1000 : 1);
 
   return WEEKLY_DAYS_SCHEDULE.map(day => {
     const usedToday = new Set<string>();
     const choose = (mealType: Recipe['mealType']) => {
       const candidates = RECIPES.filter(recipe => recipe.mealType === mealType).map(recipe => {
         const scale = safeFamilySize / Math.max(1, recipe.baseServings);
-        const missing = recipe.ingredients.filter(ingredient => available(ingredient.name) < ingredient.baseAmount * scale).length;
+        const missing = recipe.ingredients.filter(ingredient => available(ingredient.name, ingredient.unit) < ingredient.baseAmount * scale).length;
         const coverage = recipe.ingredients.length ? (recipe.ingredients.length - missing) / recipe.ingredients.length : 0;
         const cost = calculateRecipeScaledCost(recipe, safeFamilySize);
         const fitsBudget = cost <= perMealBudget;
@@ -137,8 +144,9 @@ export function buildBudgetAwareWeeklyPlan(
         usedToday.add(chosen.id);
         const scale = safeFamilySize / Math.max(1, chosen.baseServings);
         chosen.ingredients.forEach(ingredient => {
-          const key = ingredient.name.trim().toLocaleLowerCase('ar-EG');
-          remainingStock.set(key, Math.max(0, available(ingredient.name) - ingredient.baseAmount * scale));
+          const key = stockKey(ingredient.name, ingredient.unit);
+          const consumedBase = toBaseQuantity(ingredient.baseAmount * scale, ingredient.unit);
+          remainingStock.set(key, Math.max(0, (remainingStock.get(key) || 0) - consumedBase));
         });
       }
       return chosen?.id || '';
