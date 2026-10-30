@@ -88,11 +88,11 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     minute: number = DEFAULT_REMINDER_MINUTE
   ): Promise<{ success: boolean; message: string }> {
     if (!this.isPluginAvailable()) {
-      // In web preview fallback
-      this.saveStoredConfig({ enabled: true, hour, minute });
+      // Web preview cannot schedule an Android notification; do not report it as enabled.
+      this.saveStoredConfig({ enabled: false, hour, minute });
       return {
-        success: true,
-        message: 'التذكيرات اليومية متاحة عند تشغيل التطبيق في نسخة تدعم إشعارات الجهاز.'
+        success: false,
+        message: 'التذكيرات تحتاج تشغيل نسخة Android من التطبيق حتى يتمكن الجهاز من إرسال الإشعارات.'
       };
     }
 
@@ -146,7 +146,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
           {
             id: DAILY_REMINDER_NOTIFICATION_ID,
             title: 'تدبيرة اليوم 💡',
-            body: 'تفقدي النواقص قبل نزول السوق لتجنب مصاريف إضافية!',
+            body: 'راجع نواقص البيت قبل نزول السوق لتجنب مصاريف إضافية!',
             schedule: {
               at: scheduledTime,
               repeats: true,
@@ -230,7 +230,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       hour,
       minute,
       title: 'تدبيرة اليوم 💡',
-      body: 'تفقدي النواقص قبل نزول السوق لتجنب مصاريف إضافية!'
+      body: 'راجع نواقص البيت قبل نزول السوق لتجنب مصاريف إضافية!'
     };
   }
 
