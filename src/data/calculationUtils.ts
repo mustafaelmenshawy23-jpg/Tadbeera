@@ -43,6 +43,10 @@ export interface TedbeeraBackupData {
   paydayDay?: number | null;
   weeklyPlanUnlocked?: boolean;
   reminderEnabled?: boolean;
+  householdProfile?: Record<string, unknown> | null;
+  inventoryItems?: Record<string, unknown>[];
+  householdTasks?: Record<string, unknown>[];
+  savingsGoals?: Record<string, unknown>[];
 }
 
 export const REWARD_PLAN_STORAGE_KEY = 'tedbeera_phase4d_weekly_plan_unlocked';
@@ -369,7 +373,11 @@ export function createBackupPayload(data: TedbeeraBackupData): TedbeeraBackupPay
       savedTipIds: Array.isArray(data.savedTipIds) ? data.savedTipIds : [],
       savedBudgets: Array.isArray(data.savedBudgets) ? data.savedBudgets : [],
       selectedIngredients: Array.isArray(data.selectedIngredients) ? data.selectedIngredients : ['بيض', 'طماطم', 'بصل'],
-      dailyCompleted: data.dailyCompleted && typeof data.dailyCompleted === 'object' ? data.dailyCompleted : {}
+      dailyCompleted: data.dailyCompleted && typeof data.dailyCompleted === 'object' ? data.dailyCompleted : {},
+      householdProfile: data.householdProfile && typeof data.householdProfile === 'object' ? data.householdProfile : null,
+      inventoryItems: Array.isArray(data.inventoryItems) ? data.inventoryItems.filter(item => item && typeof item === 'object') : [],
+      householdTasks: Array.isArray(data.householdTasks) ? data.householdTasks.filter(item => item && typeof item === 'object') : [],
+      savingsGoals: Array.isArray(data.savingsGoals) ? data.savingsGoals.filter(item => item && typeof item === 'object') : []
     }
   };
 }
@@ -477,6 +485,10 @@ export function validateBackupPayload(raw: unknown): { isValid: boolean; error?:
   const paydayDay = typeof data.paydayDay === 'number' && data.paydayDay >= 1 && data.paydayDay <= 31 ? Math.round(data.paydayDay) : null;
   const weeklyPlanUnlocked = typeof data.weeklyPlanUnlocked === 'boolean' ? data.weeklyPlanUnlocked : false;
   const reminderEnabled = typeof data.reminderEnabled === 'boolean' ? data.reminderEnabled : false;
+  const householdProfile = data.householdProfile && typeof data.householdProfile === 'object' && !Array.isArray(data.householdProfile) ? data.householdProfile : null;
+  const inventoryItems = Array.isArray(data.inventoryItems) ? data.inventoryItems.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item)) : [];
+  const householdTasks = Array.isArray(data.householdTasks) ? data.householdTasks.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item)) : [];
+  const savingsGoals = Array.isArray(data.savingsGoals) ? data.savingsGoals.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item)) : [];
 
   return {
     isValid: true,
@@ -495,7 +507,11 @@ export function validateBackupPayload(raw: unknown): { isValid: boolean; error?:
       triedTipIds,
       paydayDay,
       weeklyPlanUnlocked,
-      reminderEnabled
+      reminderEnabled,
+      householdProfile,
+      inventoryItems,
+      householdTasks,
+      savingsGoals
     }
   };
 }
