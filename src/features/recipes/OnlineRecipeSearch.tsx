@@ -109,15 +109,13 @@ function normalize(value: string): string {
 }
 
 function hasArabic(value: string): boolean {
-  return /[\\u0600-\\u06FF]/.test(value);
+  return /[\u0600-\u06FF]/.test(value);
 }
 
 async function translateText(value: string, source: 'ar' | 'en', target: 'ar' | 'en'): Promise<string> {
   const text = value.trim();
-  if (!text || (source === target)) return text;
-  // Google Translate's public web endpoint needs no API key. Split long recipes
-  // into sentence-sized requests to stay within URL limits.
-  const sentences = text.match(/[^.!?。！？\\n]+[.!?。！？\\n]*/g) || [text];
+  if (!text || source === target) return text;
+  const sentences = text.match(/[^.!?。！？\n]+[.!?。！？\n]*/g) || [text];
   const chunks: string[] = [];
   let current = '';
   for (const sentence of sentences) {
@@ -142,7 +140,6 @@ async function translateText(value: string, source: 'ar' | 'en', target: 'ar' | 
       if (!output.trim()) throw new Error('empty-translation');
       translated.push(output);
     } catch {
-      // Keep the original text rather than losing a usable recipe.
       translated.push(chunk);
     }
   }
@@ -152,26 +149,30 @@ async function translateText(value: string, source: 'ar' | 'en', target: 'ar' | 
 async function getEnglishSearchTerm(term: string): Promise<string> {
   const normalized = normalize(term);
   const known = ARABIC_ALIASES.find(alias => alias.terms.some(item => normalize(item) === normalized))?.english;
-  if (known) return known;
-  return hasArabic(term) ? await translateText(term, 'ar', 'en') : term;
+  return known || (hasArabic(term) ? await translateText(term, 'ar', 'en') : term);
 }
 
 async function mapMeal(meal: MealDbMeal): Promise<OnlineRecipe> {
   const ingredients: string[] = [];
   for (let index = 1; index <= 20; index += 1) {
-    const ingredient = meal[`strIngredient${index}`]?.trim();
-    const measure = meal[`strMeasure${index}`]?.trim();
-    if (ingredient) ingredients.push(`• ${ingredient}${measure ? ` — ${measure}` : ''}`);
+    const ingredient = meal[\`strIngredient\${index}\`]?.trim();
+    const measure = meal[\`strMeasure\${index}\`]?.trim();
+    if (ingredient) ingredients.push(\`• \${ingredient}\${measure ? \` — \${measure}\` : ''}\`);
   }
   const instructions = (meal.strInstructions || '').replace(/\r/g, '').trim();
+  const rawExtract = \`\${ingredients.length ? \`المكونات:\\n\${ingredients.join('\\n')}\\n\\n\` : ''}طريقة التحضير:\\n\${instructions || 'راجع صفحة المصدر للتعليمات.'}\`;
+  const [arabicTitle, arabicExtract] = await Promise.all([
+    translateText(meal.strMeal, 'en', 'ar'),
+    translateText(rawExtract, 'en', 'ar'),
+  ]);
   return {
-    title: meal.strMeal,
+    title: arabicTitle || meal.strMeal,
     pageId: Number(meal.idMeal),
-    url: meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`,
+    url: meal.strSource || \`https://www.themealdb.com/meal/\${meal.idMeal}\`,
     imageUrl: meal.strMealThumb,
     imageCredit: 'TheMealDB',
     imageLicense: 'راجع مصدر الوصفة الأصلي وشروط استخدام الصورة',
-    extract: `${ingredients.length ? `المكونات:\n${ingredients.join('\n')}\n\n` : ''}طريقة التحضير:\n${instructions || 'راجع صفحة المصدر للتعليمات.'}`,
+    extract: arabicExtract || rawExtract,
   };
 }
 
