@@ -111,9 +111,12 @@ export function buildBudgetAwareWeeklyPlan(
   const safeFamilySize = Math.max(1, familySize);
   const dailyFoodBudget = Math.max(0, monthlyFoodBudget) / 30;
   const perMealBudget = dailyFoodBudget / 3;
-  const available = (name: string) => inventory
-    .filter(item => item.name.trim().toLocaleLowerCase('ar-EG') === name.trim().toLocaleLowerCase('ar-EG'))
-    .reduce((sum, item) => sum + item.quantity, 0);
+  const remainingStock = new Map<string, number>();
+  inventory.forEach(item => {
+    const key = item.name.trim().toLocaleLowerCase('ar-EG');
+    remainingStock.set(key, (remainingStock.get(key) || 0) + item.quantity);
+  });
+  const available = (name: string) => remainingStock.get(name.trim().toLocaleLowerCase('ar-EG')) || 0;
 
   return WEEKLY_DAYS_SCHEDULE.map(day => {
     const usedToday = new Set<string>();
@@ -130,7 +133,14 @@ export function buildBudgetAwareWeeklyPlan(
         return { recipe, score };
       }).sort((a, b) => b.score - a.score);
       const chosen = candidates[0]?.recipe;
-      if (chosen) usedToday.add(chosen.id);
+      if (chosen) {
+        usedToday.add(chosen.id);
+        const scale = safeFamilySize / Math.max(1, chosen.baseServings);
+        chosen.ingredients.forEach(ingredient => {
+          const key = ingredient.name.trim().toLocaleLowerCase('ar-EG');
+          remainingStock.set(key, Math.max(0, available(ingredient.name) - ingredient.baseAmount * scale));
+        });
+      }
       return chosen?.id || '';
     };
 
