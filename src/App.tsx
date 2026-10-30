@@ -132,6 +132,7 @@ import {
 } from './data/affiliateDeals';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
+import { HouseholdHub } from './features/household/HouseholdHub';
 import { householdProfileRepository } from './features/household/householdRepository';
 
 import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
@@ -3101,7 +3102,7 @@ export default function App() {
                   </div>
 
                   {/* SubTabs */}
-                  <div className="grid grid-cols-4 bg-white p-1 rounded-xl border border-gray-200 text-xs font-bold text-center">
+                  <div className="grid grid-cols-5 bg-white p-1 rounded-xl border border-gray-200 text-[10px] font-bold text-center">
                     <button
                       onClick={() => setSavedSubTab('shopping')}
                       className={`py-1.5 rounded-lg transition ${
@@ -3133,6 +3134,12 @@ export default function App() {
                       }`}
                     >
                       الميزانيات ({savedBudgets.length})
+                    </button>
+                    <button
+                      onClick={() => setSavedSubTab('household')}
+                      className={`py-1.5 rounded-lg transition ${savedSubTab === 'household' ? 'bg-[#0D47A1] text-white shadow-sm' : 'text-gray-600'}`}
+                    >
+                      إدارة البيت
                     </button>
                   </div>
 
@@ -3586,6 +3593,8 @@ export default function App() {
                       )}
                     </div>
                   )}
+
+                  {savedSubTab === 'household' && <HouseholdHub />}
                 </div>
               )}
 
