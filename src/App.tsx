@@ -979,7 +979,16 @@ export default function App() {
     setTriedTipIds(prev => {
       const isAlreadyTried = prev.includes(id);
       const updated = toggleTriedTipId(prev, id);
-        // Phase 4C: Arabic Egyptian Voice Recognition Engine
+      if (!isAlreadyTried) {
+        showToast('عاش! سجلنا إنك جربت الحيلة دي ووفرت في بيتك 👏');
+      } else {
+        showToast('تم إلغاء تحديد تجربة الحيلة');
+      }
+      return updated;
+    });
+  };
+
+  // Phase 4C: Arabic Egyptian Voice Recognition Engine
   const startVoiceRecognition = async () => {
     if (!isVoiceSupported) {
       setVoiceState('unsupported');
