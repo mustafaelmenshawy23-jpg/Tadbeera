@@ -5,6 +5,7 @@ pluginManagement {
                 includeGroupByRegex("com\\.android.*")
                 includeGroupByRegex("com\\.google.*")
                 includeGroupByRegex("androidx.*")
+                includeGroupByRegex("org\\.jetbrains\\.kotlin.*")
             }
         }
         mavenCentral()
@@ -21,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "TedbeeraEgypt"
 include(":app")
+apply(from = "capacitor.settings.gradle")
