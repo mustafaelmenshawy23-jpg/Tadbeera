@@ -1063,13 +1063,6 @@ export default function App() {
     }
   };
 
-nitionRef.current = recognition;
-      recognition.start();
-    } catch {
-      setVoiceState('error');
-      setVoiceFeedback('تعذر بدء تشغيل المايكروفون، يمكنك اختيار المكونات يدوياً.');
-    }
-  };
 
   const stopVoiceRecognition = () => {
     if (recognitionRef.current) {
