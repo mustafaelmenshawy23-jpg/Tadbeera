@@ -61,7 +61,7 @@ export function OnlineRecipeSearch() {
 
       const pagesUrl = new URL(API);
       pagesUrl.search = new URLSearchParams({
-        action: 'query', prop: 'extracts', exintro: '1', explaintext: '1',
+        action: 'query', prop: 'extracts', explaintext: '1',
         exchars: '9000', pageids: hits.map(hit => String(hit.pageid)).join('|'),
         format: 'json', origin: '*'
       }).toString();
