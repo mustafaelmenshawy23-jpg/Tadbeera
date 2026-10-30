@@ -140,6 +140,16 @@ import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/nav
 
 interface MicrophonePermissionPlugin {
   request(): Promise<{ granted: boolean }>;
+  startListening(): Promise<void>;
+  stopListening(): Promise<void>;
+  addListener(
+    eventName: 'speechResult',
+    listenerFunc: (event: { transcript?: string }) => void
+  ): Promise<{ remove(): Promise<void> | void }>;
+  addListener(
+    eventName: 'speechError',
+    listenerFunc: (event: { error?: string }) => void
+  ): Promise<{ remove(): Promise<void> | void }>;
 }
 
 const microphonePermission = registerPlugin<MicrophonePermissionPlugin>('MicrophonePermission');
