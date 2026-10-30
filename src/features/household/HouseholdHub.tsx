@@ -23,7 +23,11 @@ export function HouseholdHub() {
   const [goalTarget, setGoalTarget] = useState('');
   const [contributions, setContributions] = useState<Record<string, string>>({});
 
-  const persistItems = (next: InventoryItem[]) => { setItems(next); inventoryRepository.write(next); };
+  const persistItems = (next: InventoryItem[]) => {
+    setItems(next);
+    inventoryRepository.write(next);
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('tedbeera:inventory-updated'));
+  };
   useEffect(() => { void refreshInventoryAlerts(items); }, [items]);
   const persistTasks = (next: HouseholdTask[]) => { setTasks(sortHouseholdTasks(next)); householdTasksRepository.write(next); };
   const persistGoals = (next: SavingsGoal[]) => { setGoals(next); savingsGoalsRepository.write(next); };
