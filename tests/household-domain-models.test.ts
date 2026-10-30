@@ -36,6 +36,11 @@ test('household tasks sort pending before completed and validate shape', () => {
   ];
   assert.equal(isHouseholdTask(tasks[0]), true);
   assert.deepEqual(sortHouseholdTasks(tasks).map(x => x.id), ['soon', 'later', 'done']);
+  const undated = [
+    { id: 'b', title: 'ب', notes: '', dueDate: null, completed: false, createdAt: '2026-10-02' },
+    { id: 'a', title: 'أ', notes: '', dueDate: null, completed: false, createdAt: '2026-10-01' }
+  ];
+  assert.deepEqual(sortHouseholdTasks(undated).map(x => x.id), ['a', 'b']);
 });
 
 test('savings progress is bounded and marks completed goals', () => {
