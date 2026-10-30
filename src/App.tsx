@@ -403,7 +403,7 @@ export default function App() {
   );
   const [voiceState, setVoiceState] = useState<VoiceRecognitionState>('idle');
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<any>(null);\n  const nativeSpeechListenersRef = useRef<any[]>([]);
 
   const [savedBudgets, setSavedBudgets] = useState<SavedBudgetPlan[]>(() => {
     try {
@@ -1022,6 +1022,38 @@ export default function App() {
           setVoiceFeedback('لازم تسمح لتطبيق تدبيرة باستخدام الميكروفون علشان الإدخال الصوتي يشتغل. افتح إعدادات التطبيق وفعّل إذن الميكروفون لو كنت رفضته قبل كده.');
           return;
         }
+      }
+
+      if (Capacitor.isNativePlatform()) {
+        nativeSpeechListenersRef.current.forEach(handle => { try { handle.remove(); } catch {} });
+        nativeSpeechListenersRef.current = [];
+        const resultHandle = await microphonePermission.addListener('speechResult', (event) => {
+          const transcript = event.transcript || '';
+          const match = matchSpokenIngredients(transcript, COMMON_INGREDIENTS);
+          if (match.matchedIngredients.length > 0) {
+            setSelectedIngredients(prev => Array.from(new Set([...prev, ...match.matchedIngredients])));
+            setVoiceState('success');
+            setVoiceFeedback(match.feedbackMessage);
+            showToast(match.feedbackMessage);
+          } else {
+            setVoiceState('no-match');
+            setVoiceFeedback('ملقيناش مكونات مطابقة للكلام، جرّب تقول أسماء المكونات بوضوح.');
+          }
+          nativeSpeechListenersRef.current.forEach(handle => { try { handle.remove(); } catch {} });
+          nativeSpeechListenersRef.current = [];
+        });
+        const errorHandle = await microphonePermission.addListener('speechError', (event) => {
+          const error = event.error || '';
+          setVoiceState(error === 'not-allowed' ? 'permission-denied' : error === 'no-speech' ? 'no-match' : 'error');
+          setVoiceFeedback(error === 'no-speech' ? 'لم يتم التقاط صوت. اتكلم بوضوح وجرب تاني.' : error === 'network' ? 'خدمة التعرف الصوتي محتاجة اتصال بالإنترنت.' : 'تعذر تشغيل التعرف الصوتي. تأكد من تفعيل خدمة Google للتعرف على الكلام.');
+          nativeSpeechListenersRef.current.forEach(handle => { try { handle.remove(); } catch {} });
+          nativeSpeechListenersRef.current = [];
+        });
+        nativeSpeechListenersRef.current = [resultHandle, errorHandle];
+        await microphonePermission.startListening();
+        setVoiceState('listening');
+        setVoiceFeedback('بتسمعك دلوقتي... اتكلم 🎙️');
+        return;
       }
 
       if (!isVoiceSupported) {
