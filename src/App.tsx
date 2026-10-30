@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import {
   Utensils,
   Wallet,
@@ -136,6 +136,13 @@ import { HouseholdHub } from './features/household/HouseholdHub';
 import { householdProfileRepository } from './features/household/householdRepository';
 
 import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
+
+
+interface MicrophonePermissionPlugin {
+  request(): Promise<{ granted: boolean }>;
+}
+
+const microphonePermission = registerPlugin<MicrophonePermissionPlugin>('MicrophonePermission');
 
 export interface SavedBudgetPlan {
   id: string;
@@ -972,17 +979,8 @@ export default function App() {
     setTriedTipIds(prev => {
       const isAlreadyTried = prev.includes(id);
       const updated = toggleTriedTipId(prev, id);
-      if (!isAlreadyTried) {
-        showToast('عاش! سجلنا إنك جربت الحيلة دي ووفرت في بيتك 👏');
-      } else {
-        showToast('تم إلغاء تحديد تجربة الحيلة');
-      }
-      return updated;
-    });
-  };
-
-  // Phase 4C: Arabic Egyptian Voice Recognition Engine
-  const startVoiceRecognition = () => {
+        // Phase 4C: Arabic Egyptian Voice Recognition Engine
+  const startVoiceRecognition = async () => {
     if (!isVoiceSupported) {
       setVoiceState('unsupported');
       setVoiceFeedback('ميزة الإدخال الصوتي غير مدعومة في متصفحك الحالي. يمكنك اختيار المكونات يدوياً بسهولة.');
@@ -995,6 +993,15 @@ export default function App() {
     }
 
     try {
+      if (Capacitor.isNativePlatform()) {
+        const permission = await microphonePermission.request();
+        if (!permission.granted) {
+          setVoiceState('permission-denied');
+          setVoiceFeedback('لازم تسمح لتطبيق تدبيرة باستخدام الميكروفون علشان الإدخال الصوتي يشتغل. افتح إعدادات التطبيق وفعّل إذن الميكروفون لو كنت رفضته قبل كده.');
+          return;
+        }
+      }
+
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       recognition.lang = 'ar-EG';
@@ -1030,7 +1037,7 @@ export default function App() {
         const err = event?.error;
         if (err === 'not-allowed' || err === 'service-not-allowed') {
           setVoiceState('permission-denied');
-          setVoiceFeedback('يجب السماح بالوصول للمايكروفون من إعدادات المتصفح للاستخدام.');
+          setVoiceFeedback('لم يتم السماح باستخدام الميكروفون. فعّل إذن الميكروفون لتطبيق تدبيرة من إعدادات أندرويد ثم حاول مرة أخرى.');
         } else if (err === 'no-speech') {
           setVoiceState('no-match');
           setVoiceFeedback('لم يتم التقاط أي صوت، تحدث بوضوح بالقرب من المايكروفون.');
@@ -1049,6 +1056,14 @@ export default function App() {
       };
 
       recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setVoiceState('error');
+      setVoiceFeedback('تعذر بدء تشغيل المايكروفون، يمكنك اختيار المكونات يدوياً.');
+    }
+  };
+
+nitionRef.current = recognition;
       recognition.start();
     } catch {
       setVoiceState('error');
