@@ -3139,7 +3139,6 @@ export default function App() {
                         <ShoppingTotalsSummary totals={shoppingTotals} items={shoppingItems} />
 
                       </div>
-                        )}
 
                         {/* Feature 1: WhatsApp Sharing Action */}
                         <button
