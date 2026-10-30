@@ -9,17 +9,26 @@ interface TodayMealAssistantProps {
   onAddMissingToShopping: (missing: Ingredient[], baseServings: number) => void;
 }
 
-function getAvailableQuantity(name: string, items: ReturnType<typeof inventoryRepository.read>): number {
+function getAvailableQuantity(name: string, unit: string, items: ReturnType<typeof inventoryRepository.read>): number {
   const normalized = name.trim().toLocaleLowerCase('ar-EG');
-  return items
-    .filter(item => item.name.trim().toLocaleLowerCase('ar-EG') === normalized)
-    .reduce((sum, item) => sum + item.quantity, 0);
+  const unitGroup = (value: string) => {
+    if (value === 'كيلو' || value === 'جرام') return 'mass';
+    if (value === 'قطعة' || value === 'حبة') return 'piece';
+    return value;
+  };
+  const toBase = (quantity: number, value: string) => value === 'كيلو' ? quantity * 1000 : quantity;
+  const targetGroup = unitGroup(unit);
+  const targetFactor = unit === 'كيلو' ? 1000 : 1;
+  const baseQuantity = items
+    .filter(item => item.name.trim().toLocaleLowerCase('ar-EG') === normalized && unitGroup(item.unit) === targetGroup)
+    .reduce((sum, item) => sum + toBase(item.quantity, item.unit), 0);
+  return baseQuantity / targetFactor;
 }
 
 function getMissingIngredients(recipe: Recipe, inventory: ReturnType<typeof inventoryRepository.read>, familySize: number): Ingredient[] {
   const scale = Math.max(1, familySize) / Math.max(1, recipe.baseServings);
   return recipe.ingredients.filter(ingredient =>
-    getAvailableQuantity(ingredient.name, inventory) < ingredient.baseAmount * scale
+    getAvailableQuantity(ingredient.name, ingredient.unit, inventory) < ingredient.baseAmount * scale
   );
 }
 
