@@ -731,7 +731,7 @@ export default function App() {
 
   const handleReminderTimeChange = async (value: string) => {
     setReminderTime(value);
-    if (!isDailyReminderEnabled || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(value)) return;
+    if (!isDailyReminderEnabled || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return;
     const [hour, minute] = value.split(':').map(Number);
     const res = await getLocalNotificationService().scheduleDailyReminder(hour, minute);
     setIsDailyReminderEnabled(res.success);
