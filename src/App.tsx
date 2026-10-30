@@ -1828,10 +1828,10 @@ export default function App() {
 
         {/* ---------------- VIEW 1: LIVE PHONE EMULATOR ---------------- */}
         {viewMode === 'emulator' && (
-          <div className="flex flex-col items-center gap-4 w-full">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border-4 border-gray-800 overflow-hidden flex flex-col h-[780px]">
+          <div className={isNativeApp ? "h-full min-h-0 w-full" : "flex flex-col items-center gap-4 w-full"}>
+            <div className={isNativeApp ? "h-full min-h-0 w-full max-w-none bg-white overflow-hidden flex flex-col" : "w-full max-w-md bg-white rounded-3xl shadow-2xl border-4 border-gray-800 overflow-hidden flex flex-col h-[780px]"}>
             {/* Phone Top Notch / Status Bar */}
-            <div className="bg-[#0D47A1] text-white px-5 py-2.5 flex items-center justify-between text-xs select-none">
+            {!isNativeApp && ( <div className="bg-[#0D47A1] text-white px-5 py-2.5 flex items-center justify-between text-xs select-none">
               <span className="font-bold tracking-wider">09:41</span>
               <div className="w-20 h-4 bg-gray-900 rounded-full mx-auto opacity-70"></div>
               <div className="flex items-center gap-1.5 text-[10px]">
@@ -1839,7 +1839,7 @@ export default function App() {
                 <span>📶</span>
                 <span>100% 🔋</span>
               </div>
-            </div>
+            </div>)}
 
             {/* Android Top App Bar */}
             <div className="bg-[#0D47A1] text-white px-4 py-3 flex items-center justify-between shadow-sm">
