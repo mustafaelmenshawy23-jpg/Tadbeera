@@ -74,7 +74,7 @@ export function IngredientRecipeFinder({ availableIngredients }: { availableIngr
       const mapped = await Promise.all(valid.map(async meal => {
         const mealIngredients = Array.from({length:20},(_,i)=>meal[`strIngredient${i+1}`]?.trim() || '').filter(Boolean);
         const normalizedMealIngredients = mealIngredients.map(normalize);
-        const matched = availableIngredients.filter(name => normalizedMealIngredients.some(item => item.includes(normalize(name)) || normalize(name).includes(item))).length;
+        const matched = ingredientLists.filter(list => list.some(entry => entry.idMeal === meal.idMeal)).length;
         const raw = meal.strInstructions || 'لا تتوفر طريقة التحضير في المصدر.';
         const [title,instructions] = await Promise.all([translateToArabic(meal.strMeal),translateToArabic(raw)]);
         return {id:meal.idMeal,title,image:meal.strMealThumb,matched,total:availableIngredients.length,missing:[],instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`};
