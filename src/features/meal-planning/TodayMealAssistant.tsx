@@ -26,6 +26,11 @@ function getMissingIngredients(recipe: Recipe, inventory: ReturnType<typeof inve
 export function TodayMealAssistant({ familySize, monthlyFoodBudget, onAddMissingToShopping }: TodayMealAssistantProps) {
   const [inventoryRevision, setInventoryRevision] = useState(0);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
+  useEffect(() => {
+    const refreshInventory = () => setInventoryRevision(value => value + 1);
+    window.addEventListener('tedbeera:inventory-updated', refreshInventory);
+    return () => window.removeEventListener('tedbeera:inventory-updated', refreshInventory);
+  }, []);
   const inventory = useMemo(() => inventoryRepository.read(), [inventoryRevision]);
   const dailyBudget = Math.max(0, monthlyFoodBudget) / 30;
 
