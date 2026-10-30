@@ -990,12 +990,6 @@ export default function App() {
 
   // Phase 4C: Arabic Egyptian Voice Recognition Engine
   const startVoiceRecognition = async () => {
-    if (!isVoiceSupported) {
-      setVoiceState('unsupported');
-      setVoiceFeedback('ميزة الإدخال الصوتي غير مدعومة في متصفحك الحالي. يمكنك اختيار المكونات يدوياً بسهولة.');
-      return;
-    }
-
     if (voiceState === 'listening') {
       stopVoiceRecognition();
       return;
@@ -1009,6 +1003,12 @@ export default function App() {
           setVoiceFeedback('لازم تسمح لتطبيق تدبيرة باستخدام الميكروفون علشان الإدخال الصوتي يشتغل. افتح إعدادات التطبيق وفعّل إذن الميكروفون لو كنت رفضته قبل كده.');
           return;
         }
+      }
+
+      if (!isVoiceSupported) {
+        setVoiceState('unsupported');
+        setVoiceFeedback('ميزة تحويل الكلام إلى نص غير مدعومة على هذا الجهاز حالياً. يمكنك اختيار المكونات يدوياً.');
+        return;
       }
 
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
