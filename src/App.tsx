@@ -1184,11 +1184,17 @@ export default function App() {
   // Strict 100% Budget Redistribution Engine
   // ==========================================
   const parsedBudgetAmount = Math.max(0, isNaN(parseFloat(budgetAmount)) ? 0 : parseFloat(budgetAmount));
+  const [inventoryRevision, setInventoryRevision] = useState(0);
+  useEffect(() => {
+    const refreshInventory = () => setInventoryRevision(value => value + 1);
+    window.addEventListener('tedbeera:inventory-updated', refreshInventory);
+    return () => window.removeEventListener('tedbeera:inventory-updated', refreshInventory);
+  }, []);
   const weeklySchedule = useMemo(() => buildBudgetAwareWeeklyPlan(
     familySize,
     parsedBudgetAmount * ((categoryPercentages.find((_, index) => categories[index]?.id === 'food') ?? 40) / 100),
     inventoryRepository.read()
-  ), [familySize, parsedBudgetAmount, categoryPercentages, categories]);
+  ), [familySize, parsedBudgetAmount, categoryPercentages, categories, inventoryRevision]);
 
   const redistributePercentages = (targetIndex: number, newPct: number, current: number[]): number[] => {
     const size = current.length;
