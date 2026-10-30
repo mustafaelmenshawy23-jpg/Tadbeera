@@ -19,8 +19,12 @@ export function isHouseholdTask(value: unknown): value is HouseholdTask {
 export function sortHouseholdTasks(tasks: HouseholdTask[]): HouseholdTask[] {
   return [...tasks].sort((a, b) => {
     if (a.completed !== b.completed) return Number(a.completed) - Number(b.completed);
-    if (a.dueDate === null) return 1;
-    if (b.dueDate === null) return -1;
-    return a.dueDate.localeCompare(b.dueDate);
+    if (a.dueDate === null && b.dueDate !== null) return 1;
+    if (a.dueDate !== null && b.dueDate === null) return -1;
+    if (a.dueDate !== null && b.dueDate !== null) {
+      const dueDateOrder = a.dueDate.localeCompare(b.dueDate);
+      if (dueDateOrder !== 0) return dueDateOrder;
+    }
+    return a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
   });
 }
