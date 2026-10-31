@@ -60,6 +60,16 @@ jobs:
             cp public/assets/aistudio/launchericon-192x192_a1111b2e.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 2>/dev/null || true
           fi
 
+      - name: Verify Capacitor Local Notifications Plugin Registration
+        run: |
+          PLUGIN_FILE="android/app/src/main/assets/capacitor.plugins.json"
+          if [ ! -f "$PLUGIN_FILE" ] || ! grep -q "LocalNotificationsPlugin" "$PLUGIN_FILE"; then
+            echo "::error file=$PLUGIN_FILE::Capacitor Local Notifications plugin was not registered after cap sync."
+            cat "$PLUGIN_FILE" 2>/dev/null || true
+            exit 1
+          fi
+          echo "Local Notifications plugin registration verified."
+
       - name: Accept Android SDK Licenses & Prepare Gradle
         run: |
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || yes | sdkmanager --licenses 2>/dev/null || true
