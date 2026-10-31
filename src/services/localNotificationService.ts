@@ -108,21 +108,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
         return { success: false, message: 'لم يتم منح إذن الإشعارات. فعّله من إعدادات الهاتف ثم حاول مرة أخرى.' };
       }
-
-      // Android 12+ may separately restrict exact alarms even when notifications are allowed.
-      if (Capacitor.getPlatform() === 'android') {
-        let exactSetting = await LocalNotifications.checkExactNotificationSetting();
-        if (exactSetting.exact_alarm !== 'granted') {
-          exactSetting = await LocalNotifications.changeExactNotificationSetting();
-        }
-        if (exactSetting.exact_alarm !== 'granted') {
-          this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
-          return {
-            success: false,
-            message: 'لضبط مواعيد الوجبات بدقة، اسمح لتدبيرة باستخدام المنبهات والتذكيرات من شاشة إعدادات Android ثم أعد التفعيل.',
-          };
-        }
-      }
+ 
 
       try {
         await LocalNotifications.createChannel({
@@ -193,16 +179,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       const permission = await this.checkPermission();
       if (permission !== 'granted' && !(await this.requestPermission())) {
         return { success: false, message: 'لم تسمح بإشعارات تدبيرة. فعّل إذن الإشعارات من إعدادات الهاتف ثم أعد الاختبار.' };
-      }
-      if (Capacitor.getPlatform() === 'android') {
-        let exactSetting = await LocalNotifications.checkExactNotificationSetting();
-        if (exactSetting.exact_alarm !== 'granted') {
-          exactSetting = await LocalNotifications.changeExactNotificationSetting();
-        }
-        if (exactSetting.exact_alarm !== 'granted') {
-          return { success: false, message: 'اسمح لتدبيرة باستخدام المنبهات والتذكيرات من إعدادات Android حتى نختبر وصول الإشعار في موعده.' };
-        }
-      }
+      } 
       await LocalNotifications.createChannel({
         id: DAILY_REMINDER_CHANNEL_ID,
         name: 'تذكيرات وجبات تدبيرة',
