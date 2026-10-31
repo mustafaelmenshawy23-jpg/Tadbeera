@@ -72,8 +72,13 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         // Some Android 13 devices report "denied" even before the app has
         // actually displayed the runtime prompt. Allow exactly one first-launch
         // request, then respect the user's decision on later launches.
-        const alreadyRequested = typeof window !== 'undefined' &&
-          localStorage.getItem(NOTIFICATION_PERMISSION_REQUESTED_KEY) === 'true';
+        let alreadyRequested = false;
+        try {
+          alreadyRequested = typeof window !== 'undefined' &&
+            localStorage.getItem(NOTIFICATION_PERMISSION_REQUESTED_KEY) === 'true';
+        } catch {
+          // If storage is unavailable, allow the native permission check to decide.
+        }
         return alreadyRequested ? 'denied' : 'prompt';
       }
       return 'prompt';
