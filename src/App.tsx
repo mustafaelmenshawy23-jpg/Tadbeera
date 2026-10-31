@@ -283,7 +283,7 @@ function renderCategoryIcon(iconName?: string, className = "w-4 h-4") {
 export default function App() {
   const isNativeApp = Capacitor.isNativePlatform();
   const [viewMode, setViewMode] = useState<ViewMode>('emulator');
-  const [activeTab, setActiveTab] = useState<ActiveTab>('food');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [savedSubTab, setSavedSubTab] = useState<SavedSubTab>('shopping');
 
   // Food State
@@ -1753,7 +1753,7 @@ export default function App() {
   };
 
   return (
-    <div className={isNativeApp ? "h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F9FAFB] text-[#1E293B] font-['Cairo',sans-serif] flex flex-col" : "min-h-screen bg-[#F0F2F5] text-[#1E293B] font-['Cairo',sans-serif] flex flex-col items-center"}>
+    <div className={isNativeApp ? "h-[100dvh] min-h-0 w-full overflow-hidden bg-[#FBF8F1] text-[#3F4037] font-['Cairo',sans-serif] flex flex-col" : "min-h-screen bg-[#F4F0E7] text-[#3F4037] font-['Cairo',sans-serif] flex flex-col items-center"}>
       {/* Top Header & View Mode Switcher */}
       {!isNativeApp && <header className="w-full bg-[#0D47A1] text-white shadow-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
@@ -1843,7 +1843,7 @@ export default function App() {
             </div>)}
 
             {/* Android Top App Bar */}
-            <div className="bg-[#0D47A1] text-white px-4 py-3 flex items-center justify-between shadow-sm">
+            <div className="tadbeera-appbar bg-[#F5F0E5] text-[#43523D] px-4 py-3 flex items-center justify-between shadow-sm border-b border-[#E8E0D1]">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🇪🇬</span>
                 <span className="font-extrabold text-sm sm:text-base">تدبيرة — كل جنيه ليه قيمة 💛</span>
@@ -1867,7 +1867,7 @@ export default function App() {
                 )}
                 <button
                   onClick={() => setIsSettingsModalOpen(true)}
-                  className="p-1.5 rounded-lg bg-blue-800/80 hover:bg-blue-700 text-white transition"
+                  className="p-1.5 rounded-lg bg-[#E8EDDF] hover:bg-[#DCE5D3] text-[#5F7651] transition"
                   title="إعدادات وأمان البيانات"
                 >
                   <Settings className="w-4 h-4" />
@@ -1877,8 +1877,29 @@ export default function App() {
             </div>
 
             {/* Scrollable Screen Content with shared layout clearance ensuring 70-90px breathing room */}
-            <div className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 bg-[#F9FAFB] ${getBottomScrollPaddingClass(adStatus)} ${isNativeApp ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}>
+            <div className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 bg-[#FBF8F1] ${getBottomScrollPaddingClass(adStatus)} ${isNativeApp ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}>
 
+
+              {activeTab === 'home' && (
+                <section className="space-y-4" dir="rtl">
+                  <div className="rounded-[28px] bg-gradient-to-br from-[#667B58] via-[#758765] to-[#526748] text-white p-5 shadow-sm">
+                    <span className="text-xs text-[#F4EAD5] font-semibold">بيتك في إيدك 🌿</span>
+                    <h2 className="text-2xl font-extrabold mt-1">أهلاً بيك في تدبيرة</h2>
+                    <p className="text-xs text-white/85 mt-2 leading-6">خلّي تفاصيل البيت أبسط… وخطوة بخطوة كل حاجة تبقى في مكانها.</p>
+                    <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-[11px]"><Users className="w-4 h-4" /><span>أسرتك: {familySize} أفراد</span></div>
+                  </div>
+                  <div><h3 className="font-extrabold text-base text-[#454A3C]">ملخص بيتك النهارده</h3><p className="text-[11px] text-[#8A887C] mt-0.5">نظرة سريعة على أهم احتياجاتك</p></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => setActiveTab('saved')} className="text-right rounded-2xl border border-[#E9E1D3] bg-[#FFFEFA] p-3.5 shadow-sm"><ShoppingCart className="w-5 h-5 text-[#98764C]" /><b className="block text-xs mt-3">قائمة المشتريات</b><strong className="block text-2xl text-[#8A704D]">{shoppingItems.filter(item => !item.isChecked).length}</strong><small className="text-[10px] text-[#969184]">أصناف لسه محتاجة تتجاب</small></button>
+                    <button type="button" onClick={() => setActiveTab('budget')} className="text-right rounded-2xl border border-[#E2E8DC] bg-[#FFFEFA] p-3.5 shadow-sm"><Wallet className="w-5 h-5 text-[#667B58]" /><b className="block text-xs mt-3">ميزانية البيت</b><strong className="block text-xl text-[#667B58]">{budgetAmount || '—'}</strong><small className="text-[10px] text-[#969184]">الميزانية المحددة</small></button>
+                    <button type="button" onClick={() => setActiveTab('food')} className="text-right rounded-2xl border border-[#EEDFD4] bg-[#FFFEFA] p-3.5 shadow-sm"><Utensils className="w-5 h-5 text-[#A66D4C]" /><b className="block text-xs mt-3">المطبخ والوصفات</b><strong className="block text-sm text-[#A66D4C]">إيه طبخة النهارده؟</strong><small className="text-[10px] text-[#969184]">وصفات حسب الموجود</small></button>
+                    <button type="button" onClick={() => setActiveTab('household')} className="text-right rounded-2xl border border-[#E8E2D5] bg-[#FFFEFA] p-3.5 shadow-sm"><Home className="w-5 h-5 text-[#857B60]" /><b className="block text-xs mt-3">إدارة البيت</b><strong className="block text-sm text-[#857B60]">المخزون والمهام</strong><small className="text-[10px] text-[#969184]">كل تفاصيل البيت في مكانها</small></button>
+                  </div>
+                  <div className="rounded-2xl border border-[#E8E1D3] bg-[#F3EBDD] p-4"><h3 className="text-sm font-extrabold text-[#66563F]">فكرة صغيرة توفر عليك ✨</h3><p className="text-[11px] text-[#796B56] leading-5 mt-1">راجع الموجود في البيت قبل ما تكتب قائمة السوق، وجرب تطبخ بالمكونات المتاحة.</p><button type="button" onClick={() => setActiveTab('food')} className="mt-2 text-[11px] font-extrabold text-[#657A55] underline">اكتشف وصفات بالموجود عندك</button></div>
+                  <button type="button" onClick={() => setActiveTab('daily')} className="w-full rounded-2xl bg-[#FFFEFA] border border-[#E8E1D3] p-3 text-right flex items-center justify-between"><span className="text-xs font-bold text-[#555548]">💡 تدبيرة اليوم — أفكار وحيل للتوفير</span><ChevronRight className="w-4 h-4 text-[#9A927F]" /></button>
+                </section>
+              )}
+              {activeTab === 'household' && <HouseholdHub />}
               {/* ======================================================== */}
               {/* === TAB 1: تدبيرة الأكل === */}
               {/* ======================================================== */}
@@ -3803,47 +3824,22 @@ export default function App() {
               </div>
             </div>
 
-            {/* Android Bottom Navigation Bar */}
-            <div className="bg-white border-t border-gray-200 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center justify-around text-[10px] select-none shrink-0">
-              <button
-                onClick={() => setActiveTab('food')}
-                className={`flex flex-col items-center gap-0.5 transition ${
-                  activeTab === 'food' ? 'text-[#0D47A1] font-bold' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Utensils className="w-5 h-5" />
-                <span>تدبيرة الأكل</span>
-              </button>
 
-              <button
-                onClick={() => setActiveTab('budget')}
-                className={`flex flex-col items-center gap-0.5 transition ${
-                  activeTab === 'budget' ? 'text-[#0D47A1] font-bold' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Wallet className="w-5 h-5" />
-                <span>تدبيرة الفلوس</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('daily')}
-                className={`flex flex-col items-center gap-0.5 transition ${
-                  activeTab === 'daily' ? 'text-[#0D47A1] font-bold' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Lightbulb className="w-5 h-5" />
-                <span>تدبيرة اليوم</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('saved')}
-                className={`flex flex-col items-center gap-0.5 transition ${
-                  activeTab === 'saved' ? 'text-[#0D47A1] font-bold' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Bookmark className="w-5 h-5" />
-                <span>المحفوظات</span>
-              </button>
+            <nav className="tadbeera-bottom-nav bg-[#FFFEFA] border-t border-[#E8E0D1] px-1.5 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] grid grid-cols-5 shrink-0 shadow-[0_-5px_20px_rgba(83,75,54,0.06)]" aria-label="التنقل الرئيسي">
+              {([
+                { id: 'home', label: 'الرئيسية', Icon: Home },
+                { id: 'food', label: 'المطبخ', Icon: Utensils },
+                { id: 'saved', label: 'التسوق', Icon: ShoppingCart },
+                { id: 'budget', label: 'الميزانية', Icon: Wallet },
+                { id: 'household', label: 'البيت', Icon: Users }
+              ] as const).map(({ id, label, Icon }) => (
+                <button key={id} type="button" onClick={() => setActiveTab(id)} aria-current={activeTab === id ? 'page' : undefined}
+                  className={activeTab === id ? "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#5F7651] bg-[#EEF1E8] font-extrabold" : "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#999487]"}>
+                  <Icon className="w-5 h-5" strokeWidth={activeTab === id ? 2.5 : 1.9} />
+                  <span className="text-[10px] leading-4">{label}</span>
+                </button>
+              ))}
+            </nav>
             </div>
           </div>
 
