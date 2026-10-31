@@ -666,18 +666,43 @@ export default function App() {
   });
   const [reminderFeedbackMessage, setReminderFeedbackMessage] = useState<string | null>(null);
 
-  // Restore daily meal alarms on launch; Android may clear exact alarms after updates or permission changes.
+  // Ask for notification permission once on the first native app launch.
+  // After permission is granted, automatically schedule breakfast, lunch and dinner.
   useEffect(() => {
     if (!isNativeApp) return;
     let cancelled = false;
-    const restoreReminders = async () => {
+    const initializeMealReminders = async () => {
       const service = getLocalNotificationService();
       const config = service.getStoredConfig();
-      if (!config.enabled) return;
+      const onboardingKey = 'tedbeera_notification_permission_onboarding_v1';
+      let onboardingDone = false;
+      try { onboardingDone = localStorage.getItem(onboardingKey) === 'true'; } catch {}
       let permission = await service.checkPermission();
+
+      if (!onboardingDone) {
+        if (permission === 'prompt') {
+          permission = await service.requestPermission() ? 'granted' : 'denied';
+        }
+        try { localStorage.setItem(onboardingKey, 'true'); } catch {}
+        if (cancelled) return;
+        if (permission === 'granted') {
+          const result = await service.scheduleDailyReminder(config.hour, config.minute);
+          if (cancelled) return;
+          setIsDailyReminderEnabled(result.success);
+          setReminderFeedbackMessage(result.message);
+        } else {
+          setIsDailyReminderEnabled(false);
+          setReminderFeedbackMessage('اسمح لتدبيرة بالإشعارات حتى تصلك تذكيرات الفطار والغداء والعشاء.');
+        }
+        return;
+      }
+
+      if (!config.enabled) return;
       if (permission === 'prompt') permission = await service.requestPermission() ? 'granted' : 'denied';
-      if (cancelled || permission !== 'granted') {
-        if (!cancelled) setIsDailyReminderEnabled(false);
+      if (cancelled) return;
+      if (permission !== 'granted') {
+        setIsDailyReminderEnabled(false);
+        setReminderFeedbackMessage('إذن الإشعارات غير مفعّل. يمكنك السماح به من إعدادات الهاتف.');
         return;
       }
       const result = await service.scheduleDailyReminder(config.hour, config.minute);
@@ -685,7 +710,7 @@ export default function App() {
       setIsDailyReminderEnabled(result.success);
       if (!result.success) setReminderFeedbackMessage(result.message);
     };
-    void restoreReminders().catch(error => console.warn('Tadbeera reminder restore failed:', error));
+    void initializeMealReminders().catch(error => console.warn('Tadbeera reminder initialization failed:', error));
     return () => { cancelled = true; };
   }, [isNativeApp]);
 
@@ -775,19 +800,21 @@ export default function App() {
   };
 
   const handleRequestDevicePermissions = async () => {
-    const notificationGranted = await getLocalNotificationService().requestPermission();
-    let microphoneGranted = false;
-    try {
-      const result = await microphonePermission.request();
-      microphoneGranted = result.granted;
-    } catch (error) {
-      console.warn('Tadbeera microphone permission request failed:', error);
+    const service = getLocalNotificationService();
+    const notificationGranted = await service.requestPermission();
+    if (notificationGranted) {
+      const [hour, minute] = reminderTime.split(':').map(Number);
+      const result = await service.scheduleDailyReminder(hour, minute);
+      setIsDailyReminderEnabled(result.success);
+      setReminderFeedbackMessage(result.message);
+      showToast(result.message);
+      try { localStorage.setItem('tedbeera_notification_permission_onboarding_v1', 'true'); } catch {}
+      return;
     }
-    const message = notificationGranted && microphoneGranted
-      ? 'تم السماح بالإشعارات والميكروفون بنجاح ✓'
-      : `حالة الأذونات: الإشعارات ${notificationGranted ? 'مسموح' : 'غير مسموح'}، والميكروفون ${microphoneGranted ? 'مسموح' : 'غير مسموح'}. لو تم رفض الإذن نهائيًا، فعّله من إعدادات تطبيق تدبيرة في الهاتف.`;
+    const message = 'لم يتم السماح بإشعارات تدبيرة. يمكنك تفعيلها من إعدادات الإشعارات في الهاتف.';
     setReminderFeedbackMessage(message);
     showToast(message);
+    try { localStorage.setItem('tedbeera_notification_permission_onboarding_v1', 'true'); } catch {}
   };
 
   // Phase 4D: Toggle Daily Savings Local Notification
