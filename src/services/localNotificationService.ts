@@ -137,7 +137,10 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       let permission = await this.checkPermission();
       if (permission !== 'granted') {
         const granted = await this.requestPermission();
-        if (!granted) return { success: false, message: 'إذن الإشعارات غير متاح. فعّله من إعدادات الهاتف.' };
+        if (!granted) {
+          this.saveMealReminderSettings(settings);
+          return { success: false, message: 'إذن الإشعارات غير متاح. فعّله من إعدادات الهاتف.' };
+        }
       }
       try {
         await plugin.createChannel({
