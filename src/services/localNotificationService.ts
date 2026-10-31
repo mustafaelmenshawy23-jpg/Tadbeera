@@ -3,6 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 
 interface NotificationPermissionPlugin {
   request(): Promise<{ granted: boolean }>;
+  openSettings(): Promise<void>;
 }
 
 const NotificationPermission = registerPlugin<NotificationPermissionPlugin>('NotificationPermission');
@@ -40,6 +41,7 @@ export const REMINDER_TIME_KEY = 'tedbeera_phase4d_reminder_time';
 // Distinguish a first-time Android permission request from a permission the user already declined.
 const NOTIFICATION_PERMISSION_REQUESTED_KEY = 'tedbeera_notification_permission_requested';
 let exactAlarmSettingsOpenedThisSession = false;
+let notificationSettingsOpenedThisSession = false;
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'prompt' | 'unsupported';
 
@@ -55,6 +57,7 @@ export interface LocalNotificationService {
   isPluginAvailable(): boolean;
   checkPermission(): Promise<NotificationPermissionStatus>;
   requestPermission(): Promise<boolean>;
+  openNotificationSettings(): Promise<void>;
   scheduleDailyReminder(hour?: number, minute?: number): Promise<{ success: boolean; message: string }>;
   cancelDailyReminder(): Promise<{ success: boolean; message: string }>;
   sendTestNotification(): Promise<{ success: boolean; message: string }>;
@@ -121,6 +124,16 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     } catch (error) {
       console.warn('Tadbeera notification permission request failed:', error);
       return false;
+    }
+  }
+
+  async openNotificationSettings(): Promise<void> {
+    if (!this.isPluginAvailable() || notificationSettingsOpenedThisSession) return;
+    notificationSettingsOpenedThisSession = true;
+    try {
+      await NotificationPermission.openSettings();
+    } catch (error) {
+      console.warn('Unable to open Android notification settings:', error);
     }
   }
 
