@@ -43,6 +43,7 @@ export interface TedbeeraBackupData {
   paydayDay?: number | null;
   weeklyPlanUnlocked?: boolean;
   reminderEnabled?: boolean;
+  reminderTime?: string;
   householdProfile?: Record<string, unknown> | null;
   inventoryItems?: Record<string, unknown>[];
   householdTasks?: Record<string, unknown>[];
@@ -373,6 +374,8 @@ export function createBackupPayload(data: TedbeeraBackupData): TedbeeraBackupPay
       savedTipIds: Array.isArray(data.savedTipIds) ? data.savedTipIds : [],
       savedBudgets: Array.isArray(data.savedBudgets) ? data.savedBudgets : [],
       selectedIngredients: Array.isArray(data.selectedIngredients) ? data.selectedIngredients : ['بيض', 'طماطم', 'بصل'],
+      reminderEnabled: Boolean(data.reminderEnabled),
+      reminderTime: typeof data.reminderTime === 'string' && /^([01]\\d|2[0-3]):[0-5]\\d$/.test(data.reminderTime) ? data.reminderTime : '08:00',
       dailyCompleted: data.dailyCompleted && typeof data.dailyCompleted === 'object' ? data.dailyCompleted : {},
       householdProfile: data.householdProfile && typeof data.householdProfile === 'object' ? data.householdProfile : null,
       inventoryItems: Array.isArray(data.inventoryItems) ? data.inventoryItems.filter(item => item && typeof item === 'object') : [],
@@ -485,6 +488,7 @@ export function validateBackupPayload(raw: unknown): { isValid: boolean; error?:
   const paydayDay = typeof data.paydayDay === 'number' && data.paydayDay >= 1 && data.paydayDay <= 31 ? Math.round(data.paydayDay) : null;
   const weeklyPlanUnlocked = typeof data.weeklyPlanUnlocked === 'boolean' ? data.weeklyPlanUnlocked : false;
   const reminderEnabled = typeof data.reminderEnabled === 'boolean' ? data.reminderEnabled : false;
+  const reminderTime = typeof data.reminderTime === 'string' && /^([01]\\d|2[0-3]):[0-5]\\d$/.test(data.reminderTime) ? data.reminderTime : '08:00';
   const householdProfile = data.householdProfile && typeof data.householdProfile === 'object' && !Array.isArray(data.householdProfile) ? data.householdProfile : null;
   const inventoryItems = Array.isArray(data.inventoryItems) ? data.inventoryItems.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item)) : [];
   const householdTasks = Array.isArray(data.householdTasks) ? data.householdTasks.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item)) : [];
@@ -508,6 +512,7 @@ export function validateBackupPayload(raw: unknown): { isValid: boolean; error?:
       paydayDay,
       weeklyPlanUnlocked,
       reminderEnabled,
+      reminderTime,
       householdProfile,
       inventoryItems,
       householdTasks,
