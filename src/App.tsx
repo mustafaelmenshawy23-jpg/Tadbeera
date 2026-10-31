@@ -4084,8 +4084,8 @@ export default function App() {
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">هذه الشاشة تعرض مجالات الفحص؛ لا تُعد النتائج ناجحة إلا بعد تشغيل الاختبارات والتحقق من مخرجات البناء.</p>
               </div>
-              <span className="bg-emerald-100 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" />
+              <span className="bg-gray-100 text-gray-700 text-xs font-extrabold px-3 py-1 rounded-full flex items-center gap-1">
+                <FlaskConical className="w-3.5 h-3.5" />
                 <span>بانتظار تشغيل الاختبارات الفعلية</span>
               </span>
             </div>
@@ -4095,7 +4095,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">1. ShoppingListCalculationTest (NaN Elimination & Unpriced Handling)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   معالجة وحماية كاملة ضد ظهور NaN ج.م، والتطبيع الآمن لبيانات الإصدارات القديمة (مثل "نصف كيلو" أو "10 أرغفة")، وفصل الأصناف غير المسعرة بشفافية تامة.
@@ -4113,7 +4113,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">2. BudgetEngineTest (Boundary & 100% Invariant)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 6 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   فحص دقة حساب نسب الميزانية، حظر وتصحيح المبالغ السالبة إلى صفر، وضمان إجمالي 100% عند تغيير السلايدر المتكرر والقيم الحدية (0% و100%).
@@ -4132,7 +4132,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">3. IngredientMatchingTest</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   التحقق من عدم ادعاء اكتمال وجبة إذا كان ينقصها أي مكون أساسي، وفصل النواقص بدقة متناهية.
@@ -4146,7 +4146,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">4. DailyChallengeDeterministicTest</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   ضمان اختيار نفس التحدي الحتمي طوال اليوم الواحد بالاعتماد على مفتاح التاريخ yyyy-MM-dd وعدم تكرار السجلات في Room.
@@ -4160,7 +4160,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">5. AdMobAdvertisingStabilizationTest (Layout & Policy Compliance)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 8 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   التحقق من حجز مساحة البانر الثابتة لمنع اهتزاز الشاشة، والانهيار النظيف عند فشل الشبكة دون ترك فراغ ميت، وتوفير خلوص تمرير سفلي ديناميكي (70–90 بكسل فراغ آمن)، وحظر تسريب أدوات المحاكاة إلى حزم الإنتاج عبر import.meta.env.DEV، وتعطيل الإعلانات البينية افتراضياً وتقييد التكرار (2 بالجلسة و120 ثانية راحة) ومنع مقاطعة مهام المستخدم الحيوية.
@@ -4181,7 +4181,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">6. WhatsAppShoppingShareTest (Arabic Formatting & Price Transparency)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 5 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   التحقق من تصفية الأصناف غير المشتراة فقط (!isChecked)، وتنسيق الأسعار والكميات بدقة بدون NaN، وفصل الأصناف غير المسعرة وتوضيحها ("سعر غير محدد")، وإبراز الإجمالي الجزئي بشفافية، ومنع إرسال رسائل فارغة عند خلو القائمة.
@@ -4199,7 +4199,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">7. ZeroMissingRecipeFilterTest (100% Pantry Match Integrity)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 4 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   التحقق من حظر ظهور أي وجبة ينقصها أي مكون عند تفعيل فلتر "اطبخ باللي عندي فقط"، وإظهار شارة "جاهزة بالكامل بمكوناتك الحالية"، وعرض حالة فراغ إرشادية واضحة مع زر إلغاء الفلتر عند عدم توفر أي وجبة جاهزة 100%.
@@ -4216,7 +4216,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">8. BackupRestoreSafetyTest (Schema Validation & Rollback Protection)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 6 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   التحقق من إنشاء ملف نسخة احتياطية مرقّم بإصدار tedbeera-backup-YYYY-MM-DD.json، والتحقق الصارم من صحة المخطط (Schema Validation)، وفرض تأكيد مسبق قبل الاستبدال، وحماية التراجع (Rollback Protection) في حال حدوث أي خطأ، وتحديث React State والتخزين المحلي فوراً.
@@ -4235,7 +4235,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">9. VisualBudgetAnalyticsAndDonutTest (Progress Thresholds & Overrun Badges)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 6 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   التحقق من ألوان أشرطة التقدم الديناميكية (أخضر &lt;80%، برتقالي 80%–&lt;100%، أحمر ≥100%)، وقص الشريط بصرياً عند 100% مع إبقاء النسبة الفعلية في النص، وشارة تجاوز الميزانية بـ X ج.م فقط عند الزيادة، والتعامل الآمن مع التخصيص الصفري، وصحة توزيع مخطط الدونات SVG بدون مكتبات خارجية، وعرض حالة الفراغ الإرشادية.
@@ -4256,7 +4256,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">10. PaydayCycleAndDailyCapTest (Payday Math & Recommended Daily Cap)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 7 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   التحقق من احتساب موعد الراتب (1–31) ومعالجة الشهور القصيرة وقفل السنة (فبراير 28/29، شهور 30 يوماً)، والعد التنازلي الدقيق، ورسالة الاحتفال "النهارده موعد الراتب 🎉"، وحساب الحد اليومي الموصى به (المتبقي ÷ الأيام المتبقية)، وتنبيه استهلاك الميزانية بالكامل عند نفادها.
@@ -4277,7 +4277,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">11. ArabicVoiceIngredientMatchingTest (Speech Normalization & Aliases)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 6 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   تطبيع النص المنطوق باللهجة المصرية (توحيد الهمزات والياء والألف اللينة والتاء المربوطة وحذف التشكيل والتطويل)، وربط المرادفات الشعبية مثل "قوطة" إلى "طماطم" و"بتنجان" إلى "باذنجان" و"رز" إلى "أرز" و"توم" إلى "ثوم"، وتصفية الكلمات الزائدة وحروف الجر، والإضافة التراكمية الآمنة للمكونات دون مسح المكونات السابقة وبدون أي تكرار.
@@ -4296,7 +4296,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">12. DailyTipsInteractionAndBookmarksTest (5 Filters & Saved Tips)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 6 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   فحص زر تفاعل "جربت الحيلة دي ووفرت"، وعدّاد الإنجازات المحفوظ محلياً بمنع تضخيم النقر المتكرر (Set Uniqueness)، والتصفية الحصرية بالأقسام الخمسة (الكل، تنظيف، توفير كهرباء، مطبخ وتغذية، حيل تسوق)، وقسم "أفكاري المحفوظة" المستقل المتاح من تبويب تدبيرة اليوم والمحفوظات، والتوافق العكسي لمفاتيح التخزين وحالة الفراغ الإرشادية.
@@ -4315,7 +4315,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">13. RewardedAdsAndLocalNotificationsTest (Ad Unit, Simulation & Notifications)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 6 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   التحقق من تكوين وحدة إعلان المكافأة التجريبية الرسمية (ca-app-pub-3940256099942544/5224354917)، وتشغيل محاكاة واجهة الويب بشكل آمن عند عدم توفر Capacitor، ومنع منح المكافأة عند الإلغاء المبكر، ومنح المكافأة بدقة وإدامة الحالة بـ tedbeera_phase4d_weekly_plan_unlocked، وجدولة 3 تذكيرات مستقلة للفطار والغداء والعشاء بمعرفات ثابتة 101 و102 و103 لمنع التكرار، وتوفير بديل ويب آمن للإشعارات.
@@ -4334,7 +4334,7 @@ export default function App() {
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-gray-800">14. AffiliateDealsIntegrationTest (Smart Deals, Coupons & Disclosure)</span>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 6 PASSED ✓</span>
+                  <span className="text-xs font-extrabold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">غير مُشغّل</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   التحقق من تكوين الشركاء المركزي (نون، أمازون، كارفور، طلبات)، وفلترة العروض النشطة والمؤكدة فقط، ونسخ أكواد الخصم بدقة مع عرض رسالة التأكيد العربية ("تم نسخ كود الخصم")، وفتح روابط الشراء الآمنة بـ target="_blank" rel="noopener noreferrer"، وإبراز إفصاح العمولة والشفافية بالقرب من الويدجت، والحفاظ على استقلالية الميزانية وقائمة النواقص دون أي تعديل على بيانات التخزين المحلي المالية.
