@@ -1,3 +1,6 @@
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
 /**
  * Local, offline meal reminders for Tadbeera.
  * Each meal has a stable ID and a payload used to open the matching meal filter.
@@ -58,14 +61,13 @@ const cloneDefaults = (): MealReminderSettings => JSON.parse(JSON.stringify(DEFA
 
 class CapacitorLocalNotificationServiceImpl implements LocalNotificationService {
   isPluginAvailable(): boolean {
-    return typeof window !== 'undefined' &&
-      Boolean((window as any).Capacitor?.isPluginAvailable?.('LocalNotifications'));
+    return typeof window !== 'undefined' && Capacitor.isPluginAvailable('LocalNotifications');
   }
 
   async checkPermission(): Promise<NotificationPermissionStatus> {
     if (!this.isPluginAvailable()) return 'unsupported';
     try {
-      const plugin = (window as any).Capacitor?.Plugins?.LocalNotifications;
+      const plugin = LocalNotifications;
       const status = await plugin.checkPermissions();
       if (status?.display === 'granted') return 'granted';
       if (status?.display === 'denied') return 'denied';
@@ -76,7 +78,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   async requestPermission(): Promise<boolean> {
     if (!this.isPluginAvailable()) return false;
     try {
-      const plugin = (window as any).Capacitor?.Plugins?.LocalNotifications;
+      const plugin = LocalNotifications;
       return (await plugin.requestPermissions())?.display === 'granted';
     } catch { return false; }
   }
@@ -124,7 +126,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     }
 
     try {
-      const plugin = (window as any).Capacitor?.Plugins?.LocalNotifications;
+      const plugin = LocalNotifications;
       const enabledMeals = meals.filter(meal => settings[meal].enabled);
       if (!enabledMeals.length) {
         await plugin.cancel({ notifications: [DAILY_REMINDER_NOTIFICATION_ID, ...meals.map(meal => MEALS[meal].id)].map(id => ({ id })) });
@@ -175,7 +177,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
 
   async cancelMealReminders(): Promise<void> {
     if (this.isPluginAvailable()) {
-      const plugin = (window as any).Capacitor?.Plugins?.LocalNotifications;
+      const plugin = LocalNotifications;
       await plugin.cancel({ notifications: [DAILY_REMINDER_NOTIFICATION_ID, 201, 202, 203].map(id => ({ id })) });
     }
   }
