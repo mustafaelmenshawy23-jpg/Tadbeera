@@ -35,11 +35,15 @@ async function translate(value: string): Promise<string> {
 }
 
 export function scaleMeasure(value: string, familySize: number, baseServings = 4): string {
-  const match = value.match(/^\s*(\d+(?:\.\d+)?|\d+\/\d+)(.*)$/);
+  const match = value.match(/^\s*(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)(.*)$/);
   if (!match) return value;
-  const amount = match[1].includes('/') ? Number(match[1].split('/')[0]) / Number(match[1].split('/')[1]) : Number(match[1]);
+  const amount = match[1].trim().split(/\s+/).reduce((total, part) => {
+    if (!part.includes('/')) return total + Number(part);
+    const [numerator, denominator] = part.split('/').map(Number);
+    return total + (denominator ? numerator / denominator : 0);
+  }, 0);
   if (!Number.isFinite(amount) || amount <= 0) return value;
-  return (Math.round(amount * Math.max(1, Math.min(30, familySize)) / baseServings * 100) / 100).toString() + ' ' + match[2].trim();
+  return (Math.round(amount * Math.max(1, Math.min(30, Math.round(familySize))) / baseServings * 100) / 100).toString() + ' ' + match[2].trim();
 }
 
 async function translateToArabic(value: string): Promise<string> {
