@@ -4318,7 +4318,7 @@ export default function App() {
                   <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">ALL 6 PASSED ✓</span>
                 </div>
                 <p className="text-xs text-gray-600">
-                  التحقق من تكوين وحدة إعلان المكافأة التجريبية الرسمية (ca-app-pub-3940256099942544/5224354917)، وتشغيل محاكاة واجهة الويب بشكل آمن عند عدم توفر Capacitor، ومنع منح المكافأة عند الإلغاء المبكر، ومنح المكافأة بدقة وإدامة الحالة بـ tedbeera_phase4d_weekly_plan_unlocked، وجدولة التذكير اليومي (11:00 ص) بمعرف ثابت 101 لمنع التكرار، وتوفير بديل ويب آمن للإشعارات.
+                  التحقق من تكوين وحدة إعلان المكافأة التجريبية الرسمية (ca-app-pub-3940256099942544/5224354917)، وتشغيل محاكاة واجهة الويب بشكل آمن عند عدم توفر Capacitor، ومنع منح المكافأة عند الإلغاء المبكر، ومنح المكافأة بدقة وإدامة الحالة بـ tedbeera_phase4d_weekly_plan_unlocked، وجدولة 3 تذكيرات مستقلة للفطار والغداء والعشاء بمعرفات ثابتة 101 و102 و103 لمنع التكرار، وتوفير بديل ويب آمن للإشعارات.
                 </p>
                 <div className="bg-white p-2.5 rounded-lg text-[11px] font-mono text-gray-700 border border-gray-200 space-y-1">
                   <div>✓ testOfficialTestRewardedAdUnitConfigured() → matches "ca-app-pub-3940256099942544/5224354917"</div>
@@ -4939,7 +4939,7 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                   <Bell className="w-3.5 h-3.5 text-[#0D47A1]" />
-                  <span>تذكير تدبيرة اليوم:</span>
+                  <span>تذكيرات الوجبات الثلاث:</span>
                 </span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -4955,13 +4955,13 @@ export default function App() {
               <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100 text-[11px] text-gray-600 space-y-1">
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 font-bold text-[#0D47A1]">
-                    <span>وقت التذكير اليومي:</span>
+                    <span>موعد تذكير الفطار:</span>
                     <input
                       type="time"
                       value={reminderTime}
                       onChange={(e) => handleReminderTimeChange(e.target.value)}
                       className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs text-gray-800"
-                      aria-label="وقت التذكير اليومي"
+                      aria-label="موعد تذكير الفطار"
                     />
                   </label>
                   <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${isDailyReminderEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>
@@ -4969,10 +4969,10 @@ export default function App() {
                   </span>
                 </div>
                 <p className="text-[10px] text-gray-500 leading-relaxed">
-                  "راجع نواقص البيت قبل نزول السوق لتجنب مصاريف إضافية!"
+                  "تذكيرات الفطار والغداء والعشاء لمساعدتك في تنظيم وجبات البيت."
                 </p>
                 <p className="text-[10px] text-blue-900 font-medium">
-                  التذكيرات اليومية متاحة عند تشغيل التطبيق في نسخة تدعم إشعارات الجهاز.
+                  تعمل تنبيهات الفطار والغداء والعشاء على نسخة Android بعد السماح بإشعارات الجهاز.
                 </p>
                 {reminderFeedbackMessage && (
                   <p role="status" className="text-[10px] text-gray-700">{reminderFeedbackMessage}</p>
