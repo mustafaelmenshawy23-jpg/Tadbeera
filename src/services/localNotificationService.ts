@@ -1,5 +1,11 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+
+interface NotificationPermissionPlugin {
+  request(): Promise<{ granted: boolean }>;
+}
+
+const NotificationPermission = registerPlugin<NotificationPermissionPlugin>('NotificationPermission');
 
 /**
  * Native daily meal reminders for Tadbeera.
@@ -94,7 +100,9 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   async requestPermission(): Promise<boolean> {
     if (!this.isPluginAvailable()) return false;
     try {
-      const result = await LocalNotifications.requestPermissions();
+      // Use the app-owned native permission bridge rather than relying on the
+      // LocalNotifications plugin's permission alias on Android 13+.
+      const result = await NotificationPermission.request();
       try {
         if (typeof window !== 'undefined') {
           localStorage.setItem(NOTIFICATION_PERMISSION_REQUESTED_KEY, 'true');
