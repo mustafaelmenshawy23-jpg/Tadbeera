@@ -17,6 +17,12 @@ test('budget-aware weekly plan creates seven days with valid meal types and cost
     assert.equal(new Set([day.breakfastRecipeId, day.lunchRecipeId, day.dinnerRecipeId]).size, 3);
   }
   assert.ok(calculateWeeklyPlanTotalCost(5, plan) > 0);
+  const breakfastChoices = new Set(plan.map(day => day.breakfastRecipeId));
+  const lunchChoices = new Set(plan.map(day => day.lunchRecipeId));
+  const dinnerChoices = new Set(plan.map(day => day.dinnerRecipeId));
+  assert.ok(breakfastChoices.size > 1, 'breakfast should not repeat one recipe all week');
+  assert.ok(lunchChoices.size > 1, 'lunch should not repeat one recipe all week');
+  assert.ok(dinnerChoices.size > 1, 'dinner should not repeat one recipe all week');
 });
 
 test('weekly plan uses stock coverage when available', () => {
