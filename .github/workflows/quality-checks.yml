@@ -68,10 +68,19 @@ jobs:
       - name: Sync Capacitor Android project
         run: npx cap sync android
 
-      - name: Compile Android Kotlin sources (does not package an APK)
+      - name: Verify Local Notifications plugin registration
+        run: |
+          PLUGIN_FILE="android/app/src/main/assets/capacitor.plugins.json"
+          if [ ! -f "$PLUGIN_FILE" ] || ! grep -q "LocalNotificationsPlugin" "$PLUGIN_FILE"; then
+            echo "::error file=$PLUGIN_FILE::Local Notifications plugin was not registered after Capacitor sync."
+            cat "$PLUGIN_FILE" 2>/dev/null || true
+            exit 1
+          fi
+
+      - name: Validate merged Android manifest and compile Kotlin (no APK)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew :app:compileDebugKotlin --no-daemon
+          ./gradlew :app:processDebugMainManifest :app:compileDebugKotlin --no-daemon
 
 # APK packaging remains disabled for this pull request until native and device checks are complete.
