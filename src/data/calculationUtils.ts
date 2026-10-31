@@ -44,6 +44,7 @@ export interface TedbeeraBackupData {
   weeklyPlanUnlocked?: boolean;
   reminderEnabled?: boolean;
   reminderTime?: string;
+  mealReminderSettings?: Record<string, { enabled: boolean; time: string }>;
   householdProfile?: Record<string, unknown> | null;
   inventoryItems?: Record<string, unknown>[];
   householdTasks?: Record<string, unknown>[];
@@ -60,6 +61,18 @@ export interface TedbeeraBackupPayload {
   data: TedbeeraBackupData;
 }
 
+
+function validateMealReminderSettings(value: unknown): Record<string, { enabled: boolean; time: string }> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const result: Record<string, { enabled: boolean; time: string }> = {};
+  for (const meal of ['breakfast', 'lunch', 'dinner']) {
+    const item = (value as Record<string, any>)[meal];
+    if (!item || typeof item.enabled !== 'boolean' || typeof item.time !== 'string' ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(item.time)) return undefined;
+    result[meal] = { enabled: item.enabled, time: item.time };
+  }
+  return result;
+}
 /**
  * Parses any quantity representation into a safe, positive number.
  * Gracefully handles legacy strings like "نصف كيلو", "10 أرغفة", "2", numbers, or null/undefined.
@@ -379,7 +392,8 @@ export function createBackupPayload(data: TedbeeraBackupData): TedbeeraBackupPay
       inventoryItems: Array.isArray(data.inventoryItems) ? data.inventoryItems.filter(item => item && typeof item === 'object') : [],
       householdTasks: Array.isArray(data.householdTasks) ? data.householdTasks.filter(item => item && typeof item === 'object') : [],
       savingsGoals: Array.isArray(data.savingsGoals) ? data.savingsGoals.filter(item => item && typeof item === 'object') : [],
-      reminderTime: typeof data.reminderTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(data.reminderTime) ? data.reminderTime : undefined
+      reminderTime: typeof data.reminderTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(data.reminderTime) ? data.reminderTime : undefined,
+      mealReminderSettings: validateMealReminderSettings(data.mealReminderSettings)
     }
   };
 }
@@ -488,6 +502,7 @@ export function validateBackupPayload(raw: unknown): { isValid: boolean; error?:
   const weeklyPlanUnlocked = typeof data.weeklyPlanUnlocked === 'boolean' ? data.weeklyPlanUnlocked : false;
   const reminderEnabled = typeof data.reminderEnabled === 'boolean' ? data.reminderEnabled : false;
   const reminderTime = typeof data.reminderTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(data.reminderTime) ? data.reminderTime : undefined;
+  const mealReminderSettings = validateMealReminderSettings(data.mealReminderSettings);
   const householdProfile = data.householdProfile && typeof data.householdProfile === 'object' && !Array.isArray(data.householdProfile) ? data.householdProfile : null;
   const inventoryItems = Array.isArray(data.inventoryItems) ? data.inventoryItems.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item)) : [];
   const householdTasks = Array.isArray(data.householdTasks) ? data.householdTasks.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item)) : [];
@@ -512,6 +527,7 @@ export function validateBackupPayload(raw: unknown): { isValid: boolean; error?:
       weeklyPlanUnlocked,
       reminderEnabled,
       reminderTime,
+      mealReminderSettings,
       householdProfile,
       inventoryItems,
       householdTasks,
