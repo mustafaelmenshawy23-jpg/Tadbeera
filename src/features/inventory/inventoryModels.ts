@@ -1,4 +1,6 @@
-export type InventoryUnit = 'قطعة' | 'كيلو' | 'جرام' | 'لتر' | 'عبوة' | 'علبة' | 'رغيف' | 'كوب' | 'حبة' | 'بيضة' | 'كيس';
+export type InventoryUnit = 'قطعة' | 'كيلو' | 'جرام' | 'لتر' | 'عبوة' | 'علبة' | 'رغيف' | 'كوب' | 'حبة' | 'بيضة' | 'كيس' | 'فص';
+
+export const INVENTORY_UNITS: InventoryUnit[] = ['قطعة', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'رغيف', 'كوب', 'حبة', 'بيضة', 'كيس', 'فص'];
 
 export interface InventoryItem {
   id: string;
