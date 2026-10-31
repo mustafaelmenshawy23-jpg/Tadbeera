@@ -760,6 +760,22 @@ export default function App() {
     setPlaybackCountdown(5);
   };
 
+  const handleRequestDevicePermissions = async () => {
+    const notificationGranted = await getLocalNotificationService().requestPermission();
+    let microphoneGranted = false;
+    try {
+      const result = await microphonePermission.request();
+      microphoneGranted = result.granted;
+    } catch (error) {
+      console.warn('Tadbeera microphone permission request failed:', error);
+    }
+    const message = notificationGranted && microphoneGranted
+      ? 'تم السماح بالإشعارات والميكروفون بنجاح ✓'
+      : `حالة الأذونات: الإشعارات ${notificationGranted ? 'مسموح' : 'غير مسموح'}، والميكروفون ${microphoneGranted ? 'مسموح' : 'غير مسموح'}. لو تم رفض الإذن نهائيًا، فعّله من إعدادات تطبيق تدبيرة في الهاتف.`;
+    setReminderFeedbackMessage(message);
+    showToast(message);
+  };
+
   // Phase 4D: Toggle Daily Savings Local Notification
   const handleToggleReminder = async (enable: boolean) => {
     const service = getLocalNotificationService();
@@ -5034,6 +5050,14 @@ export default function App() {
                   <p role="status" className="text-[10px] text-gray-700">{reminderFeedbackMessage}</p>
                 )}
               </div>
+
+              <button
+                type="button"
+                onClick={handleRequestDevicePermissions}
+                className="w-full text-center bg-blue-50 hover:bg-blue-100 text-[#0D47A1] py-2 rounded-lg text-[11px] font-bold border border-blue-200 transition"
+              >
+                تفعيل أذونات الإشعارات والميكروفون 🔐
+              </button>
 
               <button
                 type="button"
