@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { inventoryRepository } from '../inventory/inventoryRepository';
-import { getLowStockItems, getExpiringInventoryItems, type InventoryItem, type InventoryUnit } from '../inventory/inventoryModels';
+import { getLowStockItems, getExpiringInventoryItems, INVENTORY_UNITS, type InventoryItem, type InventoryUnit } from '../inventory/inventoryModels';
 import { householdTasksRepository } from './householdTaskRepository';
 import { sortHouseholdTasks, type HouseholdTask } from './householdTaskModels';
 import { savingsGoalsRepository } from '../savings/savingsRepository';
 import { getSavingsProgress, type SavingsGoal } from '../savings/savingsModels';
 import { refreshInventoryAlerts } from '../../services/inventoryAlertService';
-
-const units: InventoryUnit[] = ['قطعة', 'حبة', 'بيضة', 'كوب', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'كيس', 'رغيف'];
 
 export function HouseholdHub() {
   const [items, setItems] = useState<InventoryItem[]>(() => inventoryRepository.read());
@@ -82,7 +80,7 @@ export function HouseholdHub() {
         <div className="grid grid-cols-2 gap-2">
           <input value={itemName} onChange={e => setItemName(e.target.value)} placeholder="اسم الصنف" maxLength={60} className="rounded-xl border p-2 text-xs min-w-0" />
           <input value={itemQty} onChange={e => setItemQty(e.target.value)} type="number" min="0" step="0.1" placeholder="الكمية" className="rounded-xl border p-2 text-xs min-w-0" />
-          <select value={itemUnit} onChange={e => setItemUnit(e.target.value as InventoryUnit)} className="rounded-xl border p-2 text-xs">{units.map(unit => <option key={unit}>{unit}</option>)}</select>
+          <select value={itemUnit} onChange={e => setItemUnit(e.target.value as InventoryUnit)} className="rounded-xl border p-2 text-xs">{INVENTORY_UNITS.map(unit => <option key={unit}>{unit}</option>)}</select>
           <input value={itemMinimum} onChange={e => setItemMinimum(e.target.value)} type="number" min="0" step="0.1" placeholder="حد التنبيه" className="rounded-xl border p-2 text-xs min-w-0" />
           <input value={itemExpiry} onChange={e => setItemExpiry(e.target.value)} type="date" aria-label="تاريخ الصلاحية" className="rounded-xl border p-2 text-xs min-w-0" />
           <button type="button" onClick={addItem} className="rounded-xl bg-[#0D47A1] text-white text-xs font-bold p-2">إضافة للمخزون</button>
