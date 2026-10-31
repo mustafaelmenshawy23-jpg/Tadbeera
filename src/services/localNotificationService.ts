@@ -1,20 +1,19 @@
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
 /**
- * ========================================================
- * Tedbeera Egypt (تدبيرة مصر) — Phase 4D
- * Capacitor Local Notifications Service
- * ========================================================
- * Provides a safe, modular local notifications layer.
- * - Detects presence of Capacitor LocalNotifications plugin.
- * - Configures a recurring daily reminder at the user's selected local time (11:00 AM by default).
- * - Uses a stable notification ID (101) to strictly prevent duplicate schedules.
- * - Graceful fallback in web preview with non-intrusive Arabic guidance.
+ * Native daily meal reminders for Tadbeera.
+ * Three stable IDs make scheduling idempotent and allow independent cancellation.
  */
-
 export const DAILY_REMINDER_NOTIFICATION_ID = 101;
-export const DAILY_REMINDER_CHANNEL_ID = 'tedbeera_daily_savings_reminder';
-export const DEFAULT_REMINDER_HOUR = 11;
+export const BREAKFAST_REMINDER_ID = 101;
+export const LUNCH_REMINDER_ID = 102;
+export const DINNER_REMINDER_ID = 103;
+export const DAILY_REMINDER_CHANNEL_ID = 'tedbeera_meal_reminders';
+export const DEFAULT_REMINDER_HOUR = 8;
 export const DEFAULT_REMINDER_MINUTE = 0;
-
+export const DEFAULT_LUNCH_HOUR = 13;
+export const DEFAULT_DINNER_HOUR = 19;
 export const REMINDER_STORAGE_KEY = 'tedbeera_phase4d_reminder_enabled';
 export const REMINDER_TIME_KEY = 'tedbeera_phase4d_reminder_time';
 
@@ -29,40 +28,40 @@ export interface LocalReminderConfig {
 }
 
 export interface LocalNotificationService {
-  /** Detects if the native Capacitor LocalNotifications plugin is available */
   isPluginAvailable(): boolean;
-  /** Checks current platform notification permission state */
   checkPermission(): Promise<NotificationPermissionStatus>;
-  /** Requests notification permission from user / operating system */
   requestPermission(): Promise<boolean>;
-  /** Schedules the daily reminder at the selected local time using stable ID 101 */
   scheduleDailyReminder(hour?: number, minute?: number): Promise<{ success: boolean; message: string }>;
-  /** Cancels the scheduled daily reminder */
   cancelDailyReminder(): Promise<{ success: boolean; message: string }>;
-  /** Reads current stored reminder preference */
   getStoredConfig(): LocalReminderConfig;
-  /** Saves reminder preference to localStorage */
   saveStoredConfig(config: Partial<LocalReminderConfig>): void;
+}
+
+const MEAL_REMINDERS = [
+  { id: BREAKFAST_REMINDER_ID, label: 'الفطار', title: 'صباح الخير من تدبيرة 🍳', body: 'افتح تدبيرة واختار فطار النهارده حسب الموجود في البيت.' },
+  { id: LUNCH_REMINDER_ID, label: 'الغداء', title: 'حان وقت الغداء 🍲', body: 'شوف اقتراحات الغداء واحسب تكلفة الوجبة قبل ما تبدأ.' },
+  { id: DINNER_REMINDER_ID, label: 'العشاء', title: 'مساء الخير من تدبيرة 🌙', body: 'جهّز عشاء بسيط وراجع نواقص البيت لبكرة.' },
+] as const;
+
+function nextLocalOccurrence(hour: number, minute: number): Date {
+  const at = new Date();
+  at.setHours(hour, minute, 0, 0);
+  if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
+  return at;
 }
 
 class CapacitorLocalNotificationServiceImpl implements LocalNotificationService {
   isPluginAvailable(): boolean {
-    return (
-      typeof window !== 'undefined' &&
-      Boolean((window as any).Capacitor?.isPluginAvailable?.('LocalNotifications'))
-    );
+    return typeof window !== 'undefined' && Capacitor.isNativePlatform() &&
+      Capacitor.isPluginAvailable('LocalNotifications');
   }
 
   async checkPermission(): Promise<NotificationPermissionStatus> {
-    if (!this.isPluginAvailable()) {
-      return 'unsupported';
-    }
-
+    if (!this.isPluginAvailable()) return 'unsupported';
     try {
-      const LocalNotifications = (window as any).Capacitor?.Plugins?.LocalNotifications;
       const status = await LocalNotifications.checkPermissions();
-      if (status?.display === 'granted') return 'granted';
-      if (status?.display === 'denied') return 'denied';
+      if (status.display === 'granted') return 'granted';
+      if (status.display === 'denied') return 'denied';
       return 'prompt';
     } catch {
       return 'unsupported';
@@ -70,119 +69,86 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   }
 
   async requestPermission(): Promise<boolean> {
-    if (!this.isPluginAvailable()) {
-      return false;
-    }
-
+    if (!this.isPluginAvailable()) return false;
     try {
-      const LocalNotifications = (window as any).Capacitor?.Plugins?.LocalNotifications;
       const result = await LocalNotifications.requestPermissions();
-      return result?.display === 'granted';
+      return result.display === 'granted';
     } catch {
       return false;
     }
   }
 
   async scheduleDailyReminder(
-    hour: number = DEFAULT_REMINDER_HOUR,
-    minute: number = DEFAULT_REMINDER_MINUTE
+    breakfastHour: number = DEFAULT_REMINDER_HOUR,
+    breakfastMinute: number = DEFAULT_REMINDER_MINUTE
   ): Promise<{ success: boolean; message: string }> {
-    if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) {
-      return {
-        success: false,
-        message: 'وقت التذكير غير صحيح. اختار ساعة من 0 إلى 23 ودقيقة من 0 إلى 59.'
-      };
+    const times = [
+      { ...MEAL_REMINDERS[0], hour: breakfastHour, minute: breakfastMinute },
+      { ...MEAL_REMINDERS[1], hour: DEFAULT_LUNCH_HOUR, minute: 0 },
+      { ...MEAL_REMINDERS[2], hour: DEFAULT_DINNER_HOUR, minute: 0 },
+    ];
+    if (times.some(t => !Number.isInteger(t.hour) || t.hour < 0 || t.hour > 23 ||
+      !Number.isInteger(t.minute) || t.minute < 0 || t.minute > 59)) {
+      return { success: false, message: 'وقت تذكير الفطار غير صحيح.' };
     }
 
     if (!this.isPluginAvailable()) {
-      // Web preview cannot schedule an Android notification; do not report it as enabled.
-      this.saveStoredConfig({ enabled: false, hour, minute });
-      return {
-        success: false,
-        message: 'التذكيرات تحتاج تشغيل نسخة Android من التطبيق حتى يتمكن الجهاز من إرسال الإشعارات.'
-      };
+      this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+      return { success: false, message: 'التذكيرات تحتاج تشغيل نسخة Android من تدبيرة.' };
     }
 
     try {
-      const LocalNotifications = (window as any).Capacitor?.Plugins?.LocalNotifications;
-
-      // 1. Verify / Request permissions
-      const perm = await this.checkPermission();
-      if (perm !== 'granted') {
-        const granted = await this.requestPermission();
-        if (!granted) {
-          this.saveStoredConfig({ enabled: false, hour, minute });
-          return {
-            success: false,
-            message: 'لم يتم منح إذن الإشعارات من النظام. يمكنك تفعيلها من إعدادات الهاتف.'
-          };
-        }
+      const permission = await this.checkPermission();
+      if (permission !== 'granted' && !(await this.requestPermission())) {
+        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+        return { success: false, message: 'لم يتم منح إذن الإشعارات. فعّله من إعدادات الهاتف ثم حاول مرة أخرى.' };
       }
 
-      // 2. Create Android notification channel if supported
       try {
         await LocalNotifications.createChannel({
           id: DAILY_REMINDER_CHANNEL_ID,
-          name: 'تدبيرة اليوم - توفير الميزانية',
-          description: 'تنبيهات يومية بنواقص البيت وحيل التوفير الذكية',
+          name: 'تذكيرات وجبات تدبيرة',
+          description: 'تذكيرات الفطار والغداء والعشاء',
           importance: 4,
-          visibility: 1
+          visibility: 1,
         });
       } catch {
-        // Channel creation may be a no-op on non-Android or older SDKs
+        // Channel may already exist or be unsupported on this platform.
       }
 
-      // 3. Cancel the existing reminder first to prevent duplicate schedules
+      // Remove all three previous IDs before scheduling to avoid duplicate alarms.
       await LocalNotifications.cancel({
-        notifications: [{ id: DAILY_REMINDER_NOTIFICATION_ID }]
+        notifications: times.map(item => ({ id: item.id })),
       });
 
-      // 4. Calculate the next occurrence of the selected local time
-      const now = new Date();
-      const scheduledTime = new Date();
-      scheduledTime.setHours(hour, minute, 0, 0);
-
-      // If the selected time has already passed today, schedule for tomorrow
-      if (scheduledTime <= now) {
-        scheduledTime.setDate(scheduledTime.getDate() + 1);
-      }
-
-      // 5. Schedule recurring daily notification
       await LocalNotifications.schedule({
-        notifications: [
-          {
-            id: DAILY_REMINDER_NOTIFICATION_ID,
-            title: 'تدبيرة اليوم 💡',
-            body: 'راجع نواقص البيت قبل نزول السوق لتجنب مصاريف إضافية!',
-            schedule: {
-              at: scheduledTime,
-              repeats: true,
-              every: 'day'
-            },
-            channelId: DAILY_REMINDER_CHANNEL_ID,
-            sound: undefined,
-            attachments: undefined,
-            actionTypeId: '',
-            extra: {
-              source: 'tedbeera_egypt'
-            }
-          }
-        ]
+        notifications: times.map(item => ({
+          id: item.id,
+          title: item.title,
+          body: item.body,
+          schedule: {
+            at: nextLocalOccurrence(item.hour, item.minute),
+            repeats: true,
+            every: 'day' as const,
+            allowWhileIdle: true,
+          },
+          channelId: DAILY_REMINDER_CHANNEL_ID,
+          extra: { source: 'tadbeera_meal_reminder', meal: item.label },
+        })),
       });
 
-      this.saveStoredConfig({ enabled: true, hour, minute });
-      const period = hour < 12 ? 'صباحاً' : 'مساءً';
-      const displayHour = hour % 12 || 12;
-      const displayMinute = minute < 10 ? `0${minute}` : String(minute);
+      this.saveStoredConfig({ enabled: true, hour: breakfastHour, minute: breakfastMinute });
+      const format = (hour: number, minute: number) =>
+        `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       return {
         success: true,
-        message: `تم ضبط تذكير تدبيرة اليوم بنجاح في تمام الساعة ${displayHour}:${displayMinute} ${period}.`
+        message: `تم تفعيل 3 تذكيرات يومية: الفطار ${format(breakfastHour, breakfastMinute)}، الغداء ${format(DEFAULT_LUNCH_HOUR, 0)}، والعشاء ${format(DEFAULT_DINNER_HOUR, 0)}.`,
       };
-    } catch (err: any) {
-      this.saveStoredConfig({ enabled: false, hour, minute });
+    } catch (error) {
+      this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
       return {
         success: false,
-        message: err?.message || 'تعذر جدولة الإشعار على الجهاز.'
+        message: error instanceof Error ? error.message : 'تعذر جدولة تذكيرات الوجبات على الجهاز.',
       };
     }
   }
@@ -190,26 +156,18 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   async cancelDailyReminder(): Promise<{ success: boolean; message: string }> {
     if (!this.isPluginAvailable()) {
       this.saveStoredConfig({ enabled: false });
-      return {
-        success: true,
-        message: 'تم تعطيل تذكير تدبيرة اليوم.'
-      };
+      return { success: true, message: 'تم تعطيل تذكيرات الوجبات.' };
     }
-
     try {
-      const LocalNotifications = (window as any).Capacitor?.Plugins?.LocalNotifications;
       await LocalNotifications.cancel({
-        notifications: [{ id: DAILY_REMINDER_NOTIFICATION_ID }]
+        notifications: MEAL_REMINDERS.map(item => ({ id: item.id })),
       });
       this.saveStoredConfig({ enabled: false });
-      return {
-        success: true,
-        message: 'تم إلغاء تذكير تدبيرة اليوم بنجاح.'
-      };
-    } catch (err: any) {
+      return { success: true, message: 'تم إلغاء تذكيرات الفطار والغداء والعشاء.' };
+    } catch (error) {
       return {
         success: false,
-        message: err?.message || 'تعذر إلغاء الإشعار.'
+        message: error instanceof Error ? error.message : 'تعذر إلغاء تذكيرات الوجبات.',
       };
     }
   }
@@ -218,46 +176,43 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     let enabled = false;
     let hour = DEFAULT_REMINDER_HOUR;
     let minute = DEFAULT_REMINDER_MINUTE;
-
     try {
       if (typeof window !== 'undefined') {
         const storedEnabled = localStorage.getItem(REMINDER_STORAGE_KEY);
-        if (storedEnabled !== null) {
-          enabled = storedEnabled === 'true';
-        }
+        enabled = storedEnabled === 'true';
         const storedTime = localStorage.getItem(REMINDER_TIME_KEY);
         if (storedTime) {
           const [h, m] = storedTime.split(':').map(Number);
-          if (!isNaN(h) && h >= 0 && h <= 23) hour = h;
-          if (!isNaN(m) && m >= 0 && m <= 59) minute = m;
+          if (Number.isInteger(h) && h >= 0 && h <= 23) hour = h;
+          if (Number.isInteger(m) && m >= 0 && m <= 59) minute = m;
         }
       }
     } catch {
-      // safe fallback
+      // Keep safe defaults when storage is unavailable.
     }
-
     return {
       enabled,
       hour,
       minute,
-      title: 'تدبيرة اليوم 💡',
-      body: 'راجع نواقص البيت قبل نزول السوق لتجنب مصاريف إضافية!'
+      title: 'تذكيرات وجبات تدبيرة',
+      body: 'تذكيرات الفطار والغداء والعشاء',
     };
   }
 
   saveStoredConfig(config: Partial<LocalReminderConfig>): void {
     try {
-      if (typeof window !== 'undefined') {
-        if (config.enabled !== undefined) {
-          localStorage.setItem(REMINDER_STORAGE_KEY, String(config.enabled));
-        }
-        if (config.hour !== undefined && config.minute !== undefined) {
-          const timeStr = `${config.hour}:${config.minute < 10 ? '0' + config.minute : config.minute}`;
-          localStorage.setItem(REMINDER_TIME_KEY, timeStr);
-        }
+      if (typeof window === 'undefined') return;
+      if (config.enabled !== undefined) {
+        localStorage.setItem(REMINDER_STORAGE_KEY, String(config.enabled));
+      }
+      if (config.hour !== undefined && config.minute !== undefined) {
+        localStorage.setItem(
+          REMINDER_TIME_KEY,
+          `${String(config.hour).padStart(2, '0')}:${String(config.minute).padStart(2, '0')}`,
+        );
       }
     } catch {
-      // safe fallback
+      // Storage can be unavailable in private or constrained web contexts.
     }
   }
 }
