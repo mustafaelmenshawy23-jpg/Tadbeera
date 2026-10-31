@@ -4,7 +4,7 @@ type Meal = {
   idMeal: string; strMeal: string; strMealThumb?: string; strInstructions?: string;
   strSource?: string; [key: string]: string | undefined;
 };
-type Result = { id: string; title: string; image?: string; matched: number; total: number; missing: string[]; instructions: string; url: string };
+type Result = { id: string; title: string; image?: string; ingredients: string[]; matched: number; total: number; missing: string[]; instructions: string; url: string };
 
 const API = 'https://www.themealdb.com/api/json/v1/1';
 const INGREDIENTS: Record<string, string> = {
@@ -29,8 +29,18 @@ async function translate(value: string): Promise<string> {
     url.search = new URLSearchParams({client:'gtx',sl:'ar',tl:'en',dt:'t',q:value}).toString();
     const response = await fetch(url.toString());
     const data = await response.json();
-    return Array.isArray(data?.[0]) ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('') : value;
-  } catch { return value; }
+    const translated = Array.isArray(data?.[0]) ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('') : '';
+    if (!translated.trim() || !/[\\u0600-\\u06FF]/.test(translated)) throw new Error('تعذر ترجمة الوصفة إلى العربية');
+    return translated;
+  } catch { throw new Error('تعذر ترجمة الوصفة إلى العربية'); }
+}
+
+function scaleMeasure(value: string, familySize: number, baseServings = 4): string {
+  const match = value.match(/^\\s*(\\d+(?:\\.\\d+)?|\\d+\\/\\d+)(.*)$/);
+  if (!match) return value;
+  const amount = match[1].includes('/') ? Number(match[1].split('/')[0]) / Number(match[1].split('/')[1]) : Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return value;
+  return `${Math.round(amount * Math.max(1, Math.min(30, familySize)) / baseServings * 100) / 100} ${match[2].trim()}`.trim();
 }
 async function translateToArabic(value: string): Promise<string> {
   try {
@@ -42,7 +52,7 @@ async function translateToArabic(value: string): Promise<string> {
   } catch { return value; }
 }
 
-export function IngredientRecipeFinder({ availableIngredients }: { availableIngredients: string[] }) {
+export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }: { availableIngredients: string[]; familySize?: number }) {
   const [results,setResults] = useState<Result[]>([]);
   const [loading,setLoading] = useState(false);
   const [error,setError] = useState('');
@@ -76,12 +86,21 @@ export function IngredientRecipeFinder({ availableIngredients }: { availableIngr
         const normalizedMealIngredients = mealIngredients.map(normalize);
         const matched = ingredientLists.filter(list => list.some(entry => entry.idMeal === meal.idMeal)).length;
         const raw = meal.strInstructions || 'لا تتوفر طريقة التحضير في المصدر.';
-        const [title,instructions] = await Promise.all([translateToArabic(meal.strMeal),translateToArabic(raw)]);
-        return {id:meal.idMeal,title,image:meal.strMealThumb,matched,total:availableIngredients.length,missing:[],instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`};
+        const rawIngredients = Array.from({length:20},(_,i) => {
+          const name = meal[`strIngredient${i+1}`]?.trim() || '';
+          const measure = meal[`strMeasure${i+1}`]?.trim() || '';
+          return name ? `${scaleMeasure(measure, familySize)} ${name}`.trim() : '';
+        }).filter(Boolean).join('\\n');
+        const [title,ingredientsText,instructions] = await Promise.all([
+          translateToArabic(meal.strMeal),
+          translateToArabic(rawIngredients),
+          translateToArabic(raw),
+        ]);
+        return {id:meal.idMeal,title,image:meal.strMealThumb,ingredients:ingredientsText.split('\\n').filter(Boolean),matched,total:availableIngredients.length,missing:[],instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`};
       }));
       const localResults: Result[] = local.map((recipe,index)=> {
         const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
-        return {id:`local-${index}`,title:recipe.name,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
+        return {id:`local-${index}`,title:recipe.name,ingredients:[],matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
       }).filter(item=>item.matched>0);
       const combined = [...mapped,...localResults].filter(item=>item.matched>0);
       const unique = Array.from(new Map(combined.map(item=>[item.title,item])).values())
@@ -100,7 +119,7 @@ export function IngredientRecipeFinder({ availableIngredients }: { availableIngr
 
   return <section dir="rtl" className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-3">
     <div><h3 className="text-sm font-black text-emerald-900">🍲 اطبخ بالموجود عندك</h3>
-      <p className="mt-1 text-[11px] text-gray-600">ابحث عن وصفات أونلاين باستخدام مكونات البيت، ورتّب النتائج حسب أكثر مكونات متوفرة.</p></div>
+      <p className="mt-1 text-[11px] text-gray-600">ابحث بالمكونات المتوفرة، والوصفات المترجمة بتظهر بالعربي مع مقادير مضبوطة لـ {familySize} أفراد.</p></div>
     <div className="flex flex-wrap gap-2 items-center">
       <button type="button" onClick={()=>setCuisine('all')} className={`rounded-lg px-3 py-2 text-xs font-bold ${cuisine==='all'?'bg-emerald-700 text-white':'bg-white text-gray-700 border'}`}>كل المطابخ</button>
       <button type="button" onClick={()=>setCuisine('egyptian')} className={`rounded-lg px-3 py-2 text-xs font-bold ${cuisine==='egyptian'?'bg-emerald-700 text-white':'bg-white text-gray-700 border'}`}>أكلات مصرية</button>
@@ -113,7 +132,7 @@ export function IngredientRecipeFinder({ availableIngredients }: { availableIngr
     </button>)}</div>}
     {selected && <article className="rounded-xl border bg-white p-3 space-y-2">
       {selected.image && <img src={selected.image} alt={selected.title} loading="lazy" className="max-h-48 w-full rounded-lg object-cover"/>}
-      <h4 className="text-sm font-black">{selected.title}</h4><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
+      <h4 className="text-sm font-black">{selected.title}</h4>{selected.ingredients.length > 0 && <div className="space-y-1"><b className="text-xs">المكونات لـ {familySize} أفراد</b><ul className="list-disc pr-5 text-xs leading-6">{selected.ingredients.map((item,index)=><li key={index}>{item}</li>)}</ul></div>}<b className="text-xs">طريقة التحضير</b><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
       <a href={selected.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-700 underline">المصدر الأصلي</a>
     </article>}
   </section>;
