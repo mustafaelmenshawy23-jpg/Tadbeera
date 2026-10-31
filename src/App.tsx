@@ -292,36 +292,29 @@ export default function App() {
     });
   }, [isNativeApp]);
 
-  // Ask for the two permissions once, on the first native app launch.
+  // Re-check permissions on every native launch. Never persist a "completed" flag:
+  // an earlier build could have marked onboarding complete before the Android dialogs appeared.
   useEffect(() => {
     if (!isNativeApp) return;
-    const onboardingKey = 'tedbeera_first_launch_permissions_v1';
-    try {
-      if (localStorage.getItem(onboardingKey) === 'completed') return;
-    } catch {}
-
     let cancelled = false;
-    const requestFirstLaunchPermissions = async () => {
+    const requestMissingPermissions = async () => {
       try {
         const notificationService = getLocalNotificationService();
         const notificationStatus = await notificationService.checkPermission();
-        if (!cancelled && notificationStatus !== 'granted' && notificationStatus !== 'unsupported') {
-          await notificationService.requestPermission();
+        if (!cancelled && notificationStatus !== 'granted') {
+          const granted = await notificationService.requestPermission();
+          if (!granted) console.info('Tadbeera notifications permission is still not granted.');
         }
         if (cancelled) return;
         const microphoneResult = await microphonePermission.request();
         if (!microphoneResult.granted) {
-          console.info('Tadbeera microphone permission was not granted. Voice input remains available after enabling it in Android settings.');
+          console.info('Tadbeera microphone permission is still not granted.');
         }
       } catch (error) {
-        console.warn('Tadbeera first-launch permission request was incomplete:', error);
-      } finally {
-        if (!cancelled) {
-          try { localStorage.setItem(onboardingKey, 'completed'); } catch {}
-        }
+        console.warn('Tadbeera permission request was incomplete:', error);
       }
     };
-    void requestFirstLaunchPermissions();
+    void requestMissingPermissions();
     return () => { cancelled = true; };
   }, [isNativeApp]);
   const [viewMode, setViewMode] = useState<ViewMode>('emulator');
@@ -4455,14 +4448,14 @@ export default function App() {
                   const scaled = getScaledIngredient(ing, selectedRecipeModal.baseServings);
 
                   return (
-                    <li key={i} className="p-2 rounded-xl bg-gray-50 border border-gray-100 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
+                    <li key={i} className="p-3 rounded-xl bg-gray-50 border border-gray-100 space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col items-start gap-1">
                           <span className={isAvailable ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}>
                             {isAvailable ? '✓' : '✗'}
                           </span>
                           <span className="font-bold text-gray-900">{ing.name}</span>
-                          <span className="text-[10px] text-gray-400">({scaled.text})</span>
+                          <span className="text-xs font-semibold text-[#0D47A1] bg-blue-50 px-2 py-1 rounded-lg">{scaled.text}</span>
                         </div>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
                           isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
@@ -4488,11 +4481,14 @@ export default function App() {
             {/* Cooking Steps */}
             <div>
               <h4 className="font-bold text-xs text-gray-800 mb-2">طريقة التحضير خطوة بخطوة:</h4>
-              <ol className="text-xs text-gray-700 space-y-2 list-decimal list-inside leading-relaxed">
+              <div className="space-y-2.5">
                 {selectedRecipeModal.steps.map((st, i) => (
-                  <li key={i} className="text-gray-800 font-medium">{st}</li>
+                  <div key={i} className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0D47A1] text-xs font-extrabold text-white">{['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠'][i] || String(i + 1)}</span>
+                    <p className="min-w-0 flex-1 text-sm leading-7 font-medium text-gray-800">{st}</p>
+                  </div>
                 ))}
-              </ol>
+              </div>
             </div>
 
             <div className="flex gap-2 pt-2">
