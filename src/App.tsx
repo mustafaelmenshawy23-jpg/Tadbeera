@@ -110,9 +110,6 @@ import {
 } from './services/rewardedAdService';
 import {
   getLocalNotificationService,
-  DAILY_REMINDER_NOTIFICATION_ID,
-  DEFAULT_REMINDER_HOUR,
-  DEFAULT_REMINDER_MINUTE
 } from './services/localNotificationService';
 import {
   WEEKLY_DAYS_SCHEDULE,
@@ -292,22 +289,6 @@ export default function App() {
     });
   }, [isNativeApp]);
 
-  // Re-check permissions on every native launch. Never persist a "completed" flag:
-  // an earlier build could have marked onboarding complete before the Android dialogs appeared.
-  useEffect(() => {
-    if (!isNativeApp) return;
-    const requestMissingPermissions = async () => {
-      try {
-        const microphoneResult = await microphonePermission.request();
-        if (!microphoneResult.granted) {
-          console.info('Tadbeera microphone permission is still not granted.');
-        }
-      } catch (error) {
-        console.warn('Tadbeera permission request was incomplete:', error);
-      }
-    };
-    void requestMissingPermissions();
-  }, [isNativeApp]);
   const [viewMode, setViewMode] = useState<ViewMode>('emulator');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [savedSubTab, setSavedSubTab] = useState<SavedSubTab>('shopping');
@@ -648,24 +629,6 @@ export default function App() {
   const [playbackCountdown, setPlaybackCountdown] = useState<number>(5);
   const [isAdSessionActive, setIsAdSessionActive] = useState<boolean>(false);
 
-  // Phase 4D: Daily Savings Local Reminder State
-  const [isDailyReminderEnabled, setIsDailyReminderEnabled] = useState<boolean>(() => {
-    try {
-      return getLocalNotificationService().getStoredConfig().enabled;
-    } catch {
-      return false;
-    }
-  });
-  const [reminderTime, setReminderTime] = useState<string>(() => {
-    try {
-      const config = getLocalNotificationService().getStoredConfig();
-      return `${String(config.hour).padStart(2, '0')}:${String(config.minute).padStart(2, '0')}`;
-    } catch {
-      return `${String(DEFAULT_REMINDER_HOUR).padStart(2, '0')}:${String(DEFAULT_REMINDER_MINUTE).padStart(2, '0')}`;
-    }
-  });
-  const [reminderFeedbackMessage, setReminderFeedbackMessage] = useState<string | null>(null);
-
   // Ask for notification permission once on the first native app launch.
   // After permission is granted, automatically schedule breakfast, lunch and dinner.
   useEffect(() => {
@@ -679,36 +642,23 @@ export default function App() {
       try { onboardingDone = localStorage.getItem(onboardingKey) === 'true'; } catch {}
       let permission = await service.checkPermission();
 
-      if (!onboardingDone) {
-        if (permission === 'prompt') {
-          permission = await service.requestPermission() ? 'granted' : 'denied';
-        }
+      // Request the Android notification permission only on the first launch.
+      // Microphone permission is requested exclusively when the user taps voice input.
+      if (permission === 'prompt' && !onboardingDone) {
+        permission = await service.requestPermission() ? 'granted' : 'denied';
         try { localStorage.setItem(onboardingKey, 'true'); } catch {}
-        if (cancelled) return;
-        if (permission === 'granted') {
-          const result = await service.scheduleDailyReminder(config.hour, config.minute);
-          if (cancelled) return;
-          setIsDailyReminderEnabled(result.success);
-          setReminderFeedbackMessage(result.message);
-        } else {
-          setIsDailyReminderEnabled(false);
-          setReminderFeedbackMessage('اسمح لتدبيرة بالإشعارات حتى تصلك تذكيرات الفطار والغداء والعشاء.');
-        }
-        return;
       }
+      if (cancelled) return;
 
-      if (!config.enabled) return;
-      if (permission === 'prompt') permission = await service.requestPermission() ? 'granted' : 'denied';
-      if (cancelled) return;
-      if (permission !== 'granted') {
-        setIsDailyReminderEnabled(false);
-        setReminderFeedbackMessage('إذن الإشعارات غير مفعّل. يمكنك السماح به من إعدادات الهاتف.');
-        return;
+      // If permission is already granted (including from Android Settings), always
+      // restore all three reminders. Do not depend on an old in-app enabled flag.
+      if (permission === 'granted') {
+        const result = await service.scheduleDailyReminder(config.hour, config.minute);
+        if (cancelled) return;
+        if (!result.success) console.warn('Tadbeera meal reminder scheduling failed:', result.message);
+      } else if (!onboardingDone) {
+        try { localStorage.setItem(onboardingKey, 'true'); } catch {}
       }
-      const result = await service.scheduleDailyReminder(config.hour, config.minute);
-      if (cancelled) return;
-      setIsDailyReminderEnabled(result.success);
-      if (!result.success) setReminderFeedbackMessage(result.message);
     };
     void initializeMealReminders().catch(error => console.warn('Tadbeera reminder initialization failed:', error));
     return () => { cancelled = true; };
@@ -797,52 +747,6 @@ export default function App() {
   const handleStartSimulationPlayback = () => {
     setIsSimulatingPlayback(true);
     setPlaybackCountdown(5);
-  };
-
-  const handleRequestDevicePermissions = async () => {
-    const service = getLocalNotificationService();
-    const notificationGranted = await service.requestPermission();
-    if (notificationGranted) {
-      const [hour, minute] = reminderTime.split(':').map(Number);
-      const result = await service.scheduleDailyReminder(hour, minute);
-      setIsDailyReminderEnabled(result.success);
-      setReminderFeedbackMessage(result.message);
-      showToast(result.message);
-      try { localStorage.setItem('tedbeera_notification_permission_onboarding_v1', 'true'); } catch {}
-      return;
-    }
-    const message = 'لم يتم السماح بإشعارات تدبيرة. يمكنك تفعيلها من إعدادات الإشعارات في الهاتف.';
-    setReminderFeedbackMessage(message);
-    showToast(message);
-    try { localStorage.setItem('tedbeera_notification_permission_onboarding_v1', 'true'); } catch {}
-  };
-
-  // Phase 4D: Toggle Daily Savings Local Notification
-  const handleToggleReminder = async (enable: boolean) => {
-    const service = getLocalNotificationService();
-    if (enable) {
-      const [hour, minute] = reminderTime.split(':').map(Number);
-      const res = await service.scheduleDailyReminder(hour, minute);
-      setIsDailyReminderEnabled(res.success);
-      setReminderFeedbackMessage(res.message);
-      showToast(res.message);
-    } else {
-      const res = await service.cancelDailyReminder();
-      setIsDailyReminderEnabled(false);
-      setReminderFeedbackMessage(res.message);
-      showToast(res.message);
-    }
-  };
-
-  const handleReminderTimeChange = async (value: string) => {
-    setReminderTime(value);
-    try { localStorage.setItem('tedbeera_phase4d_reminder_time', value); } catch {}
-    if (!isDailyReminderEnabled || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return;
-    const [hour, minute] = value.split(':').map(Number);
-    const res = await getLocalNotificationService().scheduleDailyReminder(hour, minute);
-    setIsDailyReminderEnabled(res.success);
-    setReminderFeedbackMessage(res.message);
-    showToast(res.message);
   };
 
   // Phase 4D: Add Consolidated Meal Plan Ingredients to Shopping List
@@ -5045,72 +4949,6 @@ export default function App() {
                   className="hidden"
                 />
               </label>
-            </div>
-
-            {/* Phase 4D: Local Notifications Daily Savings Reminder */}
-            <div className="space-y-2 pt-2 border-t border-gray-100">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                  <Bell className="w-3.5 h-3.5 text-[#0D47A1]" />
-                  <span>تذكيرات الوجبات الثلاث:</span>
-                </span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isDailyReminderEnabled}
-                    onChange={(e) => handleToggleReminder(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0D47A1]"></div>
-                </label>
-              </div>
-
-              <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100 text-[11px] text-gray-600 space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 font-bold text-[#0D47A1]">
-                    <span>موعد تذكير الفطار:</span>
-                    <input
-                      type="time"
-                      value={reminderTime}
-                      onChange={(e) => handleReminderTimeChange(e.target.value)}
-                      className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs text-gray-800"
-                      aria-label="موعد تذكير الفطار"
-                    />
-                  </label>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${isDailyReminderEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>
-                    {isDailyReminderEnabled ? 'مفعل ✓' : 'معطل'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-gray-500 leading-relaxed">
-                  "تذكيرات الفطار والغداء والعشاء لمساعدتك في تنظيم وجبات البيت."
-                </p>
-                <p className="text-[10px] text-blue-900 font-medium">
-                  تعمل تنبيهات الفطار والغداء والعشاء على نسخة Android بعد السماح بإشعارات الجهاز.
-                </p>
-                {reminderFeedbackMessage && (
-                  <p role="status" className="text-[10px] text-gray-700">{reminderFeedbackMessage}</p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleRequestDevicePermissions}
-                className="w-full text-center bg-blue-50 hover:bg-blue-100 text-[#0D47A1] py-2 rounded-lg text-[11px] font-bold border border-blue-200 transition"
-              >
-                تفعيل أذونات الإشعارات والميكروفون 🔐
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  const result = await getLocalNotificationService().sendTestNotification();
-                  setReminderFeedbackMessage(result.message);
-                  showToast(result.message);
-                }}
-                className="w-full text-center bg-gray-50 hover:bg-gray-100 text-gray-700 py-1.5 rounded-lg text-[10px] font-bold border border-gray-200 transition"
-              >
-                إرسال إشعار تجريبي 🔔
-              </button>
             </div>
 
             {/* Safe Data Clear Options */}
