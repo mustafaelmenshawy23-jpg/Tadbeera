@@ -639,10 +639,11 @@ export default function App() {
     getLocalNotificationService().getMealReminderSettings()
   );
 
-  // Migrate an already-authorized legacy reminder to the breakfast notification ID.
+  // Restore saved meal reminders on app startup and migrate the legacy reminder.
   useEffect(() => {
     const service = getLocalNotificationService();
-    if (!service.getStoredConfig().enabled) return;
+    const hasEnabledMeal = Object.values(mealReminderSettings).some(item => item.enabled);
+    if (!service.getStoredConfig().enabled && !hasEnabledMeal) return;
     void service.checkPermission().then(permission => {
       if (permission === 'granted') void service.scheduleMealReminders(mealReminderSettings);
     });
