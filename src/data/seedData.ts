@@ -283,9 +283,9 @@ export const RECIPES: Recipe[] = [
     ingredients: [
       {
         name: 'بواقي فراخ',
-        quantity: '1.5 كوب مفصص',
-        baseAmount: 1.5,
-        unit: 'كوب',
+        quantity: 'ربع كيلو (250 جرام) مفصص',
+        baseAmount: 0.25,
+        unit: 'كيلو',
         alternatives: [
           { name: 'مشروم مشوح أو تونة مصفاة', impact: 'نكهة غنية جداً بالبروتين وبديل فوري واقتصادي.' },
           { name: 'كبد وقوانص مشوحة', impact: 'أرخص سعراً وتعطي صوص داكن غني بالنكهة.' }
@@ -402,9 +402,9 @@ export const RECIPES: Recipe[] = [
     ingredients: [
       {
         name: 'بواقي لحمة',
-        quantity: '1.5 كوب لحمة مقطعة',
-        baseAmount: 1.5,
-        unit: 'كوب',
+        quantity: 'ربع كيلو (250 جرام) لحمة مقطعة',
+        baseAmount: 0.25,
+        unit: 'كيلو',
         alternatives: [
           { name: 'كبدة مشوحة أو قطع باذنجان رومي مقلي', impact: 'فتة باذنجان صيامي أو بالخل والثوم موفرة ولذيذة جداً.' }
         ]
