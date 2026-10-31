@@ -39,7 +39,7 @@ function scaleMeasure(value: string, familySize: number, baseServings = 4): stri
   if (!match) return value;
   const amount = match[1].includes('/') ? Number(match[1].split('/')[0]) / Number(match[1].split('/')[1]) : Number(match[1]);
   if (!Number.isFinite(amount) || amount <= 0) return value;
-  return \`\${Math.round(amount * Math.max(1, Math.min(30, familySize)) / baseServings * 100) / 100} \${match[2].trim()}\`.trim();
+  return (Math.round(amount * Math.max(1, Math.min(30, familySize)) / baseServings * 100) / 100).toString() + ' ' + match[2].trim();
 }
 
 async function translateToArabic(value: string): Promise<string> {
@@ -77,7 +77,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         const data = await response.json();
         return (Array.isArray(data.meals) ? data.meals : []) as Array<{idMeal:string;strMeal:string;strMealThumb?:string}>;
       }));
-      const ids = [...new Set(ingredientLists.flat().map(meal => meal.idMeal))].slice(0,45);
+      const ids = [...new Set(ingredientLists.flat().map(meal => meal.idMeal))].slice(0,12);
       const details = await Promise.all(ids.map(async id => {
         const response = await fetch(`${API}/lookup.php?i=${id}`);
         if (!response.ok) return null;
