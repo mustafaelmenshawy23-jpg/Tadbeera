@@ -138,7 +138,7 @@ async function translateText(value: string, source: 'ar' | 'en', target: 'ar' | 
   const chunks: string[] = [];
   let current = '';
   for (const sentence of sentences) {
-    if (current.length + sentence.length > 350 && current) {
+    if (current.length + sentence.length > 1200 && current) {
       chunks.push(current);
       current = sentence;
     } else current += sentence;
@@ -191,7 +191,7 @@ async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineReci
     if (ingredient) ingredients.push(`• ${ingredient}${measure ? ` — ${scaleMeasure(measure, familySize)}` : ''}`);
   }
   const instructions = (meal.strInstructions || '').replace(/\r/g, '').trim();
-  const rawExtract = `${ingredients.length ? `المكونات:\\n${ingredients.join('\\n')}\\n\\n` : ''}طريقة التحضير:\\n${instructions || 'راجع صفحة المصدر للتعليمات.'}`;
+  const rawExtract = `${ingredients.length ? `المكونات:\n${ingredients.join('\n')}\n\n` : ''}طريقة التحضير:\n${instructions || 'راجع صفحة المصدر للتعليمات.'}`;
   const [arabicTitle, arabicExtract] = await Promise.all([
     translateText(meal.strMeal, 'en', 'ar'),
     translateText(rawExtract, 'en', 'ar'),
@@ -240,7 +240,7 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       if (!mealResponse.ok) throw new Error('meal-service');
       const mealData = await mealResponse.json();
       const meals = (Array.isArray(mealData.meals) ? mealData.meals : []) as MealDbMeal[];
-      const mappedResults = await Promise.allSettled(meals.map(meal => mapMeal(meal, familySize)));
+      const mappedResults = await Promise.allSettled(meals.slice(0, 8).map(meal => mapMeal(meal, familySize)));
       let mapped = mappedResults.filter((item): item is PromiseFulfilledResult<OnlineRecipe> => item.status === 'fulfilled').map(item => item.value);
 
       if (!mapped.length) {
