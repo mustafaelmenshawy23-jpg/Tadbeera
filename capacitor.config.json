@@ -4,5 +4,13 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "appId": "com.tedbeera.egypt",
+      "autoUpdate": "atBackground",
+      "version": "1.0.0",
+      "appReadyTimeout": 10000
+    }
   }
 }
