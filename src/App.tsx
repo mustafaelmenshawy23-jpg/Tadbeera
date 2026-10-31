@@ -650,6 +650,7 @@ export default function App() {
         const service = getLocalNotificationService();
         const config = service.getStoredConfig();
         let permission = await service.checkPermission();
+        const permissionWasPreviouslyDenied = permission === 'denied';
 
         // Android shows its notification permission dialog only while the permission
         // is in the prompt state. Never request microphone permission during startup.
@@ -657,6 +658,13 @@ export default function App() {
           permission = await service.requestPermission() ? 'granted' : 'denied';
         }
         if (cancelled) return;
+
+        // If the user previously denied notifications (or disabled them in Android
+        // Settings), take them to the phone's app-notification settings once per session.
+        if (permissionWasPreviouslyDenied && permission !== 'granted') {
+          await service.openNotificationSettings();
+          return;
+        }
 
         // If permission is already granted (including from Android Settings), always
         // restore all three reminders. Do not depend on an old in-app enabled flag.
