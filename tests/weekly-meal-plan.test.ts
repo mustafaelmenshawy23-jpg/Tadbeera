@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RECIPES } from '../src/data/seedData';
 import { INVENTORY_UNITS } from '../src/features/inventory/inventoryModels';
-import { buildBudgetAwareWeeklyPlan, calculateWeeklyPlanTotalCost, getRecipeById } from '../src/data/weeklyMealPlan';
+import { buildBudgetAwareWeeklyPlan, calculateWeeklyPlanTotalCost, consolidateWeeklyPlanIngredients, getRecipeById } from '../src/data/weeklyMealPlan';
 
 test('budget-aware weekly plan creates seven days with valid meal types and costs', () => {
   const plan = buildBudgetAwareWeeklyPlan(5, 4200, []);
@@ -40,6 +40,21 @@ test('weekly plan uses stock coverage when available', () => {
   assert.ok(plan.every(day => day.breakfastRecipeId && day.lunchRecipeId && day.dinnerRecipeId));
 });
 
+
+
+test('weekly shopping consolidation never adds quantities with different units', () => {
+  const ingredients = consolidateWeeklyPlanIngredients(4, [{
+    dayId: 'test',
+    dayName: 'اختبار',
+    theme: 'اختبار الوحدات',
+    breakfastRecipeId: 'rec_koshary_one_pot',
+    lunchRecipeId: 'rec_leftover_chicken_pasta',
+    dinnerRecipeId: 'rec_fried_pasta'
+  }]);
+  const pastaRows = ingredients.filter(item => item.name === 'مكرونة');
+  assert.deepEqual(new Set(pastaRows.map(item => item.unit)), new Set(['كوب', 'جرام']));
+  assert.equal(pastaRows.length, 2);
+});
 
 test('household inventory supports every unit used by seeded recipes', () => {
   const supportedUnits = new Set<string>(INVENTORY_UNITS);
