@@ -163,7 +163,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
           id: MEALS[meal].id,
           title: MEALS[meal].title,
           body: MEALS[meal].body,
-          schedule: { at, repeats: true, every: 'day' },
+          schedule: { at, repeats: true, every: 'day' as const },
           channelId: DAILY_REMINDER_CHANNEL_ID,
           extra: { source: 'tedbeera_meal_reminder', mealType: meal }
         };
