@@ -53,15 +53,15 @@ const MEAL_REMINDERS = [
   { id: DINNER_REMINDER_ID, label: 'العشاء', title: 'مساء الخير من تدبيرة 🌙', body: 'جهّز عشاء بسيط وراجع نواقص البيت لبكرة.' },
 ] as const;
 
-export function nextLocalOccurrence(
-  hour: number,
-  minute: number,
-  now: Date = new Date()
-): Date {
-  const at = new Date(now);
-  at.setHours(hour, minute, 0, 0);
-  if (at.getTime() <= now.getTime()) at.setDate(at.getDate() + 1);
-  return at;
+export function dailyReminderSchedule(hour: number, minute: number) {
+  // Android's Local Notifications plugin uses setRepeating() for { at, repeats: true }.
+  // That repeat interval is calculated from the first fire time, not 24 hours.
+  // The recurring "on" rule is rescheduled by the native receiver each day and
+  // uses exact alarms when the Android exact-alarm permission is granted.
+  return {
+    on: { hour, minute },
+    allowWhileIdle: true,
+  };
 }
 
 class CapacitorLocalNotificationServiceImpl implements LocalNotificationService {
@@ -215,11 +215,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
           id: item.id,
           title: item.title,
           body: item.body,
-          schedule: {
-            at: nextLocalOccurrence(item.hour, item.minute),
-            repeats: true,
-            allowWhileIdle: true,
-          },
+          schedule: dailyReminderSchedule(item.hour, item.minute),
           channelId: DAILY_REMINDER_CHANNEL_ID,
           extra: { source: 'tadbeera_meal_reminder', meal: item.label },
         })),
