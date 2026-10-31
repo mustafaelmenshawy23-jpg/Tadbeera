@@ -143,7 +143,7 @@ function parseRecipeSections(extract: string): { ingredients: string[]; steps: s
   const ingredientsText = splitIndex >= 0 ? extract.slice(0, splitIndex) : '';
   const methodText = splitIndex >= 0 ? extract.slice(splitIndex + separator![0].length) : extract;
   const ingredients = ingredientsText
-    .replace(/^المكونات\s*[:：]?/,'')
+    .replace(/^المكونات(?:\s*\([^)]*\))?\s*[:：]?/,'')
     .split(/[\n،,]+/)
     .map(item => item.replace(/^\s*[•*-]\s*/, '').trim())
     .filter(Boolean);
