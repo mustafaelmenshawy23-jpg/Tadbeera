@@ -1544,6 +1544,7 @@ export default function App() {
         weeklyPlanUnlocked: isWeeklyPlanUnlocked,
         reminderEnabled: isDailyReminderEnabled,
         reminderTime: localStorage.getItem(REMINDER_TIME_KEY) || '11:00',
+        mealReminderSettings: getLocalNotificationService().getMealReminderSettings(),
         householdProfile: readFeatureBackupValue<Record<string, unknown> | null>('tedbeera_household_profile_v1', null),
         inventoryItems: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_inventory_v1', []),
         householdTasks: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_household_tasks_v1', []),
@@ -1604,7 +1605,7 @@ export default function App() {
       'tedbeera_expenses', 'tedbeera_shopping_items', 'tedbeera_saved_recipes',
       'tedbeera_phase4c_saved_tips', 'tedbeera_saved_tips', 'tedbeera_saved_budgets',
       'tedbeera_custom_pantry', 'tedbeera_phase4c_tried_tips', 'tedbeera_payday_day',
-      REWARD_PLAN_STORAGE_KEY, REMINDER_STORAGE_KEY, REMINDER_TIME_KEY, 'tedbeera_daily_completed',
+      REWARD_PLAN_STORAGE_KEY, REMINDER_STORAGE_KEY, REMINDER_TIME_KEY, MEAL_REMINDERS_STORAGE_KEY, 'tedbeera_daily_completed',
       'tedbeera_household_profile_v1', 'tedbeera_inventory_v1',
       'tedbeera_household_tasks_v1', 'tedbeera_savings_goals_v1'
     ];
@@ -1626,7 +1627,8 @@ export default function App() {
       paydayDay,
       weeklyPlanUnlocked: isWeeklyPlanUnlocked,
       reminderEnabled: isDailyReminderEnabled,
-      reminderTime
+      reminderTime,
+      mealReminderSettings
     };
 
     try {
@@ -1648,6 +1650,7 @@ export default function App() {
       if (d.weeklyPlanUnlocked !== undefined) setIsWeeklyPlanUnlocked(d.weeklyPlanUnlocked);
       if (d.reminderEnabled !== undefined) setIsDailyReminderEnabled(d.reminderEnabled);
       if (d.reminderTime) setReminderTime(d.reminderTime);
+      if (d.mealReminderSettings) setMealReminderSettings(d.mealReminderSettings as MealReminderSettings);
 
       // 3. Immediate LocalStorage Synchronization Across All Keys
       localStorage.setItem('tedbeera_family_size', String(d.familySize));
@@ -1675,6 +1678,10 @@ export default function App() {
       }
       if (d.reminderTime) {
         localStorage.setItem(REMINDER_TIME_KEY, d.reminderTime);
+      }
+      if (d.mealReminderSettings) {
+        localStorage.setItem(MEAL_REMINDERS_STORAGE_KEY, JSON.stringify(d.mealReminderSettings));
+        void getLocalNotificationService().scheduleMealReminders(d.mealReminderSettings as MealReminderSettings);
       }
       if (d.reminderEnabled && d.reminderTime) {
         const [restoredHour, restoredMinute] = d.reminderTime.split(':').map(Number);
@@ -1726,6 +1733,7 @@ export default function App() {
       setIsWeeklyPlanUnlocked(preRestoreSnapshot.weeklyPlanUnlocked);
       setIsDailyReminderEnabled(preRestoreSnapshot.reminderEnabled);
       setReminderTime(preRestoreSnapshot.reminderTime);
+      setMealReminderSettings(preRestoreSnapshot.mealReminderSettings);
 
       setPendingRestoreData(null);
       setIsRestoreConfirmModalOpen(false);
