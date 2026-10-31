@@ -29,7 +29,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Type-check
         run: npm run lint
@@ -55,7 +55,7 @@ jobs:
           java-version: 17
 
       - name: Install web dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Build web assets
         run: npm run build
