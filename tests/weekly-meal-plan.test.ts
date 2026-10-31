@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RECIPES } from '../src/data/seedData';
+import { INVENTORY_UNITS } from '../src/features/inventory/inventoryModels';
 import { buildBudgetAwareWeeklyPlan, calculateWeeklyPlanTotalCost, getRecipeById } from '../src/data/weeklyMealPlan';
 
 test('budget-aware weekly plan creates seven days with valid meal types and costs', () => {
@@ -31,4 +32,11 @@ test('weekly plan uses stock coverage when available', () => {
   const plan = buildBudgetAwareWeeklyPlan(4, 10000, pantry);
   assert.equal(plan.length, 7);
   assert.ok(plan.every(day => day.breakfastRecipeId && day.lunchRecipeId && day.dinnerRecipeId));
+});
+
+
+test('household inventory supports every unit used by seeded recipes', () => {
+  const supportedUnits = new Set<string>(INVENTORY_UNITS);
+  const unsupported = [...new Set(RECIPES.flatMap(recipe => recipe.ingredients.map(item => item.unit)))].filter(unit => !supportedUnits.has(unit));
+  assert.deepEqual(unsupported, []);
 });
