@@ -140,7 +140,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         });
       } catch { /* channel may be unsupported outside Android */ }
 
-      await plugin.cancel({ notifications: meals.map(meal => ({ id: MEALS[meal].id })) });
+      await plugin.cancel({ notifications: [DAILY_REMINDER_NOTIFICATION_ID, ...meals.map(meal => ({ id: MEALS[meal].id }))].map(item => typeof item === 'number' ? ({ id: item }) : item) });
       const now = new Date();
       const notifications = meals.filter(meal => settings[meal].enabled).map(meal => {
         const [hour, minute] = settings[meal].time.split(':').map(Number);
@@ -169,7 +169,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   async cancelMealReminders(): Promise<void> {
     if (this.isPluginAvailable()) {
       const plugin = (window as any).Capacitor?.Plugins?.LocalNotifications;
-      await plugin.cancel({ notifications: [201, 202, 203].map(id => ({ id })) });
+      await plugin.cancel({ notifications: [DAILY_REMINDER_NOTIFICATION_ID, 201, 202, 203].map(id => ({ id })) });
     }
   }
 
