@@ -15,6 +15,8 @@ concurrency:
 jobs:
   upload-live-update:
     runs-on: ubuntu-latest
+    env:
+      CAPGO_API_KEY: ${{ secrets.CAPGO_API_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,9 +33,7 @@ jobs:
       - name: Build web bundle
         run: npm run build
       - name: Upload OTA bundle to Capgo Production
-        if: ${{ secrets.CAPGO_API_KEY != '' }}
-        env:
-          CAPGO_API_KEY: ${{ secrets.CAPGO_API_KEY }}
+        if: ${{ env.CAPGO_API_KEY != '' }}
         run: |
           npx @capgo/cli@latest bundle upload com.tedbeera.egypt \
             --path ./dist \
@@ -42,6 +42,6 @@ jobs:
             --auto-bump patch \
             --delta
       - name: Explain missing Capgo setup
-        if: ${{ secrets.CAPGO_API_KEY == '' }}
+        if: ${{ env.CAPGO_API_KEY == '' }}
         run: |
           echo "::warning::OTA upload skipped. Create the Tadbeera app in Capgo with app ID com.tedbeera.egypt, create a Production channel, then add the API key to GitHub Actions secrets as CAPGO_API_KEY."
