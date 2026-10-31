@@ -96,7 +96,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         return (data.meals?.[0] || null) as Meal|null;
       }));
       const valid = details.filter((meal): meal is Meal => !!meal);
-      const mapped = await Promise.all(valid.map(async meal => {
+      const mappedResults = await Promise.allSettled(valid.map(async meal => {
         const mealIngredients = Array.from({length:20},(_,i)=>meal[`strIngredient${i+1}`]?.trim() || '').filter(Boolean);
         const normalizedMealIngredients = mealIngredients.map(normalize);
         const matched = ingredientLists.filter(list => list.some(entry => entry.idMeal === meal.idMeal)).length;
@@ -113,6 +113,9 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         ]);
         return {id:meal.idMeal,title,image:meal.strMealThumb,ingredients:ingredientsText.split('\n').filter(Boolean),matched,total:availableIngredients.length,missing:[],instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`};
       }));
+      const mapped = mappedResults
+        .filter((item): item is PromiseFulfilledResult<Result> => item.status === 'fulfilled')
+        .map(item => item.value);
       const localResults: Result[] = local.map((recipe,index)=> {
         const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
         return {id:`local-${index}`,title:recipe.name,ingredients:[],matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
