@@ -4,7 +4,7 @@ type Meal = {
   idMeal: string; strMeal: string; strMealThumb?: string; strInstructions?: string;
   strSource?: string; [key: string]: string | undefined;
 };
-type Result = { id: string; title: string; image?: string; ingredients: string[]; matched: number; total: number; missing: string[]; instructions: string; url: string };
+type Result = { id: string; title: string; image?: string; ingredients: string[]; isLocal?: boolean; matched: number; total: number; missing: string[]; instructions: string; url: string };
 
 const API = 'https://www.themealdb.com/api/json/v1/1';
 const INGREDIENTS: Record<string, string> = {
@@ -118,7 +118,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         .map(item => item.value);
       const localResults: Result[] = local.map((recipe,index)=> {
         const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
-        return {id:`local-${index}`,title:recipe.name,ingredients:[],matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
+        return {id:`local-${index}`,title:recipe.name,ingredients:recipe.terms,isLocal:true,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
       }).filter(item=>item.matched>0);
       const combined = [...mapped,...localResults].filter(item=>item.matched>0);
       const unique = Array.from(new Map(combined.map(item=>[item.title,item])).values())
@@ -150,7 +150,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
     </button>)}</div>}
     {selected && <article className="rounded-xl border bg-white p-3 space-y-2">
       {selected.image && <img src={selected.image} alt={selected.title} loading="lazy" className="max-h-48 w-full rounded-lg object-cover"/>}
-      <h4 className="text-sm font-black">{selected.title}</h4>{selected.ingredients.length > 0 && <div className="space-y-1"><b className="text-xs">المكونات لـ {familySize} أفراد</b><ul className="list-disc pr-5 text-xs leading-6">{selected.ingredients.map((item,index)=><li key={index}>{item}</li>)}</ul></div>}<b className="text-xs">طريقة التحضير</b><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
+      <h4 className="text-sm font-black">{selected.title}</h4>{selected.ingredients.length > 0 && <div className="space-y-1"><b className="text-xs">{selected.isLocal ? 'المكونات الأساسية' : `المكونات لـ ${familySize} أفراد`}</b><ul className="list-disc pr-5 text-xs leading-6">{selected.ingredients.map((item,index)=><li key={index}>{item}</li>)}</ul></div>}<b className="text-xs">طريقة التحضير</b><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
       <a href={selected.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-700 underline">المصدر الأصلي</a>
     </article>}
   </section>;
