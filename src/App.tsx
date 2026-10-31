@@ -987,7 +987,7 @@ export default function App() {
     const rounded = Math.round(scaledAmount * 10) / 10;
     return {
       amount: rounded,
-      text: `${rounded} ${ing.unit || 'حبة'}`
+      text: `${rounded.toLocaleString('ar-EG', { maximumFractionDigits: 1 })} ${ing.unit || 'حبة'}`
     };
   };
 
