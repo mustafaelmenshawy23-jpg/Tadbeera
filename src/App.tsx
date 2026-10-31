@@ -629,6 +629,17 @@ export default function App() {
   const [playbackCountdown, setPlaybackCountdown] = useState<number>(5);
   const [isAdSessionActive, setIsAdSessionActive] = useState<boolean>(false);
 
+  // Retained for backup compatibility; notification controls live only in Android Settings.
+  const [isDailyReminderEnabled, setIsDailyReminderEnabled] = useState<boolean>(() => {
+    try { return getLocalNotificationService().getStoredConfig().enabled; } catch { return false; }
+  });
+  const [reminderTime, setReminderTime] = useState<string>(() => {
+    try {
+      const config = getLocalNotificationService().getStoredConfig();
+      return `${String(config.hour).padStart(2, '0')}:${String(config.minute).padStart(2, '0')}`;
+    } catch { return '08:00'; }
+  });
+
   // Ask for notification permission once on the first native app launch.
   // After permission is granted, automatically schedule breakfast, lunch and dinner.
   useEffect(() => {
@@ -646,6 +657,8 @@ export default function App() {
       // Microphone permission is requested exclusively when the user taps voice input.
       if (permission === 'prompt' && !onboardingDone) {
         permission = await service.requestPermission() ? 'granted' : 'denied';
+      }
+      if (!onboardingDone) {
         try { localStorage.setItem(onboardingKey, 'true'); } catch {}
       }
       if (cancelled) return;
