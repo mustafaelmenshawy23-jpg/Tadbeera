@@ -137,7 +137,6 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         const granted = await this.requestPermission();
         if (!granted) return { success: false, message: 'إذن الإشعارات غير متاح. فعّله من إعدادات الهاتف.' };
       }
-      const plugin = (window as any).Capacitor?.Plugins?.LocalNotifications;
       try {
         await plugin.createChannel({
           id: DAILY_REMINDER_CHANNEL_ID,
@@ -148,7 +147,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         });
       } catch { /* channel may be unsupported outside Android */ }
 
-      await plugin.cancel({ notifications: [DAILY_REMINDER_NOTIFICATION_ID, ...meals.map(meal => ({ id: MEALS[meal].id }))].map(item => typeof item === 'number' ? ({ id: item }) : item) });
+      await plugin.cancel({ notifications: [DAILY_REMINDER_NOTIFICATION_ID, ...meals.map(meal => MEALS[meal].id)].map(id => ({ id })) });
       const now = new Date();
       const notifications = meals.filter(meal => settings[meal].enabled).map(meal => {
         const [hour, minute] = settings[meal].time.split(':').map(Number);
