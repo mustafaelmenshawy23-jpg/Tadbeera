@@ -137,12 +137,12 @@ function hasArabic(value: string): boolean {
   return arabicLetters > 0 && latinLetters <= Math.max(4, Math.floor(arabicLetters * 0.2));
 }
 
-function parseRecipeSections(extract: string): { ingredients: string[]; steps: string[] } {
+function parseRecipeSections(extract: string, familySize: number, baseServings: number): { ingredients: string[]; steps: string[] } {
   const separator = extract.match(/طريقة التحضير\s*[:：]|الطريقة\s*[:：]/);
   const splitIndex = separator?.index ?? -1;
   const ingredientsText = splitIndex >= 0 ? extract.slice(0, splitIndex) : '';
   const methodText = splitIndex >= 0 ? extract.slice(splitIndex + separator![0].length) : extract;
-  const ingredients = ingredientsText
+  const ingredients = scaleArabicRecipeExtract(ingredientsText, baseServings, familySize)
     .replace(/^المكونات(?:\s*\([^)]*\))?\s*[:：]?/,'')
     .split(/[\n،,]+/)
     .map(item => item.replace(/^\s*[•*-]\s*/, '').trim())
@@ -213,7 +213,7 @@ async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineReci
   for (let index = 1; index <= 20; index += 1) {
     const ingredient = meal[`strIngredient${index}`]?.trim();
     const measure = meal[`strMeasure${index}`]?.trim();
-    if (ingredient) ingredients.push(`• ${ingredient}${measure ? ` — ${scaleMeasure(measure, familySize)}` : ''}`);
+    if (ingredient) ingredients.push(`• ${ingredient}${measure ? ` — ${measure}` : ''}`);
   }
   const instructions = (meal.strInstructions || '').replace(/\r/g, '').trim();
   const rawExtract = `${ingredients.length ? `المكونات:\n${ingredients.join('\n')}\n\n` : ''}طريقة التحضير:\n${instructions || 'راجع صفحة المصدر للتعليمات.'}`;
@@ -224,7 +224,7 @@ async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineReci
   if (!hasArabic(arabicTitle) || !hasArabic(arabicExtract)) throw new Error('تعذر تجهيز الوصفة باللغة العربية.');
   return {
     title: arabicTitle,
-    servings: Math.max(1, Math.min(30, Math.round(familySize))),
+    servings: 4,
     pageId: Number(meal.idMeal),
     url: meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`,
     imageUrl: meal.strMealThumb,
@@ -271,7 +271,7 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       if (!mapped.length) {
         const localMatches = LOCAL_RECIPES.filter(item =>
           item.terms.some(alias => normalize(alias) === normalize(term) || normalize(alias) === normalize(englishTerm))
-        ).map(item => ({ ...item.recipe, servings: familySize, extract: scaleArabicRecipeExtract(item.recipe.extract, item.recipe.servings, familySize) }));
+        ).map(item => ({ ...item.recipe }));
         mapped = localMatches;
       }
 
@@ -310,7 +310,7 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
                 if (!hasArabic(title) || !hasArabic(extract)) throw new Error('تعذر ترجمة الوصفة إلى العربية.');
                 return {
                   title,
-                  servings: Math.max(1, Math.min(30, Math.round(familySize))),
+                  servings: 4,
                   pageId: page.pageid,
                   url: `https://en.wikibooks.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
                   extract: `المقادير محسوبة لـ ${familySize} أفراد تقريبًا.\n\n${extract}`,
@@ -397,7 +397,7 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
             <h4 className="text-base font-black text-gray-900">{selected.title}</h4>
             <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-800">المقادير محسوبة لـ {familySize} أفراد</p>
             {(() => {
-              const sections = parseRecipeSections(selected.extract);
+              const sections = parseRecipeSections(selected.extract, familySize, selected.servings || 4);
               return <div className="space-y-3">
                 {sections.ingredients.length > 0 && <section>
                   <h5 className="mb-1 text-xs font-black text-gray-900">المكونات المطلوبة</h5>
