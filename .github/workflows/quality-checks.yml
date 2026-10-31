@@ -60,6 +60,9 @@ jobs:
       - name: Build web assets
         run: npm run build
 
+      - name: Sync Capacitor plugins and Android assets
+        run: npx cap sync android
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
