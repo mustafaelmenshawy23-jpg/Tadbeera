@@ -24,6 +24,8 @@ export const REMINDER_STORAGE_KEY = 'tedbeera_phase4d_reminder_enabled';
 export const REMINDER_TIME_KEY = 'tedbeera_phase4d_reminder_time';
 // Distinguish a first-time Android permission request from a permission the user already declined.
 const NOTIFICATION_PERMISSION_REQUESTED_KEY = 'tedbeera_notification_permission_requested';
+const EXACT_ALARM_SETTINGS_REQUESTED_KEY = 'tedbeera_exact_alarm_settings_requested';
+let exactAlarmSettingsOpenedThisSession = false;
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'prompt' | 'unsupported';
 
@@ -117,6 +119,38 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     }
   }
 
+  private async ensureExactAlarmPermission(): Promise<boolean> {
+    // The manifest declaration alone does not grant exact-alarm access on Android 12+.
+    const current = await LocalNotifications.checkExactNotificationSetting();
+    if (current.exact_alarm === 'granted') {
+      try { localStorage.removeItem(EXACT_ALARM_SETTINGS_REQUESTED_KEY); } catch {}
+      exactAlarmSettingsOpenedThisSession = false;
+      return true;
+    }
+
+    let alreadyRequested = exactAlarmSettingsOpenedThisSession;
+    try {
+      alreadyRequested = alreadyRequested ||
+        localStorage.getItem(EXACT_ALARM_SETTINGS_REQUESTED_KEY) === 'true';
+    } catch {}
+
+    // Open the Android system "Alarms & reminders" settings once. The app
+    // retries scheduling when it returns to the foreground.
+    if (!alreadyRequested) {
+      exactAlarmSettingsOpenedThisSession = true;
+      try { localStorage.setItem(EXACT_ALARM_SETTINGS_REQUESTED_KEY, 'true'); } catch {}
+      await LocalNotifications.changeExactNotificationSetting();
+    }
+
+    const refreshed = await LocalNotifications.checkExactNotificationSetting();
+    if (refreshed.exact_alarm === 'granted') {
+      try { localStorage.removeItem(EXACT_ALARM_SETTINGS_REQUESTED_KEY); } catch {}
+      exactAlarmSettingsOpenedThisSession = false;
+      return true;
+    }
+    return false;
+  }
+
   async scheduleDailyReminder(
     breakfastHour: number = DEFAULT_REMINDER_HOUR,
     breakfastMinute: number = DEFAULT_REMINDER_MINUTE
@@ -144,16 +178,24 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       }
  
 
-      try {
-        await LocalNotifications.createChannel({
-          id: DAILY_REMINDER_CHANNEL_ID,
-          name: 'تذكيرات وجبات تدبيرة',
-          description: 'تذكيرات الفطار والغداء والعشاء',
-          importance: 4,
-          visibility: 1,
-        });
-      } catch {
-        // Channel may already exist or be unsupported on this platform.
+      if (!(await this.ensureExactAlarmPermission())) {
+        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+        return {
+          success: false,
+          message: 'لازم تسمح لتدبيرة بإذن «المنبّهات والتذكيرات» من إعدادات الهاتف. افتح الصفحة التي ظهرت، فعّل الإذن، ثم ارجع للتطبيق.',
+        };
+      }
+
+      await LocalNotifications.createChannel({
+        id: DAILY_REMINDER_CHANNEL_ID,
+        name: 'تذكيرات وجبات تدبيرة',
+        description: 'تذكيرات الفطار والغداء والعشاء',
+        importance: 4,
+        visibility: 1,
+      });
+      const channelState = await LocalNotifications.listChannels();
+      if (!(channelState.channels || []).some(channel => channel.id === DAILY_REMINDER_CHANNEL_ID)) {
+        throw new Error('تعذر إنشاء قناة إشعارات تذكيرات الوجبات على الجهاز.');
       }
 
       // Remove all three previous IDs before scheduling to avoid duplicate alarms.
@@ -161,7 +203,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         notifications: times.map(item => ({ id: item.id })),
       });
 
-      await LocalNotifications.schedule({
+      const scheduleResult = await LocalNotifications.schedule({
         notifications: times.map(item => ({
           id: item.id,
           title: item.title,
@@ -176,10 +218,11 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         })),
       });
 
-      // Verify Android retained all three scheduled IDs before reporting success.
+      // Verify both the scheduling response and Android's pending list contain all meal IDs.
+      const scheduledIds = new Set((scheduleResult.notifications || []).map(item => item.id));
       const pending = await LocalNotifications.getPending();
       const pendingIds = new Set((pending.notifications || []).map(item => item.id));
-      const missingMeals = times.filter(item => !pendingIds.has(item.id));
+      const missingMeals = times.filter(item => !pendingIds.has(item.id) || !scheduledIds.has(item.id));
       if (missingMeals.length) {
         await LocalNotifications.cancel({ notifications: times.map(item => ({ id: item.id })) });
         this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
