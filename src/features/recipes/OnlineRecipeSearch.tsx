@@ -186,7 +186,7 @@ export function scaleMeasure(measure: string, familySize: number, baseServings =
     return total + (denominator ? numerator / denominator : 0);
   }, 0);
   if (!Number.isFinite(amount) || amount <= 0) return measure;
-  return \`\${Math.round(amount * Math.max(1, Math.min(30, Math.round(familySize))) / baseServings * 100) / 100} \${match[2].trim()}\`.trim();
+  return (Math.round(amount * Math.max(1, Math.min(30, Math.round(familySize))) / baseServings * 100) / 100).toString() + ' ' + match[2].trim();
 }
 
 async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineRecipe> {
