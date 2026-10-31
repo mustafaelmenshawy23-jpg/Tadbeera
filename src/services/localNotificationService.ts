@@ -157,6 +157,19 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         })),
       });
 
+      // Verify Android retained all three scheduled IDs before reporting success.
+      const pending = await LocalNotifications.getPending();
+      const pendingIds = new Set((pending.notifications || []).map(item => item.id));
+      const missingMeals = times.filter(item => !pendingIds.has(item.id));
+      if (missingMeals.length) {
+        await LocalNotifications.cancel({ notifications: times.map(item => ({ id: item.id })) });
+        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+        return {
+          success: false,
+          message: `تعذر تأكيد جدولة تذكير ${missingMeals.map(item => item.label).join(' و')}. راجع أذونات الإشعارات والمنبهات ثم حاول مرة أخرى.`,
+        };
+      }
+
       this.saveStoredConfig({ enabled: true, hour: breakfastHour, minute: breakfastMinute });
       const format = (hour: number, minute: number) =>
         `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -198,6 +211,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         importance: 4,
         visibility: 1,
       });
+      await LocalNotifications.cancel({ notifications: [{ id: 104 }] });
       await LocalNotifications.schedule({
         notifications: [{
           id: 104,
@@ -208,7 +222,11 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
           extra: { source: 'tadbeera_notification_test' },
         }],
       });
-      return { success: true, message: 'تم إرسال اختبار الإشعار. انتظر 5 ثوانٍ وتأكد من ظهوره أعلى الجهاز.' };
+      const pending = await LocalNotifications.getPending();
+      if (!(pending.notifications || []).some(item => item.id === 104)) {
+        return { success: false, message: 'لم يتم تأكيد تسجيل إشعار الاختبار على الجهاز.' };
+      }
+      return { success: true, message: 'تم تسجيل إشعار الاختبار على الجهاز. انتظر 5 ثوانٍ وتأكد من ظهوره أعلى الجهاز.' };
     } catch (error) {
       return {
         success: false,
