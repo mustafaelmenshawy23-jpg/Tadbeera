@@ -1,3 +1,4 @@
+import { LocalNotifications } from '@capacitor/local-notifications';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import {
@@ -650,10 +651,8 @@ export default function App() {
   // Notification taps open the food section filtered to the requested meal.
   useEffect(() => {
     if (!isNativeApp) return;
-    const plugin = (window as any).Capacitor?.Plugins?.LocalNotifications;
-    if (!plugin?.addListener) return;
     let listener: any;
-    void plugin.addListener('localNotificationActionPerformed', (event: any) => {
+    void LocalNotifications.addListener('localNotificationActionPerformed', (event: any) => {
       const meal = event?.notification?.extra?.mealType as MealReminderType | undefined;
       if (meal && ['breakfast', 'lunch', 'dinner'].includes(meal)) {
         setActiveTab('food');
@@ -1692,7 +1691,7 @@ export default function App() {
         localStorage.setItem(MEAL_REMINDERS_STORAGE_KEY, JSON.stringify(d.mealReminderSettings));
         void getLocalNotificationService().scheduleMealReminders(d.mealReminderSettings as MealReminderSettings);
       }
-      if (d.reminderEnabled && d.reminderTime) {
+      if (!d.mealReminderSettings && d.reminderEnabled && d.reminderTime) {
         const [restoredHour, restoredMinute] = d.reminderTime.split(':').map(Number);
         void getLocalNotificationService().scheduleDailyReminder(restoredHour, restoredMinute);
       }
