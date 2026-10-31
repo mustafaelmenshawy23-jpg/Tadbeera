@@ -74,6 +74,29 @@ test('shopping totals keep unpriced items separate', () => {
 });
 
 
+test('backup round-trip preserves independent meal reminder settings', () => {
+  const mealReminderSettings = {
+    breakfast: { enabled: true, time: '08:00' },
+    lunch: { enabled: false, time: '14:00' },
+    dinner: { enabled: true, time: '20:15' }
+  };
+  const payload = createBackupPayload({ ...base, mealReminderSettings });
+  const restored = validateBackupPayload(payload);
+  assert.deepEqual(restored.normalizedData?.mealReminderSettings, mealReminderSettings);
+
+  const invalid = validateBackupPayload({
+    app: 'Tedbeera Egypt',
+    backupVersion: 1,
+    data: { familySize: 4, budgetAmount: '2500', mealReminderSettings: {
+      breakfast: { enabled: true, time: '99:99' },
+      lunch: { enabled: false, time: '14:00' },
+      dinner: { enabled: false, time: '20:00' }
+    } }
+  });
+  assert.equal(invalid.isValid, true);
+  assert.equal(invalid.normalizedData?.mealReminderSettings, undefined);
+});
+
 test('backup round-trip preserves a valid reminder time and rejects invalid clock values', () => {
   const payload = createBackupPayload({ ...base, reminderEnabled: true, reminderTime: '07:45' });
   const restored = validateBackupPayload(payload);
