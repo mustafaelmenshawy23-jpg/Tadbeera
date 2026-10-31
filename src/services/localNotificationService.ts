@@ -285,6 +285,11 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         importance: 4,
         visibility: 1,
       });
+      const channelState = await LocalNotifications.listChannels();
+      const mealChannel = (channelState.channels || []).find(channel => channel.id === DAILY_REMINDER_CHANNEL_ID);
+      if (!mealChannel || mealChannel.importance === 0) {
+        return { success: false, message: 'قناة إشعارات تدبيرة غير متاحة أو مكتومة من إعدادات الهاتف. اسمح بإشعارات قناة تذكيرات الوجبات ثم أعد الاختبار.' };
+      }
       await LocalNotifications.cancel({ notifications: [{ id: 104 }] });
       await LocalNotifications.schedule({
         notifications: [{
