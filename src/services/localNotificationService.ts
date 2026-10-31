@@ -271,6 +271,9 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       if (!notificationsEnabled.value) {
         return { success: false, message: 'إشعارات تدبيرة مقفولة من إعدادات الهاتف. فعّلها ثم أعد الاختبار.' };
       }
+      if (!(await this.ensureExactAlarmPermission())) {
+        return { success: false, message: 'اسمح لتدبيرة بإذن «المنبّهات والتذكيرات» من إعدادات الهاتف ثم أعد الاختبار.' };
+      }
       await LocalNotifications.createChannel({
         id: DAILY_REMINDER_CHANNEL_ID,
         name: 'تذكيرات وجبات تدبيرة',
