@@ -16,6 +16,8 @@ export const DEFAULT_LUNCH_HOUR = 13;
 export const DEFAULT_DINNER_HOUR = 19;
 export const REMINDER_STORAGE_KEY = 'tedbeera_phase4d_reminder_enabled';
 export const REMINDER_TIME_KEY = 'tedbeera_phase4d_reminder_time';
+// Distinguish a first-time Android permission request from a permission the user already declined.
+const NOTIFICATION_PERMISSION_REQUESTED_KEY = 'tedbeera_notification_permission_requested';
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'prompt' | 'unsupported';
 
@@ -66,7 +68,19 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     try {
       const status = await LocalNotifications.checkPermissions();
       if (status.display === 'granted') return 'granted';
-      if (status.display === 'denied') return 'denied';
+      if (status.display === 'denied') {
+        // Some Android 13 devices report "denied" even before the app has
+        // actually displayed the runtime prompt. Allow exactly one first-launch
+        // request, then respect the user's decision on later launches.
+        let alreadyRequested = false;
+        try {
+          alreadyRequested = typeof window !== 'undefined' &&
+            localStorage.getItem(NOTIFICATION_PERMISSION_REQUESTED_KEY) === 'true';
+        } catch {
+          // If storage is unavailable, allow the native permission check to decide.
+        }
+        return alreadyRequested ? 'denied' : 'prompt';
+      }
       return 'prompt';
     } catch {
       return 'unsupported';
@@ -77,6 +91,13 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     if (!this.isPluginAvailable()) return false;
     try {
       const result = await LocalNotifications.requestPermissions();
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(NOTIFICATION_PERMISSION_REQUESTED_KEY, 'true');
+        }
+      } catch {
+        // Permission state remains authoritative if local storage is unavailable.
+      }
       return result.display === 'granted';
     } catch {
       return false;
