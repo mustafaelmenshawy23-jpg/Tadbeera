@@ -53,3 +53,23 @@ button {
   background: #CBD5E1;
   border-radius: 9999px;
 }
+
+
+/* Tadbeera warm-home visual foundation */
+:root {
+  color-scheme: light;
+  background: #FBF8F1;
+  --td-cream: #FBF8F1;
+  --td-paper: #FFFEFA;
+  --td-olive: #667B58;
+  --td-olive-dark: #526748;
+  --td-sand: #F3EBDD;
+  --td-clay: #A66D4C;
+  --td-ink: #454A3C;
+  --td-muted: #969184;
+  --td-line: #E8E0D1;
+}
+body { background: #FBF8F1; color: #454A3C; }
+.tadbeera-appbar { min-height: 58px; }
+.tadbeera-bottom-nav button { min-height: 48px; }
+.tadbeera-bottom-nav button:focus-visible { outline: 2px solid #82966F; outline-offset: 2px; }
