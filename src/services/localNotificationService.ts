@@ -183,6 +183,12 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       }
 
 
+      // Remove any meal alarms left by the previous LocalNotifications-based
+      // implementation before switching to the native AlarmManager receiver.
+      await LocalNotifications.cancel({
+        notifications: times.map(item => ({ id: item.id })),
+      });
+
       if (!(await this.ensureExactAlarmPermission())) {
         this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
         return {
@@ -308,6 +314,10 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     }
     try {
       await MealReminderScheduler.cancelDailyReminders();
+      // Also clear IDs scheduled by older app versions before the native scheduler migration.
+      await LocalNotifications.cancel({
+        notifications: MEAL_REMINDERS.map(item => ({ id: item.id })),
+      });
       this.saveStoredConfig({ enabled: false });
       return { success: true, message: 'تم إلغاء تذكيرات الفطار والغداء والعشاء.' };
     } catch (error) {
