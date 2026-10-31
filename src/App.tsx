@@ -3973,7 +3973,8 @@ export default function App() {
               </div>
             </div>
           )}
-      )}
+          </div>
+        )}
 
         {/* ---------------- VIEW 2: ANDROID STUDIO CODE INSPECTOR ---------------- */}
         {viewMode === 'code' && (
