@@ -4999,12 +4999,14 @@ export default function App() {
 
               <button
                 type="button"
-                onClick={() => {
-                  showToast('🔔 مواعيد تدبيرة: الفطار 08:00، الغداء 13:00، العشاء 19:00. المعاينة لا ترسل إشعارًا فعليًا.');
+                onClick={async () => {
+                  const result = await getLocalNotificationService().sendTestNotification();
+                  setReminderFeedbackMessage(result.message);
+                  showToast(result.message);
                 }}
                 className="w-full text-center bg-gray-50 hover:bg-gray-100 text-gray-700 py-1.5 rounded-lg text-[10px] font-bold border border-gray-200 transition"
               >
-                معاينة نص الإشعار 🔔
+                إرسال إشعار تجريبي 🔔
               </button>
             </div>
 
