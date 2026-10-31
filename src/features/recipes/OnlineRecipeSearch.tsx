@@ -266,7 +266,9 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       const mealData = await mealResponse.json();
       const meals = (Array.isArray(mealData.meals) ? mealData.meals : []) as MealDbMeal[];
       const mappedResults = await Promise.allSettled(meals.slice(0, 8).map(meal => mapMeal(meal, familySize)));
-      let mapped = mappedResults.filter((item): item is PromiseFulfilledResult<OnlineRecipe> => item.status === 'fulfilled').map(item => item.value);
+      let mapped: OnlineRecipe[] = mappedResults.flatMap(item =>
+        item.status === 'fulfilled' ? [item.value] : [],
+      );
 
       if (!mapped.length) {
         const localMatches = LOCAL_RECIPES.filter(item =>
@@ -316,7 +318,9 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
                   extract: `المقادير محسوبة لـ ${familySize} أفراد تقريبًا.\n\n${extract}`,
                 };
               }));
-              mapped = translatedPages.filter((item): item is PromiseFulfilledResult<OnlineRecipe> => item.status === 'fulfilled').map(item => item.value);
+              mapped = translatedPages.flatMap(item =>
+                item.status === 'fulfilled' ? [item.value] : [],
+              );
             }
           }
         }
