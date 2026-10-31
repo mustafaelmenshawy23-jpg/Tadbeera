@@ -112,6 +112,8 @@ export function buildBudgetAwareWeeklyPlan(
   const dailyFoodBudget = Math.max(0, monthlyFoodBudget) / 30;
   const perMealBudget = dailyFoodBudget / 3;
   const remainingStock = new Map<string, number>();
+  // Discourage repeating the same recipe across the week when alternatives exist.
+  const weeklyRecipeUsage = new Map<string, number>();
   const unitGroup = (unit: string) => {
     if (unit === 'كيلو' || unit === 'جرام') return 'mass';
     if (unit === 'قطعة' || unit === 'حبة') return 'piece';
@@ -134,14 +136,16 @@ export function buildBudgetAwareWeeklyPlan(
         const coverage = recipe.ingredients.length ? (recipe.ingredients.length - missing) / recipe.ingredients.length : 0;
         const cost = calculateRecipeScaledCost(recipe, safeFamilySize);
         const fitsBudget = cost <= perMealBudget;
+        const repeatCount = weeklyRecipeUsage.get(recipe.id) || 0;
         const score = coverage * 100 + (fitsBudget ? 35 : 0) + (recipe.usesLeftovers ? 8 : 0)
           - (perMealBudget > 0 ? Math.min(45, (cost / perMealBudget) * 8) : cost / 10)
-          - (usedToday.has(recipe.id) ? 12 : 0) - recipe.prepTimeMinutes / 30;
+          - repeatCount * 45 - (usedToday.has(recipe.id) ? 12 : 0) - recipe.prepTimeMinutes / 30;
         return { recipe, score };
       }).sort((a, b) => b.score - a.score);
       const chosen = candidates[0]?.recipe;
       if (chosen) {
         usedToday.add(chosen.id);
+        weeklyRecipeUsage.set(chosen.id, (weeklyRecipeUsage.get(chosen.id) || 0) + 1);
         const scale = safeFamilySize / Math.max(1, chosen.baseServings);
         chosen.ingredients.forEach(ingredient => {
           const key = stockKey(ingredient.name, ingredient.unit);
