@@ -61,7 +61,7 @@ const cloneDefaults = (): MealReminderSettings => JSON.parse(JSON.stringify(DEFA
 
 class CapacitorLocalNotificationServiceImpl implements LocalNotificationService {
   isPluginAvailable(): boolean {
-    return typeof window !== 'undefined' && Capacitor.isPluginAvailable('LocalNotifications');
+    return typeof window !== 'undefined' && Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('LocalNotifications');
   }
 
   async checkPermission(): Promise<NotificationPermissionStatus> {
