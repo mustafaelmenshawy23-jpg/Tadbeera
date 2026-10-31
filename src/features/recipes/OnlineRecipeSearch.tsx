@@ -120,9 +120,13 @@ function scaleArabicRecipeExtract(extract: string, baseServings: number, familyS
   const splitAt = extract.indexOf('الطريقة:');
   const ingredients = splitAt >= 0 ? extract.slice(0, splitAt) : extract;
   const method = splitAt >= 0 ? extract.slice(splitAt) : '';
-  const scaledIngredients = ingredients.replace(/\d+(?:\.\d+)?/g, value => {
-    const scaled = Math.round(Number(value) * ratio * 100) / 100;
-    return String(scaled);
+  const scaledIngredients = ingredients.replace(/\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+/g, value => {
+    const amount = value.trim().split(/\s+/).reduce((total, part) => {
+      if (!part.includes('/')) return total + Number(part);
+      const [numerator, denominator] = part.split('/').map(Number);
+      return total + (denominator ? numerator / denominator : 0);
+    }, 0);
+    return String(Math.round(amount * ratio * 100) / 100);
   });
   return `${scaledIngredients}${method}`;
 }
@@ -174,13 +178,15 @@ async function getEnglishSearchTerm(term: string): Promise<string> {
 }
 
 export function scaleMeasure(measure: string, familySize: number, baseServings = 4): string {
-  const ratio = Math.max(1, Math.min(30, Math.round(familySize))) / baseServings;
-  const match = measure.match(/^\s*(\d+(?:\.\d+)?|\d+\/\d+)(.*)$/);
+  const match = measure.match(/^\s*(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)(.*)$/);
   if (!match) return measure;
-  const token = match[1];
-  const amount = token.includes('/') ? Number(token.split('/')[0]) / Number(token.split('/')[1]) : Number(token);
+  const amount = match[1].trim().split(/\s+/).reduce((total, part) => {
+    if (!part.includes('/')) return total + Number(part);
+    const [numerator, denominator] = part.split('/').map(Number);
+    return total + (denominator ? numerator / denominator : 0);
+  }, 0);
   if (!Number.isFinite(amount) || amount <= 0) return measure;
-  return `${Math.round(amount * ratio * 100) / 100} ${match[2].trim()}`.trim();
+  return \`\${Math.round(amount * Math.max(1, Math.min(30, Math.round(familySize))) / baseServings * 100) / 100} \${match[2].trim()}\`.trim();
 }
 
 async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineRecipe> {
