@@ -149,7 +149,6 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
           schedule: {
             at: nextLocalOccurrence(item.hour, item.minute),
             repeats: true,
-            every: 'day' as const,
             allowWhileIdle: true,
           },
           channelId: DAILY_REMINDER_CHANNEL_ID,
