@@ -645,18 +645,12 @@ export default function App() {
     const initializeMealReminders = async () => {
       const service = getLocalNotificationService();
       const config = service.getStoredConfig();
-      const onboardingKey = 'tedbeera_notification_permission_onboarding_v1';
-      let onboardingDone = false;
-      try { onboardingDone = localStorage.getItem(onboardingKey) === 'true'; } catch {}
       let permission = await service.checkPermission();
 
-      // Request the Android notification permission only on the first launch.
-      // Microphone permission is requested exclusively when the user taps voice input.
-      if (permission === 'prompt' && !onboardingDone) {
+      // Android shows its notification permission dialog only while the permission
+      // is in the prompt state. Never request microphone permission during startup.
+      if (permission === 'prompt') {
         permission = await service.requestPermission() ? 'granted' : 'denied';
-      }
-      if (!onboardingDone) {
-        try { localStorage.setItem(onboardingKey, 'true'); } catch {}
       }
       if (cancelled) return;
 
@@ -666,8 +660,6 @@ export default function App() {
         const result = await service.scheduleDailyReminder(config.hour, config.minute);
         if (cancelled) return;
         if (!result.success) console.warn('Tadbeera meal reminder scheduling failed:', result.message);
-      } else if (!onboardingDone) {
-        try { localStorage.setItem(onboardingKey, 'true'); } catch {}
       }
     };
     void initializeMealReminders().catch(error => console.warn('Tadbeera reminder initialization failed:', error));
