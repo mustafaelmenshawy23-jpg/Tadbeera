@@ -175,7 +175,7 @@ async function getEnglishSearchTerm(term: string): Promise<string> {
 
 function scaleMeasure(measure: string, familySize: number, baseServings = 4): string {
   const ratio = Math.max(1, Math.min(30, Math.round(familySize))) / baseServings;
-  const match = measure.match(/^\\s*(\\d+(?:\\.\\d+)?|\\d+\\/\\d+)(.*)$/);
+  const match = measure.match(/^\s*(\d+(?:\.\d+)?|\d+\/\d+)(.*)$/);
   if (!match) return measure;
   const token = match[1];
   const amount = token.includes('/') ? Number(token.split('/')[0]) / Number(token.split('/')[1]) : Number(token);
