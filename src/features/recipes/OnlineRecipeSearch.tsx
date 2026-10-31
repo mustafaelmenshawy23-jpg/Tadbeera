@@ -333,7 +333,7 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       const englishTerm = await getEnglishSearchTerm(term);
       const localMatches = LOCAL_RECIPES.filter(item =>
         item.terms.some(alias => normalize(alias) === normalize(term) || normalize(alias) === normalize(englishTerm))
-      ).map(item => ({ ...item.recipe, servings: familySize, extract: scaleArabicRecipeExtract(item.recipe.extract, item.recipe.servings, familySize) }));
+      ).map(item => ({ ...item.recipe }));
       if (localMatches.length) {
         setResults(localMatches);
         setSelected(localMatches[0]);
