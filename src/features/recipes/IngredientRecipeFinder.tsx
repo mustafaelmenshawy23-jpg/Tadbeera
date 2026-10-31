@@ -34,7 +34,7 @@ async function translate(value: string): Promise<string> {
   } catch { return value; }
 }
 
-function scaleMeasure(value: string, familySize: number, baseServings = 4): string {
+export function scaleMeasure(value: string, familySize: number, baseServings = 4): string {
   const match = value.match(/^\s*(\d+(?:\.\d+)?|\d+\/\d+)(.*)$/);
   if (!match) return value;
   const amount = match[1].includes('/') ? Number(match[1].split('/')[0]) / Number(match[1].split('/')[1]) : Number(match[1]);
