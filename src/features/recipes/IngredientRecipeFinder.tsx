@@ -4,7 +4,7 @@ type Meal = {
   idMeal: string; strMeal: string; strMealThumb?: string; strInstructions?: string;
   strSource?: string; [key: string]: string | undefined;
 };
-type Result = { id: string; title: string; image?: string; matched: number; total: number; missing: string[]; instructions: string; url: string };
+type Result = { id: string; title: string; image?: string; ingredients: string[]; isLocal?: boolean; matched: number; total: number; missing: string[]; instructions: string; url: string };
 
 const API = 'https://www.themealdb.com/api/json/v1/1';
 const INGREDIENTS: Record<string, string> = {
@@ -28,21 +28,45 @@ async function translate(value: string): Promise<string> {
     const url = new URL('https://translate.googleapis.com/translate_a/single');
     url.search = new URLSearchParams({client:'gtx',sl:'ar',tl:'en',dt:'t',q:value}).toString();
     const response = await fetch(url.toString());
-    const data = await response.json();
-    return Array.isArray(data?.[0]) ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('') : value;
-  } catch { return value; }
-}
-async function translateToArabic(value: string): Promise<string> {
-  try {
-    const url = new URL('https://translate.googleapis.com/translate_a/single');
-    url.search = new URLSearchParams({client:'gtx',sl:'en',tl:'ar',dt:'t',q:value.slice(0,4500)}).toString();
-    const response = await fetch(url.toString());
+    if (!response.ok) throw new Error('translation-failed');
     const data = await response.json();
     return Array.isArray(data?.[0]) ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('') : value;
   } catch { return value; }
 }
 
-export function IngredientRecipeFinder({ availableIngredients }: { availableIngredients: string[] }) {
+export function scaleMeasure(value: string, familySize: number, baseServings = 4): string {
+  const match = value.match(/^\s*(\d+\/\d+|\d+(?:\.\d+)?(?:\s+\d+\/\d+)?)(.*)$/);
+  if (!match) return value;
+  const amount = match[1].trim().split(/\s+/).reduce((total, part) => {
+    if (!part.includes('/')) return total + Number(part);
+    const [numerator, denominator] = part.split('/').map(Number);
+    return total + (denominator ? numerator / denominator : 0);
+  }, 0);
+  if (!Number.isFinite(amount) || amount <= 0) return value;
+  return (Math.round(amount * Math.max(1, Math.min(30, Math.round(familySize))) / baseServings * 100) / 100).toString() + ' ' + match[2].trim();
+}
+
+function isArabicContent(value: string): boolean {
+  const arabicLetters = (value.match(/[\u0600-\u06FF]/g) || []).length;
+  const latinLetters = (value.match(/[A-Za-z]/g) || []).length;
+  return arabicLetters > 0 && latinLetters <= Math.max(4, Math.floor(arabicLetters * 0.2));
+}
+
+async function translateToArabic(value: string): Promise<string> {
+  if (!value.trim()) return '';
+  try {
+    const url = new URL('https://translate.googleapis.com/translate_a/single');
+    url.search = new URLSearchParams({client:'gtx',sl:'en',tl:'ar',dt:'t',q:value.slice(0,4500)}).toString();
+    const response = await fetch(url.toString());
+    if (!response.ok) throw new Error('translation-failed');
+    const data = await response.json();
+    const translated = Array.isArray(data?.[0]) ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('') : '';
+    if (!translated.trim() || !/[\u0600-\u06FF]/.test(translated)) throw new Error('arabic-translation-unavailable');
+    return translated;
+  } catch { throw new Error('تعذر ترجمة الوصفة إلى العربية'); }
+}
+
+export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }: { availableIngredients: string[]; familySize?: number }) {
   const [results,setResults] = useState<Result[]>([]);
   const [loading,setLoading] = useState(false);
   const [error,setError] = useState('');
@@ -63,7 +87,14 @@ export function IngredientRecipeFinder({ availableIngredients }: { availableIngr
         const data = await response.json();
         return (Array.isArray(data.meals) ? data.meals : []) as Array<{idMeal:string;strMeal:string;strMealThumb?:string}>;
       }));
-      const ids = [...new Set(ingredientLists.flat().map(meal => meal.idMeal))].slice(0,45);
+      const matchCounts = new Map<string, number>();
+      ingredientLists.forEach(list => list.forEach(meal => {
+        matchCounts.set(meal.idMeal, (matchCounts.get(meal.idMeal) || 0) + 1);
+      }));
+      const ids = [...matchCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([id]) => id);
       const details = await Promise.all(ids.map(async id => {
         const response = await fetch(`${API}/lookup.php?i=${id}`);
         if (!response.ok) return null;
@@ -71,17 +102,29 @@ export function IngredientRecipeFinder({ availableIngredients }: { availableIngr
         return (data.meals?.[0] || null) as Meal|null;
       }));
       const valid = details.filter((meal): meal is Meal => !!meal);
-      const mapped = await Promise.all(valid.map(async meal => {
+      const mappedResults = await Promise.allSettled(valid.map(async meal => {
         const mealIngredients = Array.from({length:20},(_,i)=>meal[`strIngredient${i+1}`]?.trim() || '').filter(Boolean);
         const normalizedMealIngredients = mealIngredients.map(normalize);
         const matched = ingredientLists.filter(list => list.some(entry => entry.idMeal === meal.idMeal)).length;
         const raw = meal.strInstructions || 'لا تتوفر طريقة التحضير في المصدر.';
-        const [title,instructions] = await Promise.all([translateToArabic(meal.strMeal),translateToArabic(raw)]);
-        return {id:meal.idMeal,title,image:meal.strMealThumb,matched,total:availableIngredients.length,missing:[],instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`};
+        const rawIngredients = Array.from({length:20},(_,i) => {
+          const name = meal[`strIngredient${i+1}`]?.trim() || '';
+          const measure = meal[`strMeasure${i+1}`]?.trim() || '';
+          return name ? `${measure} ${name}`.trim() : '';
+        }).filter(Boolean).join('\n');
+        const [title,ingredientsText,instructions] = await Promise.all([
+          translateToArabic(meal.strMeal),
+          translateToArabic(rawIngredients),
+          translateToArabic(raw),
+        ]);
+        return {id:meal.idMeal,title,image:meal.strMealThumb,ingredients:ingredientsText.split('\n').filter(Boolean),matched,total:availableIngredients.length,missing:[],instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`};
       }));
+      const mapped: Result[] = mappedResults.flatMap(item =>
+        item.status === 'fulfilled' ? [item.value] : [],
+      );
       const localResults: Result[] = local.map((recipe,index)=> {
         const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
-        return {id:`local-${index}`,title:recipe.name,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
+        return {id:`local-${index}`,title:recipe.name,ingredients:recipe.terms,isLocal:true,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
       }).filter(item=>item.matched>0);
       const combined = [...mapped,...localResults].filter(item=>item.matched>0);
       const unique = Array.from(new Map(combined.map(item=>[item.title,item])).values())
@@ -91,7 +134,7 @@ export function IngredientRecipeFinder({ availableIngredients }: { availableIngr
     } catch {
       const fallback = local.map((recipe,index)=> {
         const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
-        return {id:`local-${index}`,title:recipe.name,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
+        return {id:`local-${index}`,title:recipe.name,ingredients:recipe.terms,isLocal:true,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
       }).filter(item=>item.matched>0).sort((a,b)=>b.matched-a.matched);
       setResults(fallback);
       if (!fallback.length) setError('تعذر الاتصال بمكتبة الوصفات. تحقق من الإنترنت وحاول مرة أخرى.');
@@ -100,7 +143,7 @@ export function IngredientRecipeFinder({ availableIngredients }: { availableIngr
 
   return <section dir="rtl" className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-3">
     <div><h3 className="text-sm font-black text-emerald-900">🍲 اطبخ بالموجود عندك</h3>
-      <p className="mt-1 text-[11px] text-gray-600">ابحث عن وصفات أونلاين باستخدام مكونات البيت، ورتّب النتائج حسب أكثر مكونات متوفرة.</p></div>
+      <p className="mt-1 text-[11px] text-gray-600">ابحث بالمكونات المتوفرة، والوصفات المترجمة بتظهر بالعربي مع مقادير مضبوطة لـ {familySize} أفراد.</p></div>
     <div className="flex flex-wrap gap-2 items-center">
       <button type="button" onClick={()=>setCuisine('all')} className={`rounded-lg px-3 py-2 text-xs font-bold ${cuisine==='all'?'bg-emerald-700 text-white':'bg-white text-gray-700 border'}`}>كل المطابخ</button>
       <button type="button" onClick={()=>setCuisine('egyptian')} className={`rounded-lg px-3 py-2 text-xs font-bold ${cuisine==='egyptian'?'bg-emerald-700 text-white':'bg-white text-gray-700 border'}`}>أكلات مصرية</button>
@@ -113,7 +156,7 @@ export function IngredientRecipeFinder({ availableIngredients }: { availableIngr
     </button>)}</div>}
     {selected && <article className="rounded-xl border bg-white p-3 space-y-2">
       {selected.image && <img src={selected.image} alt={selected.title} loading="lazy" className="max-h-48 w-full rounded-lg object-cover"/>}
-      <h4 className="text-sm font-black">{selected.title}</h4><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
+      <h4 className="text-sm font-black">{selected.title}</h4>{selected.ingredients.length > 0 && <div className="space-y-1"><b className="text-xs">{selected.isLocal ? 'المكونات الأساسية' : `المكونات لـ ${familySize} أفراد`}</b><ul className="list-disc pr-5 text-xs leading-6">{selected.ingredients.map((item,index)=><li key={index}>{scaleMeasure(item, familySize)}</li>)}</ul></div>}<b className="text-xs">طريقة التحضير</b><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
       <a href={selected.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-700 underline">المصدر الأصلي</a>
     </article>}
   </section>;

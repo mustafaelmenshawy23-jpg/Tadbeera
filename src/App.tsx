@@ -296,16 +296,8 @@ export default function App() {
   // an earlier build could have marked onboarding complete before the Android dialogs appeared.
   useEffect(() => {
     if (!isNativeApp) return;
-    let cancelled = false;
     const requestMissingPermissions = async () => {
       try {
-        const notificationService = getLocalNotificationService();
-        const notificationStatus = await notificationService.checkPermission();
-        if (!cancelled && notificationStatus !== 'granted') {
-          const granted = await notificationService.requestPermission();
-          if (!granted) console.info('Tadbeera notifications permission is still not granted.');
-        }
-        if (cancelled) return;
         const microphoneResult = await microphonePermission.request();
         if (!microphoneResult.granted) {
           console.info('Tadbeera microphone permission is still not granted.');
@@ -315,7 +307,6 @@ export default function App() {
       }
     };
     void requestMissingPermissions();
-    return () => { cancelled = true; };
   }, [isNativeApp]);
   const [viewMode, setViewMode] = useState<ViewMode>('emulator');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -674,6 +665,29 @@ export default function App() {
     }
   });
   const [reminderFeedbackMessage, setReminderFeedbackMessage] = useState<string | null>(null);
+
+  // Restore daily meal alarms on launch; Android may clear exact alarms after updates or permission changes.
+  useEffect(() => {
+    if (!isNativeApp) return;
+    let cancelled = false;
+    const restoreReminders = async () => {
+      const service = getLocalNotificationService();
+      const config = service.getStoredConfig();
+      if (!config.enabled) return;
+      let permission = await service.checkPermission();
+      if (permission === 'prompt') permission = await service.requestPermission() ? 'granted' : 'denied';
+      if (cancelled || permission !== 'granted') {
+        if (!cancelled) setIsDailyReminderEnabled(false);
+        return;
+      }
+      const result = await service.scheduleDailyReminder(config.hour, config.minute);
+      if (cancelled) return;
+      setIsDailyReminderEnabled(result.success);
+      if (!result.success) setReminderFeedbackMessage(result.message);
+    };
+    void restoreReminders().catch(error => console.warn('Tadbeera reminder restore failed:', error));
+    return () => { cancelled = true; };
+  }, [isNativeApp]);
 
   // Phase 4D: Rewarded Ad Simulation Playback Timer
   useEffect(() => {
@@ -1982,7 +1996,7 @@ export default function App() {
                     </div>
                     <span className="text-xs bg-[#FFB300] text-[#0D47A1] font-black px-2 py-0.5 rounded-lg">ج.م EGP</span>
                   </div>
-                  <OnlineRecipeSearch />
+                  <OnlineRecipeSearch familySize={familySize} />
                   {/* Family Size Scaler Bar */}
                   <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs">
@@ -2334,7 +2348,7 @@ export default function App() {
                       })}
                     </div>
 
-                    <IngredientRecipeFinder availableIngredients={selectedIngredients} />
+                    <IngredientRecipeFinder availableIngredients={selectedIngredients} familySize={familySize} />
 
                     {/* Quick Filters */}
                     <div className="flex flex-wrap gap-2 pt-3 mt-3 border-t border-gray-100 text-[11px]">
