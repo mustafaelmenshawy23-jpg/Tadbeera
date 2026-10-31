@@ -40,5 +40,38 @@ jobs:
       - name: Build web app
         run: npm run build
 
-# Native Android validation and APK packaging are handled by build-apk.yml.
-# Keeping one Android build pipeline avoids duplicate SDK setup and conflicting toolchains.
+  android-native-validation:
+    name: Android Kotlin compile (no APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "21"
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync Capacitor Android project
+        run: npx cap sync android
+
+      - name: Compile Android Kotlin sources (does not package an APK)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:compileDebugKotlin --no-daemon
+
+# APK packaging remains disabled for this pull request until native and device checks are complete.
