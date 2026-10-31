@@ -119,9 +119,9 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         ]);
         return {id:meal.idMeal,title,image:meal.strMealThumb,ingredients:ingredientsText.split('\n').filter(Boolean),matched,total:availableIngredients.length,missing:[],instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`};
       }));
-      const mapped = mappedResults
-        .filter((item): item is PromiseFulfilledResult<Result> => item.status === 'fulfilled')
-        .map(item => item.value);
+      const mapped: Result[] = mappedResults.flatMap(item =>
+        item.status === 'fulfilled' ? [item.value] : [],
+      );
       const localResults: Result[] = local.map((recipe,index)=> {
         const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
         return {id:`local-${index}`,title:recipe.name,ingredients:recipe.terms,isLocal:true,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
