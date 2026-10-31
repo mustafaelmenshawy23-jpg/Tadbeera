@@ -46,6 +46,12 @@ export function scaleMeasure(value: string, familySize: number, baseServings = 4
   return (Math.round(amount * Math.max(1, Math.min(30, Math.round(familySize))) / baseServings * 100) / 100).toString() + ' ' + match[2].trim();
 }
 
+function isArabicContent(value: string): boolean {
+  const arabicLetters = (value.match(/[\u0600-\u06FF]/g) || []).length;
+  const latinLetters = (value.match(/[A-Za-z]/g) || []).length;
+  return arabicLetters > 0 && latinLetters <= Math.max(4, Math.floor(arabicLetters * 0.2));
+}
+
 async function translateToArabic(value: string): Promise<string> {
   if (!value.trim()) return '';
   try {
