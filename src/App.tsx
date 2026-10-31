@@ -638,6 +638,15 @@ export default function App() {
     getLocalNotificationService().getMealReminderSettings()
   );
 
+  // Migrate an already-authorized legacy reminder to the breakfast notification ID.
+  useEffect(() => {
+    const service = getLocalNotificationService();
+    if (!service.getStoredConfig().enabled) return;
+    void service.checkPermission().then(permission => {
+      if (permission === 'granted') void service.scheduleMealReminders(mealReminderSettings);
+    });
+  }, []);
+
   // Notification taps open the food section filtered to the requested meal.
   useEffect(() => {
     if (!isNativeApp) return;
