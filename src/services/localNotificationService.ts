@@ -176,7 +176,16 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
         return { success: false, message: 'لم يتم منح إذن الإشعارات. فعّله من إعدادات الهاتف ثم حاول مرة أخرى.' };
       }
- 
+
+      const notificationsEnabled = await LocalNotifications.areEnabled();
+      if (!notificationsEnabled.value) {
+        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+        return {
+          success: false,
+          message: 'إشعارات تدبيرة مقفولة من إعدادات الهاتف. فعّل إشعارات التطبيق من إعدادات أندرويد ثم ارجع للتطبيق.',
+        };
+      }
+
 
       if (!(await this.ensureExactAlarmPermission())) {
         this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
@@ -194,8 +203,16 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         visibility: 1,
       });
       const channelState = await LocalNotifications.listChannels();
-      if (!(channelState.channels || []).some(channel => channel.id === DAILY_REMINDER_CHANNEL_ID)) {
+      const mealChannel = (channelState.channels || []).find(channel => channel.id === DAILY_REMINDER_CHANNEL_ID);
+      if (!mealChannel) {
         throw new Error('تعذر إنشاء قناة إشعارات تذكيرات الوجبات على الجهاز.');
+      }
+      if (mealChannel.importance === 0) {
+        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+        return {
+          success: false,
+          message: 'قناة تذكيرات تدبيرة مكتومة من إعدادات الهاتف. افتح إعدادات إشعارات التطبيق واسمح لقناة تذكيرات الوجبات.',
+        };
       }
 
       // Remove all three previous IDs before scheduling to avoid duplicate alarms.
@@ -256,7 +273,11 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       const permission = await this.checkPermission();
       if (permission !== 'granted' && !(await this.requestPermission())) {
         return { success: false, message: 'لم تسمح بإشعارات تدبيرة. فعّل إذن الإشعارات من إعدادات الهاتف ثم أعد الاختبار.' };
-      } 
+      }
+      const notificationsEnabled = await LocalNotifications.areEnabled();
+      if (!notificationsEnabled.value) {
+        return { success: false, message: 'إشعارات تدبيرة مقفولة من إعدادات الهاتف. فعّلها ثم أعد الاختبار.' };
+      }
       await LocalNotifications.createChannel({
         id: DAILY_REMINDER_CHANNEL_ID,
         name: 'تذكيرات وجبات تدبيرة',
