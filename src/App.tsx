@@ -3823,7 +3823,6 @@ export default function App() {
                 )}
               </div>
             </div>
-            </div>
 
             <nav className="tadbeera-bottom-nav bg-[#FFFEFA] border-t border-[#E8E0D1] px-1.5 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] grid grid-cols-5 shrink-0 shadow-[0_-5px_20px_rgba(83,75,54,0.06)]" aria-label="التنقل الرئيسي">
               {([
@@ -3976,7 +3975,6 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>
       )}
 
         {/* ---------------- VIEW 2: ANDROID STUDIO CODE INSPECTOR ---------------- */}
