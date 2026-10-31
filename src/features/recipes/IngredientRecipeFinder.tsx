@@ -35,7 +35,7 @@ async function translate(value: string): Promise<string> {
 }
 
 export function scaleMeasure(value: string, familySize: number, baseServings = 4): string {
-  const match = value.match(/^\s*(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)(.*)$/);
+  const match = value.match(/^\s*(\d+\/\d+|\d+(?:\.\d+)?(?:\s+\d+\/\d+)?)(.*)$/);
   if (!match) return value;
   const amount = match[1].trim().split(/\s+/).reduce((total, part) => {
     if (!part.includes('/')) return total + Number(part);
