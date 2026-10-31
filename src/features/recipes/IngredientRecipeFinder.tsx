@@ -128,7 +128,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
     } catch {
       const fallback = local.map((recipe,index)=> {
         const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
-        return {id:`local-${index}`,title:recipe.name,ingredients:[],matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
+        return {id:`local-${index}`,title:recipe.name,ingredients:recipe.terms,isLocal:true,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
       }).filter(item=>item.matched>0).sort((a,b)=>b.matched-a.matched);
       setResults(fallback);
       if (!fallback.length) setError('تعذر الاتصال بمكتبة الوصفات. تحقق من الإنترنت وحاول مرة أخرى.');
