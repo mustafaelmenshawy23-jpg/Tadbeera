@@ -83,7 +83,10 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     if (!this.isPluginAvailable()) return 'unsupported';
     try {
       const status = await LocalNotifications.checkPermissions();
-      if (status.display === 'granted') return 'granted';
+      if (status.display === 'granted') {
+        notificationSettingsOpenedThisSession = false;
+        return 'granted';
+      }
       if (status.display === 'denied') {
         // Some Android 13 devices report "denied" even before the app has
         // actually displayed the runtime prompt. Allow exactly one first-launch
