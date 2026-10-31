@@ -29,12 +29,9 @@ async function translate(value: string): Promise<string> {
     url.search = new URLSearchParams({client:'gtx',sl:'ar',tl:'en',dt:'t',q:value}).toString();
     const response = await fetch(url.toString());
     if (!response.ok) throw new Error('translation-failed');
-    if (!response.ok) throw new Error('translation-failed');
     const data = await response.json();
-    const translated = Array.isArray(data?.[0]) ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('') : '';
-    if (!translated.trim() || !/[\\u0600-\\u06FF]/.test(translated)) throw new Error('arabic-translation-unavailable');
-    return translated;
-  } catch { throw new Error('تعذر ترجمة الوصفة إلى العربية'); }
+    return Array.isArray(data?.[0]) ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('') : value;
+  } catch { return value; }
 }
 
 function scaleMeasure(value: string, familySize: number, baseServings = 4): string {
@@ -42,16 +39,21 @@ function scaleMeasure(value: string, familySize: number, baseServings = 4): stri
   if (!match) return value;
   const amount = match[1].includes('/') ? Number(match[1].split('/')[0]) / Number(match[1].split('/')[1]) : Number(match[1]);
   if (!Number.isFinite(amount) || amount <= 0) return value;
-  return `${Math.round(amount * Math.max(1, Math.min(30, familySize)) / baseServings * 100) / 100} ${match[2].trim()}`.trim();
+  return \`\${Math.round(amount * Math.max(1, Math.min(30, familySize)) / baseServings * 100) / 100} \${match[2].trim()}\`.trim();
 }
+
 async function translateToArabic(value: string): Promise<string> {
+  if (!value.trim()) return '';
   try {
     const url = new URL('https://translate.googleapis.com/translate_a/single');
     url.search = new URLSearchParams({client:'gtx',sl:'en',tl:'ar',dt:'t',q:value.slice(0,4500)}).toString();
     const response = await fetch(url.toString());
+    if (!response.ok) throw new Error('translation-failed');
     const data = await response.json();
-    return Array.isArray(data?.[0]) ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('') : value;
-  } catch { return value; }
+    const translated = Array.isArray(data?.[0]) ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('') : '';
+    if (!translated.trim() || !/[\u0600-\u06FF]/.test(translated)) throw new Error('arabic-translation-unavailable');
+    return translated;
+  } catch { throw new Error('تعذر ترجمة الوصفة إلى العربية'); }
 }
 
 export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }: { availableIngredients: string[]; familySize?: number }) {
@@ -92,13 +94,13 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
           const name = meal[`strIngredient${i+1}`]?.trim() || '';
           const measure = meal[`strMeasure${i+1}`]?.trim() || '';
           return name ? `${scaleMeasure(measure, familySize)} ${name}`.trim() : '';
-        }).filter(Boolean).join('\\n');
+        }).filter(Boolean).join('\n');
         const [title,ingredientsText,instructions] = await Promise.all([
           translateToArabic(meal.strMeal),
           translateToArabic(rawIngredients),
           translateToArabic(raw),
         ]);
-        return {id:meal.idMeal,title,image:meal.strMealThumb,ingredients:ingredientsText.split('\\n').filter(Boolean),matched,total:availableIngredients.length,missing:[],instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`};
+        return {id:meal.idMeal,title,image:meal.strMealThumb,ingredients:ingredientsText.split('\n').filter(Boolean),matched,total:availableIngredients.length,missing:[],instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`};
       }));
       const localResults: Result[] = local.map((recipe,index)=> {
         const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
@@ -112,7 +114,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
     } catch {
       const fallback = local.map((recipe,index)=> {
         const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
-        return {id:`local-${index}`,title:recipe.name,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
+        return {id:`local-${index}`,title:recipe.name,ingredients:[],matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
       }).filter(item=>item.matched>0).sort((a,b)=>b.matched-a.matched);
       setResults(fallback);
       if (!fallback.length) setError('تعذر الاتصال بمكتبة الوصفات. تحقق من الإنترنت وحاول مرة أخرى.');
