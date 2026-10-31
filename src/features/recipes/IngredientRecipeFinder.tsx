@@ -81,7 +81,14 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         const data = await response.json();
         return (Array.isArray(data.meals) ? data.meals : []) as Array<{idMeal:string;strMeal:string;strMealThumb?:string}>;
       }));
-      const ids = [...new Set(ingredientLists.flat().map(meal => meal.idMeal))].slice(0,12);
+      const matchCounts = new Map<string, number>();
+      ingredientLists.forEach(list => list.forEach(meal => {
+        matchCounts.set(meal.idMeal, (matchCounts.get(meal.idMeal) || 0) + 1);
+      }));
+      const ids = [...matchCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([id]) => id);
       const details = await Promise.all(ids.map(async id => {
         const response = await fetch(`${API}/lookup.php?i=${id}`);
         if (!response.ok) return null;
