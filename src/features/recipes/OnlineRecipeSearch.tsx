@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 type OnlineRecipe = {
   title: string;
+  servings: number;
   pageId: number;
   url: string;
   extract: string;
@@ -43,6 +44,7 @@ const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
     terms: ['كبسة', 'kabsa'],
     recipe: {
       title: 'كبسة دجاج',
+      servings: 4,
       pageId: 900001,
       url: 'https://www.themealdb.com/',
       extract: 'المكونات (تكفي 4 أفراد): دجاجة مقطعة، 2 كوب أرز بسمتي، بصلة مفرومة، 2 حبة طماطم، ملعقة معجون طماطم، 2 فص ثوم، لومي، ورق غار، قرفة، حبهان، بهارات كبسة، ملح وفلفل وزيت.\n\nالطريقة: شوّح البصل في الزيت حتى يذبل، ثم أضف الثوم والطماطم ومعجون الطماطم والبهارات. أضف الدجاج والماء واتركه حتى ينضج. ارفع الدجاج وحمّره حسب الرغبة، ثم أضف الأرز المغسول إلى المرق واضبط كمية السائل واتركه على نار هادئة حتى ينضج. قدّم الأرز مع الدجاج.',
@@ -52,6 +54,7 @@ const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
     terms: ['كشري', 'koshari', 'koshary'],
     recipe: {
       title: 'كشري مصري',
+      servings: 4,
       pageId: 900002,
       url: 'https://www.themealdb.com/',
       extract: 'المكونات (4 أفراد): كوب أرز، كوب عدس بجبة، كوب مكرونة صغيرة، نصف كوب شعرية، حمص مسلوق، بصلتان، عصير طماطم، ثوم، خل، كمون، ملح وزيت.\n\nالطريقة: اسلق العدس حتى يقارب النضج، ثم أضف الأرز والشعرية المحمرة والماء والملح حتى ينضجوا. اسلق المكرونة والحمص. حضّر صلصة الطماطم بالثوم والخل والكمون، وحمّر البصل شرائح حتى يصبح مقرمشًا. قدّم الأرز والعدس ثم المكرونة والحمص والصلصة والبصل.',
@@ -61,6 +64,7 @@ const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
     terms: ['ملوخية', 'molokhia'],
     recipe: {
       title: 'ملوخية مصرية',
+      servings: 4,
       pageId: 900003,
       url: 'https://www.themealdb.com/',
       extract: 'المكونات (4 أفراد): نصف كيلو ملوخية مفرومة، 4 أكواب شوربة دجاج أو لحم، 5 فصوص ثوم، ملعقة كزبرة ناشفة، ملعقة سمن، ملح.\n\nالطريقة: سخّن الشوربة حتى الغليان ثم أضف الملوخية وقلّب على نار هادئة دون تركها تغلي بقوة. حمّر الثوم والكزبرة في السمن حتى تظهر الرائحة، ثم أضف التقلية إلى الملوخية وقلّب وقدّمها ساخنة.',
@@ -70,6 +74,7 @@ const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
     terms: ['شكشوكة', 'shakshuka'],
     recipe: {
       title: 'شكشوكة بالبيض',
+      servings: 2,
       pageId: 900004,
       url: 'https://www.themealdb.com/',
       extract: 'المكونات (2 أفراد): 4 بيضات، 2 طماطم، فلفلة، بصلة صغيرة، فص ثوم، ملح، فلفل، كمون وملعقة زيت.\n\nالطريقة: شوّح البصل والفلفل في الزيت، ثم أضف الثوم والطماطم والتوابل واترك الخليط حتى يتسبك. اصنع فراغات صغيرة واكسر البيض فيها، غطِّ المقلاة حتى ينضج البيض حسب الرغبة.',
@@ -79,6 +84,7 @@ const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
     terms: ['طعمية', 'فلافل', 'falafel'],
     recipe: {
       title: 'طعمية مصرية',
+      servings: 4,
       pageId: 900005,
       url: 'https://www.themealdb.com/',
       extract: 'المكونات: 500 جم فول مدشوش منقوع، بصلة، حزمة بقدونس، حزمة كزبرة خضراء، شبت، 4 فصوص ثوم، كمون، كزبرة ناشفة، ملح وسمسم.\n\nالطريقة: صفِّ الفول وافرمه مع البصل والخضرة والثوم. أضف التوابل واخلط حتى تتماسك العجينة. شكّل أقراصًا، زيّن بالسمسم واقلِ في زيت ساخن حتى تصبح ذهبية. تُطهى جيدًا من الداخل.',
@@ -88,6 +94,7 @@ const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
     terms: ['مكرونة بشاميل', 'بشاميل', 'macaroni bechamel'],
     recipe: {
       title: 'مكرونة بالبشاميل',
+      servings: 4,
       pageId: 900006,
       url: 'https://www.themealdb.com/',
       extract: 'المكونات (4 أفراد): نصف كيلو مكرونة قلم، 300 جم لحم مفروم، بصلة، 3 ملاعق دقيق، 3 ملاعق زبدة، 3 أكواب حليب، ملح وفلفل وجوزة الطيب.\n\nالطريقة: اسلق المكرونة نصف سلقة. شوّح البصل واللحم وتبّله. حضّر البشاميل بتحمير الدقيق في الزبدة ثم أضف الحليب تدريجيًا مع التقليب. ضع طبقة بشاميل ثم المكرونة واللحم وباقي البشاميل، واخبز حتى يحمر الوجه.',
@@ -106,6 +113,18 @@ function readSaved(): OnlineRecipe[] {
 
 function normalize(value: string): string {
   return value.toLocaleLowerCase('ar').replace(/[\u064B-\u065F\u0670]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').trim();
+}
+
+function scaleArabicRecipeExtract(extract: string, baseServings: number, familySize: number): string {
+  const ratio = Math.max(1, Math.min(30, Math.round(familySize))) / Math.max(1, baseServings);
+  const splitAt = extract.indexOf('الطريقة:');
+  const ingredients = splitAt >= 0 ? extract.slice(0, splitAt) : extract;
+  const method = splitAt >= 0 ? extract.slice(splitAt) : '';
+  const scaledIngredients = ingredients.replace(/\d+(?:\.\d+)?/g, value => {
+    const scaled = Math.round(Number(value) * ratio * 100) / 100;
+    return String(scaled);
+  });
+  return `${scaledIngredients}${method}`;
 }
 
 function hasArabic(value: string): boolean {
@@ -138,8 +157,10 @@ async function translateText(value: string, source: 'ar' | 'en', target: 'ar' | 
         ? data[0].map((part: unknown[]) => typeof part?.[0] === 'string' ? part[0] : '').join('')
         : '';
       if (!output.trim()) throw new Error('empty-translation');
+      if (target === 'ar' && !hasArabic(output)) throw new Error('arabic-translation-unavailable');
       translated.push(output);
-    } catch {
+    } catch (error) {
+      if (target === 'ar') throw error;
       translated.push(chunk);
     }
   }
@@ -152,12 +173,22 @@ async function getEnglishSearchTerm(term: string): Promise<string> {
   return known || (hasArabic(term) ? await translateText(term, 'ar', 'en') : term);
 }
 
-async function mapMeal(meal: MealDbMeal): Promise<OnlineRecipe> {
+function scaleMeasure(measure: string, familySize: number, baseServings = 4): string {
+  const ratio = Math.max(1, Math.min(30, Math.round(familySize))) / baseServings;
+  const match = measure.match(/^\\s*(\\d+(?:\\.\\d+)?|\\d+\\/\\d+)(.*)$/);
+  if (!match) return measure;
+  const token = match[1];
+  const amount = token.includes('/') ? Number(token.split('/')[0]) / Number(token.split('/')[1]) : Number(token);
+  if (!Number.isFinite(amount) || amount <= 0) return measure;
+  return `${Math.round(amount * ratio * 100) / 100} ${match[2].trim()}`.trim();
+}
+
+async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineRecipe> {
   const ingredients: string[] = [];
   for (let index = 1; index <= 20; index += 1) {
     const ingredient = meal[`strIngredient${index}`]?.trim();
     const measure = meal[`strMeasure${index}`]?.trim();
-    if (ingredient) ingredients.push(`• ${ingredient}${measure ? ` — ${measure}` : ''}`);
+    if (ingredient) ingredients.push(`• ${ingredient}${measure ? ` — ${scaleMeasure(measure, familySize)}` : ''}`);
   }
   const instructions = (meal.strInstructions || '').replace(/\r/g, '').trim();
   const rawExtract = `${ingredients.length ? `المكونات:\\n${ingredients.join('\\n')}\\n\\n` : ''}طريقة التحضير:\\n${instructions || 'راجع صفحة المصدر للتعليمات.'}`;
@@ -165,8 +196,10 @@ async function mapMeal(meal: MealDbMeal): Promise<OnlineRecipe> {
     translateText(meal.strMeal, 'en', 'ar'),
     translateText(rawExtract, 'en', 'ar'),
   ]);
+  if (!hasArabic(arabicTitle) || !hasArabic(arabicExtract)) throw new Error('تعذر تجهيز الوصفة باللغة العربية.');
   return {
-    title: arabicTitle || meal.strMeal,
+    title: arabicTitle,
+    servings: Math.max(1, Math.min(30, Math.round(familySize))),
     pageId: Number(meal.idMeal),
     url: meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`,
     imageUrl: meal.strMealThumb,
@@ -176,7 +209,7 @@ async function mapMeal(meal: MealDbMeal): Promise<OnlineRecipe> {
   };
 }
 
-export function OnlineRecipeSearch() {
+export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<OnlineRecipe[]>([]);
   const [selected, setSelected] = useState<OnlineRecipe | null>(null);
@@ -207,12 +240,13 @@ export function OnlineRecipeSearch() {
       if (!mealResponse.ok) throw new Error('meal-service');
       const mealData = await mealResponse.json();
       const meals = (Array.isArray(mealData.meals) ? mealData.meals : []) as MealDbMeal[];
-      let mapped = await Promise.all(meals.map(mapMeal));
+      const mappedResults = await Promise.allSettled(meals.map(meal => mapMeal(meal, familySize)));
+      let mapped = mappedResults.filter((item): item is PromiseFulfilledResult<OnlineRecipe> => item.status === 'fulfilled').map(item => item.value);
 
       if (!mapped.length) {
         const localMatches = LOCAL_RECIPES.filter(item =>
           item.terms.some(alias => normalize(alias) === normalize(term) || normalize(alias) === normalize(englishTerm))
-        ).map(item => item.recipe);
+        ).map(item => ({ ...item.recipe, servings: familySize, extract: scaleArabicRecipeExtract(item.recipe.extract, item.recipe.servings, familySize) }));
         mapped = localMatches;
       }
 
@@ -241,21 +275,30 @@ export function OnlineRecipeSearch() {
             const pageResponse = await fetch(pageUrl.toString());
             if (pageResponse.ok) {
               const pageData = await pageResponse.json();
-              mapped = (Object.values(pageData.query?.pages || {}) as Array<{ pageid: number; title: string; extract?: string }>)
-                .filter(page => (page.extract || '').trim().length > 40)
-                .map(page => ({
-                  title: page.title.replace(/^Cookbook:/i, '').replace(/_/g, ' '),
+              const wikiPages = (Object.values(pageData.query?.pages || {}) as Array<{ pageid: number; title: string; extract?: string }>)
+                .filter(page => (page.extract || '').trim().length > 40);
+              const translatedPages = await Promise.allSettled(wikiPages.map(async page => {
+                const [title, extract] = await Promise.all([
+                  translateText(page.title.replace(/^Cookbook:/i, '').replace(/_/g, ' '), 'en', 'ar'),
+                  translateText((page.extract || '').trim(), 'en', 'ar'),
+                ]);
+                if (!hasArabic(title) || !hasArabic(extract)) throw new Error('تعذر ترجمة الوصفة إلى العربية.');
+                return {
+                  title,
+                  servings: Math.max(1, Math.min(30, Math.round(familySize))),
                   pageId: page.pageid,
                   url: `https://en.wikibooks.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
-                  extract: (page.extract || '').trim(),
-                }));
+                  extract: `المقادير محسوبة لـ ${familySize} أفراد تقريبًا.\n\n${extract}`,
+                };
+              }));
+              mapped = translatedPages.filter((item): item is PromiseFulfilledResult<OnlineRecipe> => item.status === 'fulfilled').map(item => item.value);
             }
           }
         }
       }
 
       if (!mapped.length) {
-        setError('ملقيناش وصفة مطابقة في المكتبات المجانية حاليًا. جرّب اسمًا أوضح أو اسم الأكلة بالإنجليزي، وتأكد من اتصال الإنترنت.');
+        setError('ملقيناش وصفة عربية مطابقة حاليًا. جرّب اسم أكلة تانية أو استخدم الوصفات المصرية الجاهزة. مش هنعرض وصفة بالإنجليزي.');
         return;
       }
 
@@ -265,7 +308,7 @@ export function OnlineRecipeSearch() {
       const englishTerm = await getEnglishSearchTerm(term);
       const localMatches = LOCAL_RECIPES.filter(item =>
         item.terms.some(alias => normalize(alias) === normalize(term) || normalize(alias) === normalize(englishTerm))
-      ).map(item => item.recipe);
+      ).map(item => ({ ...item.recipe, servings: familySize, extract: scaleArabicRecipeExtract(item.recipe.extract, item.recipe.servings, familySize) }));
       if (localMatches.length) {
         setResults(localMatches);
         setSelected(localMatches[0]);
@@ -288,7 +331,7 @@ export function OnlineRecipeSearch() {
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-black text-gray-900">🌍 ابحث عن وصفة من العالم</h3>
-          <p className="text-[10px] text-gray-500 mt-1">بحث مجاني بالعربي والإنجليزي — بدون اشتراك أو مفتاح مدفوع</p>
+          <p className="text-[10px] text-gray-500 mt-1">بحث بالعربي أو الإنجليزي، والوصفة بتظهر بالعربي ومقاديرها محسوبة لأسرتك ({familySize} أفراد).</p>
         </div>
         <button type="button" onClick={() => { setShowSaved(value => !value); setSelected(null); }}
           className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">
@@ -327,6 +370,7 @@ export function OnlineRecipeSearch() {
           {selected.imageUrl && <img src={selected.imageUrl} alt={selected.title} loading="lazy" className="max-h-56 w-full object-cover" />}
           <div className="space-y-3 p-3">
             <h4 className="text-base font-black text-gray-900">{selected.title}</h4>
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-800">المقادير محسوبة لـ {familySize} أفراد</p>
             <p className="whitespace-pre-wrap break-words text-xs leading-7 text-gray-700">{selected.extract}</p>
             {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit || 'TheMealDB'} — {selected.imageLicense || 'راجع المصدر الأصلي'}</p>}
             <div className="flex flex-wrap gap-2">
