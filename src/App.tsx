@@ -744,6 +744,7 @@ export default function App() {
 
   const handleReminderTimeChange = async (value: string) => {
     setReminderTime(value);
+    try { localStorage.setItem('tedbeera_phase4d_reminder_time', value); } catch {}
     if (!isDailyReminderEnabled || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return;
     const [hour, minute] = value.split(':').map(Number);
     const res = await getLocalNotificationService().scheduleDailyReminder(hour, minute);
@@ -1606,7 +1607,8 @@ export default function App() {
       triedTipIds,
       paydayDay,
       weeklyPlanUnlocked: isWeeklyPlanUnlocked,
-      reminderEnabled: isDailyReminderEnabled
+      reminderEnabled: isDailyReminderEnabled,
+      reminderTime
     };
 
     try {
@@ -1709,6 +1711,7 @@ export default function App() {
       setPaydayDay(preRestoreSnapshot.paydayDay);
       setIsWeeklyPlanUnlocked(preRestoreSnapshot.weeklyPlanUnlocked);
       setIsDailyReminderEnabled(preRestoreSnapshot.reminderEnabled);
+      setReminderTime(preRestoreSnapshot.reminderTime);
 
       setPendingRestoreData(null);
       setIsRestoreConfirmModalOpen(false);
