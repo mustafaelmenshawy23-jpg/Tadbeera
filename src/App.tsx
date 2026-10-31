@@ -4082,11 +4082,11 @@ export default function App() {
                   <FlaskConical className="w-5 h-5 text-[#FFB300]" />
                   <span>نتائج الاختبارات الآلية (Unit Tests)</span>
                 </h2>
-                <p className="text-xs text-gray-500 mt-1">اختبارات شاملة لمنع NaN، سلامة الميزانية 100%، استقرار AdMob، مشاركة واتساب، فلتر اطبخ باللي عندي، النسخ الاحتياطي، التحليلات، موعد الراتب، الصوت، التدابير، وإعلانات المكافأة والإشعارات المحلية.</p>
+                <p className="text-xs text-gray-500 mt-1">هذه الشاشة تعرض مجالات الفحص؛ لا تُعد النتائج ناجحة إلا بعد تشغيل الاختبارات والتحقق من مخرجات البناء.</p>
               </div>
               <span className="bg-emerald-100 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full flex items-center gap-1">
                 <Check className="w-3.5 h-3.5" />
-                <span>14/14 اختبارات ناجحة 100%</span>
+                <span>بانتظار تشغيل الاختبارات الفعلية</span>
               </span>
             </div>
 
@@ -4982,7 +4982,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
-                  showToast('🔔 تجربة إشعار تدبيرة اليوم (11:00 ص): "تفقدي النواقص قبل نزول السوق لتجنب مصاريف إضافية!"');
+                  showToast('🔔 مواعيد تدبيرة: الفطار 08:00، الغداء 13:00، العشاء 19:00. المعاينة لا ترسل إشعارًا فعليًا.');
                 }}
                 className="w-full text-center bg-gray-50 hover:bg-gray-100 text-gray-700 py-1.5 rounded-lg text-[10px] font-bold border border-gray-200 transition"
               >
