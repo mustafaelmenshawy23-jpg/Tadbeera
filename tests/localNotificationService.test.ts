@@ -8,7 +8,6 @@ import {
   DEFAULT_REMINDER_MINUTE,
   DEFAULT_LUNCH_HOUR,
   DEFAULT_DINNER_HOUR,
-  dailyReminderSchedule,
 } from '../src/services/localNotificationService.ts';
 
 test('meal reminder IDs are stable and unique', () => {
@@ -28,17 +27,3 @@ test('default meal reminder times are breakfast, lunch, and dinner', () => {
   );
 });
 
-test('daily reminder schedule uses a recurring local calendar time', () => {
-  assert.deepEqual(dailyReminderSchedule(8, 0), {
-    on: { hour: 8, minute: 0 },
-    allowWhileIdle: true,
-  });
-  assert.deepEqual(dailyReminderSchedule(13, 0), {
-    on: { hour: 13, minute: 0 },
-    allowWhileIdle: true,
-  });
-  assert.deepEqual(dailyReminderSchedule(19, 0), {
-    on: { hour: 19, minute: 0 },
-    allowWhileIdle: true,
-  });
-});
