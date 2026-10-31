@@ -112,7 +112,10 @@ import {
   DAILY_REMINDER_NOTIFICATION_ID,
   DEFAULT_REMINDER_HOUR,
   DEFAULT_REMINDER_MINUTE,
-  REMINDER_TIME_KEY
+  REMINDER_TIME_KEY,
+  MEAL_REMINDERS_STORAGE_KEY,
+  type MealReminderType,
+  type MealReminderSettings
 } from './services/localNotificationService';
 import {
   WEEKLY_DAYS_SCHEDULE,
@@ -631,6 +634,34 @@ export default function App() {
     }
   });
   const [reminderFeedbackMessage, setReminderFeedbackMessage] = useState<string | null>(null);
+  const [mealReminderSettings, setMealReminderSettings] = useState<MealReminderSettings>(() =>
+    getLocalNotificationService().getMealReminderSettings()
+  );
+
+  // Notification taps open the food section filtered to the requested meal.
+  useEffect(() => {
+    if (!isNativeApp) return;
+    const plugin = (window as any).Capacitor?.Plugins?.LocalNotifications;
+    if (!plugin?.addListener) return;
+    let listener: any;
+    void plugin.addListener('localNotificationActionPerformed', (event: any) => {
+      const meal = event?.notification?.extra?.mealType as MealReminderType | undefined;
+      if (meal && ['breakfast', 'lunch', 'dinner'].includes(meal)) {
+        setActiveTab('food');
+        setMealFilter(meal);
+        setSelectedRecipeModal(null);
+      }
+    }).then((handle: any) => { listener = handle; });
+    return () => { void listener?.remove?.(); };
+  }, [isNativeApp]);
+
+  const handleMealReminderChange = async (meal: MealReminderType, patch: Partial<MealReminderSettings[MealReminderType]>) => {
+    const next = { ...mealReminderSettings, [meal]: { ...mealReminderSettings[meal], ...patch } };
+    setMealReminderSettings(next);
+    const result = await getLocalNotificationService().scheduleMealReminders(next);
+    setReminderFeedbackMessage(result.message);
+    showToast(result.message);
+  };
 
   // Phase 4D: Rewarded Ad Simulation Playback Timer
   useEffect(() => {
@@ -4968,60 +4999,40 @@ export default function App() {
               </label>
             </div>
 
-            {/* Phase 4D: Local Notifications Daily Savings Reminder */}
-            <div className="space-y-2 pt-2 border-t border-gray-100">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                  <Bell className="w-3.5 h-3.5 text-[#0D47A1]" />
-                  <span>تذكير تدبيرة اليوم:</span>
-                </span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isDailyReminderEnabled}
-                    onChange={(e) => handleToggleReminder(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0D47A1]"></div>
-                </label>
+            {/* Daily meal notifications */}
+            <div className="space-y-3 pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-700">
+                <Bell className="w-3.5 h-3.5 text-[#0D47A1]" />
+                <span>تنبيهات وجبات تدبيرة</span>
               </div>
-
-              <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100 text-[11px] text-gray-600 space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 font-bold text-[#0D47A1]">
-                    <span>وقت التذكير اليومي:</span>
-                    <input
-                      type="time"
-                      value={reminderTime}
-                      onChange={(e) => handleReminderTimeChange(e.target.value)}
-                      className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs text-gray-800"
-                      aria-label="وقت التذكير اليومي"
-                    />
-                  </label>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${isDailyReminderEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>
-                    {isDailyReminderEnabled ? 'مفعل ✓' : 'معطل'}
-                  </span>
+              <p className="text-[10px] text-gray-500">فعّل كل تنبيه لوحده وحدد الوقت المناسب. التنبيهات محلية وتعمل بدون إنترنت.</p>
+              {([
+                { key: 'breakfast', label: 'الفطار 🍳', message: 'صباح الخير 🌞 افتح تدبيرة وشوف فطار النهارده!' },
+                { key: 'lunch', label: 'الغدا 🍲', message: 'وقت الغدا 🍲 شوف اقتراح وجبة النهارده من تدبيرة.' },
+                { key: 'dinner', label: 'العشا 🌙', message: 'مساء الخير 🌙 لسه محتار هتتعشى إيه؟ افتح تدبيرة.' }
+              ] as { key: MealReminderType; label: string; message: string }[]).map(item => (
+                <div key={item.key} className="rounded-xl border border-amber-100 bg-amber-50/50 p-2.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-800">{item.label}</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" checked={mealReminderSettings[item.key].enabled}
+                        onChange={e => handleMealReminderChange(item.key, { enabled: e.target.checked })}
+                        className="sr-only peer" />
+                      <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-[#0D47A1] after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-gray-600">{item.message}</span>
+                    <input type="time" value={mealReminderSettings[item.key].time}
+                      onChange={e => handleMealReminderChange(item.key, { time: e.target.value })}
+                      aria-label={`موعد ${item.label}`}
+                      className="shrink-0 rounded-lg border border-amber-200 bg-white px-2 py-1 text-xs text-gray-800" />
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-500">{mealReminderSettings[item.key].enabled ? 'مفعل' : 'متوقف'}</span>
                 </div>
-                <p className="text-[10px] text-gray-500 leading-relaxed">
-                  "راجع نواقص البيت قبل نزول السوق لتجنب مصاريف إضافية!"
-                </p>
-                <p className="text-[10px] text-blue-900 font-medium">
-                  التذكيرات اليومية متاحة عند تشغيل التطبيق في نسخة تدعم إشعارات الجهاز.
-                </p>
-                {reminderFeedbackMessage && (
-                  <p role="status" className="text-[10px] text-gray-700">{reminderFeedbackMessage}</p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  showToast('🔔 تجربة إشعار تدبيرة اليوم (11:00 ص): "تفقدي النواقص قبل نزول السوق لتجنب مصاريف إضافية!"');
-                }}
-                className="w-full text-center bg-gray-50 hover:bg-gray-100 text-gray-700 py-1.5 rounded-lg text-[10px] font-bold border border-gray-200 transition"
-              >
-                معاينة نص الإشعار 🔔
-              </button>
+              ))}
+              <p className="text-[10px] text-gray-500">الفطار 8:00 ص • الغدا 2:00 ظ • العشا 8:00 م (قابلة للتغيير).</p>
+              {reminderFeedbackMessage && <p role="status" className="text-[10px] text-gray-700">{reminderFeedbackMessage}</p>}
             </div>
 
             {/* Safe Data Clear Options */}
