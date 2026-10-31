@@ -110,7 +110,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         const rawIngredients = Array.from({length:20},(_,i) => {
           const name = meal[`strIngredient${i+1}`]?.trim() || '';
           const measure = meal[`strMeasure${i+1}`]?.trim() || '';
-          return name ? `${scaleMeasure(measure, familySize)} ${name}`.trim() : '';
+          return name ? `${measure} ${name}`.trim() : '';
         }).filter(Boolean).join('\n');
         const [title,ingredientsText,instructions] = await Promise.all([
           translateToArabic(meal.strMeal),
@@ -156,7 +156,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
     </button>)}</div>}
     {selected && <article className="rounded-xl border bg-white p-3 space-y-2">
       {selected.image && <img src={selected.image} alt={selected.title} loading="lazy" className="max-h-48 w-full rounded-lg object-cover"/>}
-      <h4 className="text-sm font-black">{selected.title}</h4>{selected.ingredients.length > 0 && <div className="space-y-1"><b className="text-xs">{selected.isLocal ? 'المكونات الأساسية' : `المكونات لـ ${familySize} أفراد`}</b><ul className="list-disc pr-5 text-xs leading-6">{selected.ingredients.map((item,index)=><li key={index}>{item}</li>)}</ul></div>}<b className="text-xs">طريقة التحضير</b><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
+      <h4 className="text-sm font-black">{selected.title}</h4>{selected.ingredients.length > 0 && <div className="space-y-1"><b className="text-xs">{selected.isLocal ? 'المكونات الأساسية' : `المكونات لـ ${familySize} أفراد`}</b><ul className="list-disc pr-5 text-xs leading-6">{selected.ingredients.map((item,index)=><li key={index}>{scaleMeasure(item, familySize)}</li>)}</ul></div>}<b className="text-xs">طريقة التحضير</b><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
       <a href={selected.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-700 underline">المصدر الأصلي</a>
     </article>}
   </section>;
