@@ -82,8 +82,12 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         return alreadyRequested ? 'denied' : 'prompt';
       }
       return 'prompt';
-    } catch {
-      return 'unsupported';
+    } catch (error) {
+      // A transient bridge/checkPermissions failure must not suppress the first
+      // Android runtime permission request. The caller will attempt the native
+      // request once; requestPermission() remains the authoritative result.
+      console.warn('Tadbeera notification permission check failed; attempting request:', error);
+      return 'prompt';
     }
   }
 
@@ -99,7 +103,8 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         // Permission state remains authoritative if local storage is unavailable.
       }
       return result.display === 'granted';
-    } catch {
+    } catch (error) {
+      console.warn('Tadbeera notification permission request failed:', error);
       return false;
     }
   }
