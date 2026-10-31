@@ -33,6 +33,7 @@ export interface LocalNotificationService {
   requestPermission(): Promise<boolean>;
   scheduleDailyReminder(hour?: number, minute?: number): Promise<{ success: boolean; message: string }>;
   cancelDailyReminder(): Promise<{ success: boolean; message: string }>;
+  sendTestNotification(): Promise<{ success: boolean; message: string }>;
   getStoredConfig(): LocalReminderConfig;
   saveStoredConfig(config: Partial<LocalReminderConfig>): void;
 }
@@ -168,6 +169,41 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       return {
         success: false,
         message: error instanceof Error ? error.message : 'تعذر جدولة تذكيرات الوجبات على الجهاز.',
+      };
+    }
+  }
+
+  async sendTestNotification(): Promise<{ success: boolean; message: string }> {
+    if (!this.isPluginAvailable()) {
+      return { success: false, message: 'الإشعارات غير متاحة: افتح نسخة Android المحدّثة من تدبيرة.' };
+    }
+    try {
+      const permission = await this.checkPermission();
+      if (permission !== 'granted' && !(await this.requestPermission())) {
+        return { success: false, message: 'لم تسمح بإشعارات تدبيرة. فعّل إذن الإشعارات من إعدادات الهاتف ثم أعد الاختبار.' };
+      }
+      await LocalNotifications.createChannel({
+        id: DAILY_REMINDER_CHANNEL_ID,
+        name: 'تذكيرات وجبات تدبيرة',
+        description: 'تذكيرات الفطار والغداء والعشاء',
+        importance: 4,
+        visibility: 1,
+      });
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: 104,
+          title: 'تدبيرة جاهزة! 🔔',
+          body: 'اختبار الإشعارات ناجح. هنفكّرك بمواعيد وجبات البيت.',
+          schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true },
+          channelId: DAILY_REMINDER_CHANNEL_ID,
+          extra: { source: 'tadbeera_notification_test' },
+        }],
+      });
+      return { success: true, message: 'تم إرسال اختبار الإشعار. انتظر 5 ثوانٍ وتأكد من ظهوره أعلى الجهاز.' };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? `فشل اختبار الإشعار: ${error.message}` : 'تعذر إرسال إشعار الاختبار على الجهاز.',
       };
     }
   }
