@@ -120,7 +120,7 @@ function scaleArabicRecipeExtract(extract: string, baseServings: number, familyS
   const splitAt = extract.indexOf('الطريقة:');
   const ingredients = splitAt >= 0 ? extract.slice(0, splitAt) : extract;
   const method = splitAt >= 0 ? extract.slice(splitAt) : '';
-  const scaledIngredients = ingredients.replace(/\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+/g, value => {
+  const scaledIngredients = ingredients.replace(/\d+\/\d+|\d+(?:\.\d+)?(?:\s+\d+\/\d+)?/g, value => {
     const amount = value.trim().split(/\s+/).reduce((total, part) => {
       if (!part.includes('/')) return total + Number(part);
       const [numerator, denominator] = part.split('/').map(Number);
@@ -195,7 +195,7 @@ async function getEnglishSearchTerm(term: string): Promise<string> {
 }
 
 export function scaleMeasure(measure: string, familySize: number, baseServings = 4): string {
-  const match = measure.match(/^\s*(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)(.*)$/);
+  const match = measure.match(/^\s*(\d+\/\d+|\d+(?:\.\d+)?(?:\s+\d+\/\d+)?)(.*)$/);
   if (!match) return measure;
   const amount = match[1].trim().split(/\s+/).reduce((total, part) => {
     if (!part.includes('/')) return total + Number(part);
