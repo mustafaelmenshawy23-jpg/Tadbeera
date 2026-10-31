@@ -24,7 +24,6 @@ export const REMINDER_STORAGE_KEY = 'tedbeera_phase4d_reminder_enabled';
 export const REMINDER_TIME_KEY = 'tedbeera_phase4d_reminder_time';
 // Distinguish a first-time Android permission request from a permission the user already declined.
 const NOTIFICATION_PERMISSION_REQUESTED_KEY = 'tedbeera_notification_permission_requested';
-const EXACT_ALARM_SETTINGS_REQUESTED_KEY = 'tedbeera_exact_alarm_settings_requested';
 let exactAlarmSettingsOpenedThisSession = false;
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'prompt' | 'unsupported';
@@ -123,28 +122,19 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     // The manifest declaration alone does not grant exact-alarm access on Android 12+.
     const current = await LocalNotifications.checkExactNotificationSetting();
     if (current.exact_alarm === 'granted') {
-      try { localStorage.removeItem(EXACT_ALARM_SETTINGS_REQUESTED_KEY); } catch {}
       exactAlarmSettingsOpenedThisSession = false;
       return true;
     }
 
-    let alreadyRequested = exactAlarmSettingsOpenedThisSession;
-    try {
-      alreadyRequested = alreadyRequested ||
-        localStorage.getItem(EXACT_ALARM_SETTINGS_REQUESTED_KEY) === 'true';
-    } catch {}
-
-    // Open the Android system "Alarms & reminders" settings once. The app
-    // retries scheduling when it returns to the foreground.
-    if (!alreadyRequested) {
+    // Open the Android system "Alarms & reminders" settings at most once
+    // per app session. The app retries scheduling when it returns to foreground.
+    if (!exactAlarmSettingsOpenedThisSession) {
       exactAlarmSettingsOpenedThisSession = true;
-      try { localStorage.setItem(EXACT_ALARM_SETTINGS_REQUESTED_KEY, 'true'); } catch {}
       await LocalNotifications.changeExactNotificationSetting();
     }
 
     const refreshed = await LocalNotifications.checkExactNotificationSetting();
     if (refreshed.exact_alarm === 'granted') {
-      try { localStorage.removeItem(EXACT_ALARM_SETTINGS_REQUESTED_KEY); } catch {}
       exactAlarmSettingsOpenedThisSession = false;
       return true;
     }
