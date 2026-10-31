@@ -173,7 +173,7 @@ async function getEnglishSearchTerm(term: string): Promise<string> {
   return known || (hasArabic(term) ? await translateText(term, 'ar', 'en') : term);
 }
 
-function scaleMeasure(measure: string, familySize: number, baseServings = 4): string {
+export function scaleMeasure(measure: string, familySize: number, baseServings = 4): string {
   const ratio = Math.max(1, Math.min(30, Math.round(familySize))) / baseServings;
   const match = measure.match(/^\s*(\d+(?:\.\d+)?|\d+\/\d+)(.*)$/);
   if (!match) return measure;
