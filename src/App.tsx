@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import {
   Utensils,
   Wallet,
@@ -282,6 +283,47 @@ function renderCategoryIcon(iconName?: string, className = "w-4 h-4") {
 
 export default function App() {
   const isNativeApp = Capacitor.isNativePlatform();
+
+  // Acknowledge the current bundle promptly so Capgo can safely roll back a broken OTA release.
+  useEffect(() => {
+    if (!isNativeApp) return;
+    void CapacitorUpdater.notifyAppReady().catch((error) => {
+      console.warn('Tadbeera live-update readiness check failed:', error);
+    });
+  }, [isNativeApp]);
+
+  // Ask for the two permissions once, on the first native app launch.
+  useEffect(() => {
+    if (!isNativeApp) return;
+    const onboardingKey = 'tedbeera_first_launch_permissions_v1';
+    try {
+      if (localStorage.getItem(onboardingKey) === 'completed') return;
+    } catch {}
+
+    let cancelled = false;
+    const requestFirstLaunchPermissions = async () => {
+      try {
+        const notificationService = getLocalNotificationService();
+        const notificationStatus = await notificationService.checkPermission();
+        if (!cancelled && notificationStatus !== 'granted' && notificationStatus !== 'unsupported') {
+          await notificationService.requestPermission();
+        }
+        if (cancelled) return;
+        const microphoneResult = await microphonePermission.request();
+        if (!microphoneResult.granted) {
+          console.info('Tadbeera microphone permission was not granted. Voice input remains available after enabling it in Android settings.');
+        }
+      } catch (error) {
+        console.warn('Tadbeera first-launch permission request was incomplete:', error);
+      } finally {
+        if (!cancelled) {
+          try { localStorage.setItem(onboardingKey, 'completed'); } catch {}
+        }
+      }
+    };
+    void requestFirstLaunchPermissions();
+    return () => { cancelled = true; };
+  }, [isNativeApp]);
   const [viewMode, setViewMode] = useState<ViewMode>('emulator');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [savedSubTab, setSavedSubTab] = useState<SavedSubTab>('shopping');
