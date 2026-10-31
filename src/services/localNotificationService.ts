@@ -124,6 +124,14 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     }
 
     try {
+      const plugin = (window as any).Capacitor?.Plugins?.LocalNotifications;
+      const enabledMeals = meals.filter(meal => settings[meal].enabled);
+      if (!enabledMeals.length) {
+        await plugin.cancel({ notifications: [DAILY_REMINDER_NOTIFICATION_ID, ...meals.map(meal => MEALS[meal].id)].map(id => ({ id })) });
+        this.saveMealReminderSettings(settings);
+        this.saveStoredConfig({ enabled: false });
+        return { success: true, message: 'تم إيقاف كل تنبيهات الوجبات.' };
+      }
       let permission = await this.checkPermission();
       if (permission !== 'granted') {
         const granted = await this.requestPermission();
