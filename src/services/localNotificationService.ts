@@ -182,6 +182,15 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       if (permission !== 'granted' && !(await this.requestPermission())) {
         return { success: false, message: 'لم تسمح بإشعارات تدبيرة. فعّل إذن الإشعارات من إعدادات الهاتف ثم أعد الاختبار.' };
       }
+      if (Capacitor.getPlatform() === 'android') {
+        let exactSetting = await LocalNotifications.checkExactNotificationSetting();
+        if (exactSetting.exact_alarm !== 'granted') {
+          exactSetting = await LocalNotifications.changeExactNotificationSetting();
+        }
+        if (exactSetting.exact_alarm !== 'granted') {
+          return { success: false, message: 'اسمح لتدبيرة باستخدام المنبهات والتذكيرات من إعدادات Android حتى نختبر وصول الإشعار في موعده.' };
+        }
+      }
       await LocalNotifications.createChannel({
         id: DAILY_REMINDER_CHANNEL_ID,
         name: 'تذكيرات وجبات تدبيرة',
