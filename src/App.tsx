@@ -2348,7 +2348,7 @@ export default function App() {
                       })}
                     </div>
 
-                    <IngredientRecipeFinder availableIngredients={selectedIngredients} />
+                    <IngredientRecipeFinder availableIngredients={selectedIngredients} familySize={familySize} />
 
                     {/* Quick Filters */}
                     <div className="flex flex-wrap gap-2 pt-3 mt-3 border-t border-gray-100 text-[11px]">
