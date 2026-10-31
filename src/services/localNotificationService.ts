@@ -7,6 +7,21 @@ interface NotificationPermissionPlugin {
 
 const NotificationPermission = registerPlugin<NotificationPermissionPlugin>('NotificationPermission');
 
+interface MealReminderSchedulerPlugin {
+  scheduleDailyReminders(options: {
+    breakfastHour: number;
+    breakfastMinute: number;
+    lunchHour: number;
+    lunchMinute: number;
+    dinnerHour: number;
+    dinnerMinute: number;
+  }): Promise<{ success: boolean; scheduledIds: number[] }>;
+  getScheduledReminders(): Promise<{ scheduledIds: number[] }>;
+  cancelDailyReminders(): Promise<{ success: boolean }>;
+}
+
+const MealReminderScheduler = registerPlugin<MealReminderSchedulerPlugin>('MealReminderScheduler');
+
 /**
  * Native daily meal reminders for Tadbeera.
  * Three stable IDs make scheduling idempotent and allow independent cancellation.
@@ -53,21 +68,12 @@ const MEAL_REMINDERS = [
   { id: DINNER_REMINDER_ID, label: 'العشاء', title: 'مساء الخير من تدبيرة 🌙', body: 'جهّز عشاء بسيط وراجع نواقص البيت لبكرة.' },
 ] as const;
 
-export function dailyReminderSchedule(hour: number, minute: number) {
-  // Android's Local Notifications plugin uses setRepeating() for { at, repeats: true }.
-  // That repeat interval is calculated from the first fire time, not 24 hours.
-  // The recurring "on" rule is rescheduled by the native receiver each day and
-  // uses exact alarms when the Android exact-alarm permission is granted.
-  return {
-    on: { hour, minute },
-    allowWhileIdle: true,
-  };
-}
 
 class CapacitorLocalNotificationServiceImpl implements LocalNotificationService {
   isPluginAvailable(): boolean {
     return typeof window !== 'undefined' && Capacitor.isNativePlatform() &&
-      Capacitor.isPluginAvailable('LocalNotifications');
+      Capacitor.isPluginAvailable('LocalNotifications') &&
+      Capacitor.isPluginAvailable('MealReminderScheduler');
   }
 
   async checkPermission(): Promise<NotificationPermissionStatus> {
@@ -205,33 +211,28 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         };
       }
 
-      // Remove all three previous IDs before scheduling to avoid duplicate alarms.
-      await LocalNotifications.cancel({
-        notifications: times.map(item => ({ id: item.id })),
+      // Use the app-owned AlarmManager receiver: it schedules each meal with
+      // setExactAndAllowWhileIdle and re-arms the next local day after delivery.
+      const scheduleResult = await MealReminderScheduler.scheduleDailyReminders({
+        breakfastHour,
+        breakfastMinute,
+        lunchHour: DEFAULT_LUNCH_HOUR,
+        lunchMinute: 0,
+        dinnerHour: DEFAULT_DINNER_HOUR,
+        dinnerMinute: 0,
       });
-
-      const scheduleResult = await LocalNotifications.schedule({
-        notifications: times.map(item => ({
-          id: item.id,
-          title: item.title,
-          body: item.body,
-          schedule: dailyReminderSchedule(item.hour, item.minute),
-          channelId: DAILY_REMINDER_CHANNEL_ID,
-          extra: { source: 'tadbeera_meal_reminder', meal: item.label },
-        })),
-      });
-
-      // Verify both the scheduling response and Android's pending list contain all meal IDs.
-      const scheduledIds = new Set((scheduleResult.notifications || []).map(item => item.id));
-      const pending = await LocalNotifications.getPending();
-      const pendingIds = new Set((pending.notifications || []).map(item => item.id));
-      const missingMeals = times.filter(item => !pendingIds.has(item.id) || !scheduledIds.has(item.id));
-      if (missingMeals.length) {
-        await LocalNotifications.cancel({ notifications: times.map(item => ({ id: item.id })) });
+      const scheduledIds = new Set(scheduleResult.scheduledIds || []);
+      const pending = await MealReminderScheduler.getScheduledReminders();
+      const pendingIds = new Set(pending.scheduledIds || []);
+      const missingMeals = times.filter(item => !scheduledIds.has(item.id) || !pendingIds.has(item.id));
+      if (!scheduleResult.success || missingMeals.length) {
+        await MealReminderScheduler.cancelDailyReminders();
         this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
         return {
           success: false,
-          message: `تعذر تأكيد جدولة تذكير ${missingMeals.map(item => item.label).join(' و')}. راجع أذونات الإشعارات والمنبهات ثم حاول مرة أخرى.`,
+          message: missingMeals.length
+            ? `تعذر تأكيد جدولة تذكير ${missingMeals.map(item => item.label).join(' و')} على أندرويد.`
+            : 'تعذر على أندرويد تسجيل منبّهات الوجبات الدقيقة. راجع إعدادات الهاتف ثم حاول مرة أخرى.',
         };
       }
 
@@ -306,9 +307,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       return { success: true, message: 'تم تعطيل تذكيرات الوجبات.' };
     }
     try {
-      await LocalNotifications.cancel({
-        notifications: MEAL_REMINDERS.map(item => ({ id: item.id })),
-      });
+      await MealReminderScheduler.cancelDailyReminders();
       this.saveStoredConfig({ enabled: false });
       return { success: true, message: 'تم إلغاء تذكيرات الفطار والغداء والعشاء.' };
     } catch (error) {
