@@ -203,7 +203,7 @@ export function calculateWeeklyPlanTotalCost(familySize: number, schedule: DayMe
  */
 export function consolidateWeeklyPlanIngredients(familySize: number, schedule: DayMealPlan[] = WEEKLY_DAYS_SCHEDULE): ConsolidatedPlanIngredient[] {
   const safeFamilySize = Math.max(1, familySize);
-  const ingredientMap = new Map<string, { quantity: number; unit: string; count: number }>();
+  const ingredientMap = new Map<string, { name: string; quantity: number; unit: string; count: number }>();
 
   schedule.forEach(day => {
     const mealIds = [day.breakfastRecipeId, day.lunchRecipeId, day.dinnerRecipeId];
@@ -214,7 +214,10 @@ export function consolidateWeeklyPlanIngredients(familySize: number, schedule: D
 
       recipe.ingredients.forEach((ing: Ingredient) => {
         // Skip zero-cost leftovers as shopping items if desired, or include them with note
-        const key = ing.name.trim();
+        const name = ing.name.trim();
+        const unit = (ing.unit || 'حبة').trim();
+        // Quantities in different units must never be added together (e.g. grams + cups).
+        const key = `${name.toLocaleLowerCase('ar-EG')}|${unit.toLocaleLowerCase('ar-EG')}`;
         const scaledQty = (ing.baseAmount || 1) * ratio;
         const current = ingredientMap.get(key);
 
@@ -223,8 +226,9 @@ export function consolidateWeeklyPlanIngredients(familySize: number, schedule: D
           current.count += 1;
         } else {
           ingredientMap.set(key, {
+            name,
             quantity: scaledQty,
-            unit: ing.unit || 'حبة',
+            unit,
             count: 1
           });
         }
@@ -233,13 +237,13 @@ export function consolidateWeeklyPlanIngredients(familySize: number, schedule: D
   });
 
   const consolidated: ConsolidatedPlanIngredient[] = [];
-  ingredientMap.forEach((val, name) => {
+  ingredientMap.forEach(val => {
     const roundedQty = Math.round(val.quantity * 10) / 10;
-    const estUnitPrice = ESTIMATED_INGREDIENT_PRICES[name] ?? 10;
+    const estUnitPrice = ESTIMATED_INGREDIENT_PRICES[val.name] ?? 10;
     const totalCost = Math.round(roundedQty * estUnitPrice);
 
     consolidated.push({
-      name,
+      name: val.name,
       quantity: roundedQty,
       unit: val.unit,
       estimatedUnitPrice: estUnitPrice,
