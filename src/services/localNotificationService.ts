@@ -84,7 +84,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   getMealReminderSettings(): MealReminderSettings {
     const defaults = cloneDefaults();
     try {
-      const raw = typeof window !== 'undefined' ? localStorage.getItem(MEAL_REMINDERS_STORAGE_KEY) : null;
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(MEAL_REMINDERS_STORAGE_KEY) : null;
       if (raw) {
         const parsed = JSON.parse(raw);
         (['breakfast', 'lunch', 'dinner'] as MealReminderType[]).forEach(meal => {
@@ -107,7 +107,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
 
   saveMealReminderSettings(settings: MealReminderSettings): void {
     try {
-      if (typeof window !== 'undefined') localStorage.setItem(MEAL_REMINDERS_STORAGE_KEY, JSON.stringify(settings));
+      if (typeof window !== 'undefined') window.localStorage.setItem(MEAL_REMINDERS_STORAGE_KEY, JSON.stringify(settings));
     } catch { /* storage may be unavailable */ }
   }
 
@@ -201,9 +201,9 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     let enabled = false, hour = DEFAULT_REMINDER_HOUR, minute = DEFAULT_REMINDER_MINUTE;
     try {
       if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem(REMINDER_STORAGE_KEY);
+        const stored = window.localStorage.getItem(REMINDER_STORAGE_KEY);
         if (stored !== null) enabled = stored === 'true';
-        const time = localStorage.getItem(REMINDER_TIME_KEY);
+        const time = window.localStorage.getItem(REMINDER_TIME_KEY);
         if (time) {
           const [h, m] = time.split(':').map(Number);
           if (Number.isInteger(h) && h >= 0 && h <= 23) hour = h;
@@ -217,9 +217,9 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   saveStoredConfig(config: Partial<LocalReminderConfig>): void {
     try {
       if (typeof window !== 'undefined') {
-        if (config.enabled !== undefined) localStorage.setItem(REMINDER_STORAGE_KEY, String(config.enabled));
+        if (config.enabled !== undefined) window.localStorage.setItem(REMINDER_STORAGE_KEY, String(config.enabled));
         if (config.hour !== undefined && config.minute !== undefined) {
-          localStorage.setItem(REMINDER_TIME_KEY, `${config.hour}:${String(config.minute).padStart(2, '0')}`);
+          window.localStorage.setItem(REMINDER_TIME_KEY, `${config.hour}:${String(config.minute).padStart(2, '0')}`);
         }
       }
     } catch { /* safe defaults */ }
