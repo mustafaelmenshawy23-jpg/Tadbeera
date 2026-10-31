@@ -3842,6 +3842,7 @@ export default function App() {
             </nav>
             </div>
           </div>
+          )}
 
           {/* Quick AdMob Simulation Control Bar (Development Only) */}
           {IS_DEV && (
