@@ -1524,6 +1524,7 @@ export default function App() {
         paydayDay,
         weeklyPlanUnlocked: isWeeklyPlanUnlocked,
         reminderEnabled: isDailyReminderEnabled,
+        reminderTime,
         householdProfile: readFeatureBackupValue<Record<string, unknown> | null>('tedbeera_household_profile_v1', null),
         inventoryItems: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_inventory_v1', []),
         householdTasks: readFeatureBackupValue<Record<string, unknown>[]>('tedbeera_household_tasks_v1', []),
@@ -1575,7 +1576,7 @@ export default function App() {
   };
 
   // Feature 3: Execute Restore with Rollback Protection & Immediate State/Storage Refresh
-  const handleConfirmRestore = () => {
+  const handleConfirmRestore = async () => {
     if (!pendingRestoreData) return;
 
     // 1. Snapshot every affected storage key so a partial write can be rolled back atomically.
@@ -1586,7 +1587,7 @@ export default function App() {
       'tedbeera_custom_pantry', 'tedbeera_phase4c_tried_tips', 'tedbeera_payday_day',
       REWARD_PLAN_STORAGE_KEY, REMINDER_STORAGE_KEY, 'tedbeera_daily_completed',
       'tedbeera_household_profile_v1', 'tedbeera_inventory_v1',
-      'tedbeera_household_tasks_v1', 'tedbeera_savings_goals_v1'
+      'tedbeera_household_tasks_v1', 'tedbeera_savings_goals_v1', 'tedbeera_phase4d_reminder_time'
     ];
     const storageSnapshot = new Map(restoreStorageKeys.map(key => [key, localStorage.getItem(key)]));
 
@@ -1651,6 +1652,9 @@ export default function App() {
       if (d.reminderEnabled !== undefined) {
         localStorage.setItem(REMINDER_STORAGE_KEY, String(d.reminderEnabled));
       }
+      const restoredReminderTime = d.reminderTime || '08:00';
+      localStorage.setItem('tedbeera_phase4d_reminder_time', restoredReminderTime);
+      setReminderTime(restoredReminderTime);
       if (d.dailyCompleted) {
         localStorage.setItem('tedbeera_daily_completed', JSON.stringify(d.dailyCompleted));
       }
@@ -1668,9 +1672,18 @@ export default function App() {
         localStorage.setItem('tedbeera_savings_goals_v1', JSON.stringify(d.savingsGoals));
       }
 
+      const reminderResult = d.reminderEnabled
+        ? await getLocalNotificationService().scheduleDailyReminder(...restoredReminderTime.split(':').map(Number) as [number, number])
+        : await getLocalNotificationService().cancelDailyReminder();
+      setIsDailyReminderEnabled(Boolean(d.reminderEnabled && reminderResult.success));
+      if (d.reminderEnabled && !reminderResult.success) {
+        localStorage.setItem(REMINDER_STORAGE_KEY, 'false');
+      }
       setPendingRestoreData(null);
       setIsRestoreConfirmModalOpen(false);
-      showToast('تمت استعادة النسخة الاحتياطية بنجاح وتحديث كافة الأقسام! 🎉');
+      showToast(d.reminderEnabled && !reminderResult.success
+        ? `تمت استعادة البيانات، لكن تعذرت إعادة تفعيل التنبيهات: ${reminderResult.message}`
+        : 'تمت استعادة النسخة الاحتياطية بنجاح وتحديث كافة الأقسام! 🎉');
     } catch {
       // 4. Restore all previous storage values, including feature repositories.
       for (const [key, value] of storageSnapshot) {
@@ -1704,7 +1717,8 @@ export default function App() {
   };
 
   // Wipe All Data
-  const handleWipeAllData = () => {
+  const handleWipeAllData = async () => {
+    await getLocalNotificationService().cancelDailyReminder();
     setSavedRecipeIds([]);
     setSavedTipIds([]);
     setTriedTipIds([]);
@@ -1735,6 +1749,7 @@ export default function App() {
     localStorage.removeItem('tedbeera_payday_day');
     localStorage.removeItem(REWARD_PLAN_STORAGE_KEY);
     localStorage.removeItem(REMINDER_STORAGE_KEY);
+    localStorage.removeItem('tedbeera_phase4d_reminder_time');
     localStorage.removeItem('tedbeera_household_profile_v1');
     localStorage.removeItem('tedbeera_inventory_v1');
     localStorage.removeItem('tedbeera_household_tasks_v1');
