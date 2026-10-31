@@ -61,3 +61,16 @@ test('household inventory supports every unit used by seeded recipes', () => {
   const unsupported = [...new Set(RECIPES.flatMap(recipe => recipe.ingredients.map(item => item.unit)))].filter(unit => !supportedUnits.has(unit));
   assert.deepEqual(unsupported, []);
 });
+
+
+test('meat and chicken ingredients use weight units, never cups', () => {
+  const proteinLeftovers = RECIPES.flatMap(recipe => recipe.ingredients)
+    .filter(ingredient => ['بواقي فراخ', 'بواقي لحمة'].includes(ingredient.name));
+  assert.equal(proteinLeftovers.length, 2);
+  for (const ingredient of proteinLeftovers) {
+    assert.equal(ingredient.unit, 'كيلو', ingredient.name + ' must be measured by weight');
+    assert.equal(ingredient.baseAmount, 0.25);
+    assert.match(ingredient.quantity, /ربع كيلو/);
+    assert.notEqual(ingredient.unit, 'كوب');
+  }
+});
