@@ -43,10 +43,14 @@ const MEAL_REMINDERS = [
   { id: DINNER_REMINDER_ID, label: 'العشاء', title: 'مساء الخير من تدبيرة 🌙', body: 'جهّز عشاء بسيط وراجع نواقص البيت لبكرة.' },
 ] as const;
 
-function nextLocalOccurrence(hour: number, minute: number): Date {
-  const at = new Date();
+export function nextLocalOccurrence(
+  hour: number,
+  minute: number,
+  now: Date = new Date()
+): Date {
+  const at = new Date(now);
   at.setHours(hour, minute, 0, 0);
-  if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
+  if (at.getTime() <= now.getTime()) at.setDate(at.getDate() + 1);
   return at;
 }
 
