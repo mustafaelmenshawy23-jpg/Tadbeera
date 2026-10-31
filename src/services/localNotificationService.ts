@@ -53,7 +53,7 @@ export interface LocalNotificationService {
   cancelMealReminders(): Promise<void>;
 }
 
-const validTime = (value: string) => /^([01]\\d|2[0-3]):[0-5]\\d$/.test(value);
+const validTime = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 const cloneDefaults = (): MealReminderSettings => JSON.parse(JSON.stringify(DEFAULT_MEAL_REMINDERS));
 
 class CapacitorLocalNotificationServiceImpl implements LocalNotificationService {
