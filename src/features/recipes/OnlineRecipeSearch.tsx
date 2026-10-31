@@ -132,7 +132,9 @@ function scaleArabicRecipeExtract(extract: string, baseServings: number, familyS
 }
 
 function hasArabic(value: string): boolean {
-  return /[\u0600-\u06FF]/.test(value);
+  const arabicLetters = (value.match(/[\u0600-\u06FF]/g) || []).length;
+  const latinLetters = (value.match(/[A-Za-z]/g) || []).length;
+  return arabicLetters > 0 && latinLetters <= Math.max(4, Math.floor(arabicLetters * 0.2));
 }
 
 function parseRecipeSections(extract: string): { ingredients: string[]; steps: string[] } {
