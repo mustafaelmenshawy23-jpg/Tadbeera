@@ -1,5 +1,27 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+
+interface NotificationPermissionPlugin {
+  request(): Promise<{ granted: boolean }>;
+  openSettings(): Promise<void>;
+}
+
+const NotificationPermission = registerPlugin<NotificationPermissionPlugin>('NotificationPermission');
+
+interface MealReminderSchedulerPlugin {
+  scheduleDailyReminders(options: {
+    breakfastHour: number;
+    breakfastMinute: number;
+    lunchHour: number;
+    lunchMinute: number;
+    dinnerHour: number;
+    dinnerMinute: number;
+  }): Promise<{ success: boolean; scheduledIds: number[] }>;
+  getScheduledReminders(): Promise<{ scheduledIds: number[] }>;
+  cancelDailyReminders(): Promise<{ success: boolean }>;
+}
+
+const MealReminderScheduler = registerPlugin<MealReminderSchedulerPlugin>('MealReminderScheduler');
 
 /**
  * Native daily meal reminders for Tadbeera.
@@ -18,6 +40,8 @@ export const REMINDER_STORAGE_KEY = 'tedbeera_phase4d_reminder_enabled';
 export const REMINDER_TIME_KEY = 'tedbeera_phase4d_reminder_time';
 // Distinguish a first-time Android permission request from a permission the user already declined.
 const NOTIFICATION_PERMISSION_REQUESTED_KEY = 'tedbeera_notification_permission_requested';
+let exactAlarmSettingsOpenedThisSession = false;
+let notificationSettingsOpenedThisSession = false;
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'prompt' | 'unsupported';
 
@@ -33,6 +57,7 @@ export interface LocalNotificationService {
   isPluginAvailable(): boolean;
   checkPermission(): Promise<NotificationPermissionStatus>;
   requestPermission(): Promise<boolean>;
+  openNotificationSettings(): Promise<void>;
   scheduleDailyReminder(hour?: number, minute?: number): Promise<{ success: boolean; message: string }>;
   cancelDailyReminder(): Promise<{ success: boolean; message: string }>;
   sendTestNotification(): Promise<{ success: boolean; message: string }>;
@@ -46,28 +71,22 @@ const MEAL_REMINDERS = [
   { id: DINNER_REMINDER_ID, label: 'العشاء', title: 'مساء الخير من تدبيرة 🌙', body: 'جهّز عشاء بسيط وراجع نواقص البيت لبكرة.' },
 ] as const;
 
-export function nextLocalOccurrence(
-  hour: number,
-  minute: number,
-  now: Date = new Date()
-): Date {
-  const at = new Date(now);
-  at.setHours(hour, minute, 0, 0);
-  if (at.getTime() <= now.getTime()) at.setDate(at.getDate() + 1);
-  return at;
-}
 
 class CapacitorLocalNotificationServiceImpl implements LocalNotificationService {
   isPluginAvailable(): boolean {
     return typeof window !== 'undefined' && Capacitor.isNativePlatform() &&
-      Capacitor.isPluginAvailable('LocalNotifications');
+      Capacitor.isPluginAvailable('LocalNotifications') &&
+      Capacitor.isPluginAvailable('MealReminderScheduler');
   }
 
   async checkPermission(): Promise<NotificationPermissionStatus> {
     if (!this.isPluginAvailable()) return 'unsupported';
     try {
       const status = await LocalNotifications.checkPermissions();
-      if (status.display === 'granted') return 'granted';
+      if (status.display === 'granted') {
+        notificationSettingsOpenedThisSession = false;
+        return 'granted';
+      }
       if (status.display === 'denied') {
         // Some Android 13 devices report "denied" even before the app has
         // actually displayed the runtime prompt. Allow exactly one first-launch
@@ -94,7 +113,9 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   async requestPermission(): Promise<boolean> {
     if (!this.isPluginAvailable()) return false;
     try {
-      const result = await LocalNotifications.requestPermissions();
+      // Use the app-owned native permission bridge rather than relying on the
+      // LocalNotifications plugin's permission alias on Android 13+.
+      const result = await NotificationPermission.request();
       try {
         if (typeof window !== 'undefined') {
           localStorage.setItem(NOTIFICATION_PERMISSION_REQUESTED_KEY, 'true');
@@ -102,11 +123,45 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       } catch {
         // Permission state remains authoritative if local storage is unavailable.
       }
-      return result.display === 'granted';
+      notificationSettingsOpenedThisSession = !result.granted;
+      return result.granted;
     } catch (error) {
       console.warn('Tadbeera notification permission request failed:', error);
       return false;
     }
+  }
+
+  async openNotificationSettings(): Promise<void> {
+    if (!this.isPluginAvailable() || notificationSettingsOpenedThisSession) return;
+    notificationSettingsOpenedThisSession = true;
+    try {
+      await NotificationPermission.openSettings();
+    } catch (error) {
+      console.warn('Unable to open Android notification settings:', error);
+    }
+  }
+
+  private async ensureExactAlarmPermission(): Promise<boolean> {
+    // The manifest declaration alone does not grant exact-alarm access on Android 12+.
+    const current = await LocalNotifications.checkExactNotificationSetting();
+    if (current.exact_alarm === 'granted') {
+      exactAlarmSettingsOpenedThisSession = false;
+      return true;
+    }
+
+    // Open the Android system "Alarms & reminders" settings at most once
+    // per app session. The app retries scheduling when it returns to foreground.
+    if (!exactAlarmSettingsOpenedThisSession) {
+      exactAlarmSettingsOpenedThisSession = true;
+      await LocalNotifications.changeExactNotificationSetting();
+    }
+
+    const refreshed = await LocalNotifications.checkExactNotificationSetting();
+    if (refreshed.exact_alarm === 'granted') {
+      exactAlarmSettingsOpenedThisSession = false;
+      return true;
+    }
+    return false;
   }
 
   async scheduleDailyReminder(
@@ -134,50 +189,73 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
         return { success: false, message: 'لم يتم منح إذن الإشعارات. فعّله من إعدادات الهاتف ثم حاول مرة أخرى.' };
       }
- 
 
-      try {
-        await LocalNotifications.createChannel({
-          id: DAILY_REMINDER_CHANNEL_ID,
-          name: 'تذكيرات وجبات تدبيرة',
-          description: 'تذكيرات الفطار والغداء والعشاء',
-          importance: 4,
-          visibility: 1,
-        });
-      } catch {
-        // Channel may already exist or be unsupported on this platform.
+      const notificationsEnabled = await LocalNotifications.areEnabled();
+      if (!notificationsEnabled.value) {
+        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+        return {
+          success: false,
+          message: 'إشعارات تدبيرة مقفولة من إعدادات الهاتف. فعّل إشعارات التطبيق من إعدادات أندرويد ثم ارجع للتطبيق.',
+        };
       }
 
-      // Remove all three previous IDs before scheduling to avoid duplicate alarms.
+
+      // Remove any meal alarms left by the previous LocalNotifications-based
+      // implementation before switching to the native AlarmManager receiver.
       await LocalNotifications.cancel({
         notifications: times.map(item => ({ id: item.id })),
       });
 
-      await LocalNotifications.schedule({
-        notifications: times.map(item => ({
-          id: item.id,
-          title: item.title,
-          body: item.body,
-          schedule: {
-            at: nextLocalOccurrence(item.hour, item.minute),
-            repeats: true,
-            allowWhileIdle: true,
-          },
-          channelId: DAILY_REMINDER_CHANNEL_ID,
-          extra: { source: 'tadbeera_meal_reminder', meal: item.label },
-        })),
-      });
-
-      // Verify Android retained all three scheduled IDs before reporting success.
-      const pending = await LocalNotifications.getPending();
-      const pendingIds = new Set((pending.notifications || []).map(item => item.id));
-      const missingMeals = times.filter(item => !pendingIds.has(item.id));
-      if (missingMeals.length) {
-        await LocalNotifications.cancel({ notifications: times.map(item => ({ id: item.id })) });
+      if (!(await this.ensureExactAlarmPermission())) {
         this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
         return {
           success: false,
-          message: `تعذر تأكيد جدولة تذكير ${missingMeals.map(item => item.label).join(' و')}. راجع أذونات الإشعارات والمنبهات ثم حاول مرة أخرى.`,
+          message: 'لازم تسمح لتدبيرة بإذن «المنبّهات والتذكيرات» من إعدادات الهاتف. افتح الصفحة التي ظهرت، فعّل الإذن، ثم ارجع للتطبيق.',
+        };
+      }
+
+      await LocalNotifications.createChannel({
+        id: DAILY_REMINDER_CHANNEL_ID,
+        name: 'تذكيرات وجبات تدبيرة',
+        description: 'تذكيرات الفطار والغداء والعشاء',
+        importance: 4,
+        visibility: 1,
+      });
+      const channelState = await LocalNotifications.listChannels();
+      const mealChannel = (channelState.channels || []).find(channel => channel.id === DAILY_REMINDER_CHANNEL_ID);
+      if (!mealChannel) {
+        throw new Error('تعذر إنشاء قناة إشعارات تذكيرات الوجبات على الجهاز.');
+      }
+      if (mealChannel.importance === 0) {
+        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+        return {
+          success: false,
+          message: 'قناة تذكيرات تدبيرة مكتومة من إعدادات الهاتف. افتح إعدادات إشعارات التطبيق واسمح لقناة تذكيرات الوجبات.',
+        };
+      }
+
+      // Use the app-owned AlarmManager receiver: it schedules each meal with
+      // setExactAndAllowWhileIdle and re-arms the next local day after delivery.
+      const scheduleResult = await MealReminderScheduler.scheduleDailyReminders({
+        breakfastHour,
+        breakfastMinute,
+        lunchHour: DEFAULT_LUNCH_HOUR,
+        lunchMinute: 0,
+        dinnerHour: DEFAULT_DINNER_HOUR,
+        dinnerMinute: 0,
+      });
+      const scheduledIds = new Set(scheduleResult.scheduledIds || []);
+      const pending = await MealReminderScheduler.getScheduledReminders();
+      const pendingIds = new Set(pending.scheduledIds || []);
+      const missingMeals = times.filter(item => !scheduledIds.has(item.id) || !pendingIds.has(item.id));
+      if (!scheduleResult.success || missingMeals.length) {
+        await MealReminderScheduler.cancelDailyReminders();
+        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+        return {
+          success: false,
+          message: missingMeals.length
+            ? `تعذر تأكيد جدولة تذكير ${missingMeals.map(item => item.label).join(' و')} على أندرويد.`
+            : 'تعذر على أندرويد تسجيل منبّهات الوجبات الدقيقة. راجع إعدادات الهاتف ثم حاول مرة أخرى.',
         };
       }
 
@@ -205,7 +283,14 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       const permission = await this.checkPermission();
       if (permission !== 'granted' && !(await this.requestPermission())) {
         return { success: false, message: 'لم تسمح بإشعارات تدبيرة. فعّل إذن الإشعارات من إعدادات الهاتف ثم أعد الاختبار.' };
-      } 
+      }
+      const notificationsEnabled = await LocalNotifications.areEnabled();
+      if (!notificationsEnabled.value) {
+        return { success: false, message: 'إشعارات تدبيرة مقفولة من إعدادات الهاتف. فعّلها ثم أعد الاختبار.' };
+      }
+      if (!(await this.ensureExactAlarmPermission())) {
+        return { success: false, message: 'اسمح لتدبيرة بإذن «المنبّهات والتذكيرات» من إعدادات الهاتف ثم أعد الاختبار.' };
+      }
       await LocalNotifications.createChannel({
         id: DAILY_REMINDER_CHANNEL_ID,
         name: 'تذكيرات وجبات تدبيرة',
@@ -213,6 +298,11 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         importance: 4,
         visibility: 1,
       });
+      const channelState = await LocalNotifications.listChannels();
+      const mealChannel = (channelState.channels || []).find(channel => channel.id === DAILY_REMINDER_CHANNEL_ID);
+      if (!mealChannel || mealChannel.importance === 0) {
+        return { success: false, message: 'قناة إشعارات تدبيرة غير متاحة أو مكتومة من إعدادات الهاتف. اسمح بإشعارات قناة تذكيرات الوجبات ثم أعد الاختبار.' };
+      }
       await LocalNotifications.cancel({ notifications: [{ id: 104 }] });
       await LocalNotifications.schedule({
         notifications: [{
@@ -243,6 +333,8 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       return { success: true, message: 'تم تعطيل تذكيرات الوجبات.' };
     }
     try {
+      await MealReminderScheduler.cancelDailyReminders();
+      // Also clear IDs scheduled by older app versions before the native scheduler migration.
       await LocalNotifications.cancel({
         notifications: MEAL_REMINDERS.map(item => ({ id: item.id })),
       });

@@ -11,6 +11,8 @@ import com.getcapacitor.BridgeActivity
 class MainActivity : BridgeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         registerPlugin(MicrophonePermissionPlugin::class.java)
+        registerPlugin(NotificationPermissionPlugin::class.java)
+        registerPlugin(MealReminderSchedulerPlugin::class.java)
         super.onCreate(savedInstanceState)
         configureImmersiveWindow()
     }

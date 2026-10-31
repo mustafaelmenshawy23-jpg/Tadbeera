@@ -642,28 +642,58 @@ export default function App() {
   useEffect(() => {
     if (!isNativeApp) return;
     let cancelled = false;
+    let initializing = false;
     const initializeMealReminders = async () => {
-      const service = getLocalNotificationService();
-      const config = service.getStoredConfig();
-      let permission = await service.checkPermission();
+      if (initializing || cancelled) return;
+      initializing = true;
+      try {
+        const service = getLocalNotificationService();
+        const config = service.getStoredConfig();
+        let permission = await service.checkPermission();
+        const permissionWasPreviouslyDenied = permission === 'denied';
 
-      // Android shows its notification permission dialog only while the permission
-      // is in the prompt state. Never request microphone permission during startup.
-      if (permission === 'prompt') {
-        permission = await service.requestPermission() ? 'granted' : 'denied';
-      }
-      if (cancelled) return;
-
-      // If permission is already granted (including from Android Settings), always
-      // restore all three reminders. Do not depend on an old in-app enabled flag.
-      if (permission === 'granted') {
-        const result = await service.scheduleDailyReminder(config.hour, config.minute);
+        // Android shows its notification permission dialog only while the permission
+        // is in the prompt state. Never request microphone permission during startup.
+        if (permission === 'prompt') {
+          permission = await service.requestPermission() ? 'granted' : 'denied';
+        }
         if (cancelled) return;
-        if (!result.success) console.warn('Tadbeera meal reminder scheduling failed:', result.message);
+
+        // If the user previously denied notifications (or disabled them in Android
+        // Settings), take them to the phone's app-notification settings once per session.
+        if (permissionWasPreviouslyDenied && permission !== 'granted') {
+          await service.openNotificationSettings();
+          return;
+        }
+
+        // If permission is already granted (including from Android Settings), always
+        // restore all three reminders. Do not depend on an old in-app enabled flag.
+        if (permission === 'granted') {
+          const result = await service.scheduleDailyReminder(config.hour, config.minute);
+          if (cancelled) return;
+          if (!result.success) console.warn('Tadbeera meal reminder scheduling failed:', result.message);
+        }
+      } finally {
+        initializing = false;
+      }
+    };
+    const retryWhenAppResumes = () => {
+      if (document.visibilityState === 'visible') {
+        void initializeMealReminders().catch(error =>
+          console.warn('Tadbeera reminder resume check failed:', error)
+        );
       }
     };
     void initializeMealReminders().catch(error => console.warn('Tadbeera reminder initialization failed:', error));
-    return () => { cancelled = true; };
+    // Exact-alarm permission is granted in Android Settings. Retry after the user
+    // returns so all three reminders are scheduled without an in-app toggle.
+    window.addEventListener('focus', retryWhenAppResumes);
+    document.addEventListener('visibilitychange', retryWhenAppResumes);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', retryWhenAppResumes);
+      document.removeEventListener('visibilitychange', retryWhenAppResumes);
+    };
   }, [isNativeApp]);
 
   // Phase 4D: Rewarded Ad Simulation Playback Timer
