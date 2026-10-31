@@ -135,6 +135,23 @@ function hasArabic(value: string): boolean {
   return /[\u0600-\u06FF]/.test(value);
 }
 
+function parseRecipeSections(extract: string): { ingredients: string[]; steps: string[] } {
+  const separator = extract.match(/طريقة التحضير\s*[:：]|الطريقة\s*[:：]/);
+  const splitIndex = separator?.index ?? -1;
+  const ingredientsText = splitIndex >= 0 ? extract.slice(0, splitIndex) : '';
+  const methodText = splitIndex >= 0 ? extract.slice(splitIndex + separator![0].length) : extract;
+  const ingredients = ingredientsText
+    .replace(/^المكونات\s*[:：]?/,'')
+    .split(/[\n،,]+/)
+    .map(item => item.replace(/^\s*[•*-]\s*/, '').trim())
+    .filter(Boolean);
+  const steps = methodText
+    .split(/\n+|(?<=[.!؟])\s+/)
+    .map(step => step.replace(/^\s*\d+[.)-]\s*/, '').trim())
+    .filter(step => step.length > 2);
+  return { ingredients, steps };
+}
+
 async function translateText(value: string, source: 'ar' | 'en', target: 'ar' | 'en'): Promise<string> {
   const text = value.trim();
   if (!text || source === target) return text;
@@ -377,7 +394,19 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
           <div className="space-y-3 p-3">
             <h4 className="text-base font-black text-gray-900">{selected.title}</h4>
             <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-800">المقادير محسوبة لـ {familySize} أفراد</p>
-            <p className="whitespace-pre-wrap break-words text-xs leading-7 text-gray-700">{selected.extract}</p>
+            {(() => {
+              const sections = parseRecipeSections(selected.extract);
+              return <div className="space-y-3">
+                {sections.ingredients.length > 0 && <section>
+                  <h5 className="mb-1 text-xs font-black text-gray-900">المكونات المطلوبة</h5>
+                  <ul className="list-disc space-y-1 pr-5 text-xs leading-6 text-gray-700">{sections.ingredients.map((ingredient,index)=><li key={index}>{ingredient}</li>)}</ul>
+                </section>}
+                <section>
+                  <h5 className="mb-1 text-xs font-black text-gray-900">طريقة التحضير خطوة بخطوة</h5>
+                  <ol className="list-decimal space-y-2 pr-5 text-xs leading-7 text-gray-700">{sections.steps.map((step,index)=><li key={index}>{step}</li>)}</ol>
+                </section>
+              </div>;
+            })()}
             {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit || 'TheMealDB'} — {selected.imageLicense || 'راجع المصدر الأصلي'}</p>}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => saveRecipe(selected)}
