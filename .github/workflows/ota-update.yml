@@ -1,0 +1,47 @@
+name: Tadbeera Live Update (OTA)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tadbeera-ota-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  upload-live-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: TypeScript validation
+        run: npm run lint
+      - name: Run automated tests
+        run: npm test
+      - name: Build web bundle
+        run: npm run build
+      - name: Upload OTA bundle to Capgo Production
+        if: ${{ secrets.CAPGO_API_KEY != '' }}
+        env:
+          CAPGO_API_KEY: ${{ secrets.CAPGO_API_KEY }}
+        run: |
+          npx @capgo/cli@latest bundle upload com.tedbeera.egypt \
+            --path ./dist \
+            --channel production \
+            --apikey "$CAPGO_API_KEY" \
+            --auto-bump patch \
+            --delta
+      - name: Explain missing Capgo setup
+        if: ${{ secrets.CAPGO_API_KEY == '' }}
+        run: |
+          echo "::warning::OTA upload skipped. Create the Tadbeera app in Capgo with app ID com.tedbeera.egypt, create a Production channel, then add the API key to GitHub Actions secrets as CAPGO_API_KEY."
