@@ -55,21 +55,28 @@ button {
 }
 
 
-/* Tadbeera warm-home visual foundation */
+/* Tadbeera calm cream & olive theme */
 :root {
   color-scheme: light;
-  background: #FBF8F1;
-  --td-cream: #F7F6EF;
+  background: #F8F3E9;
+  --td-cream: #F8F3E9;
   --td-paper: #FFFDF8;
-  --td-olive: #718267;
-  --td-olive-dark: #596D50;
-  --td-sand: #F0EBDD;
-  --td-clay: #A66D4C;
-  --td-ink: #454A3C;
-  --td-muted: #969184;
-  --td-line: #E5E2D7;
+  --td-olive: #78815B;
+  --td-olive-dark: #626B49;
+  --td-sand: #E6DFC9;
+  --td-clay: #A68B69;
+  --td-ink: #39382F;
+  --td-muted: #898575;
+  --td-line: #E4DECF;
+  --td-primary: #78815B;
+  --td-primary-dark: #626B49;
+  --td-accent: #A68B69;
 }
-body { background: #FBF8F1; color: #454A3C; }
+html, body, #root { background: #F8F3E9; }
+body { background: #F8F3E9; color: #39382F; }
+::selection { background: #DCE1CB; color: #39382F; }
+::-webkit-scrollbar-thumb { background: #C9C5B5; }
+.tadbeera-bottom-nav button:focus-visible { outline-color: #78815B; }
 .tadbeera-appbar { min-height: 58px; }
 .tadbeera-bottom-nav button { min-height: 48px; }
 .tadbeera-bottom-nav button:focus-visible { outline: 2px solid #82966F; outline-offset: 2px; }
