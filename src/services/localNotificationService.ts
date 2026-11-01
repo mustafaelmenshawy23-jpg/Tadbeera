@@ -235,7 +235,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       return {
         success: true,
-        message: `تم تفعيل 3 تذكيرات يومية: الفطار ${format(breakfastHour, breakfastMinute)}، الغداء ${format(DEFAULT_LUNCH_HOUR, 0)}، والعشاء ${format(DEFAULT_DINNER_HOUR, 0)}.`,
+        message: `تم تفعيل 3 تذكيرات يومية بتوقيت مصر: الفطار ${format(breakfastHour, breakfastMinute)}، الغداء ${format(DEFAULT_LUNCH_HOUR, 0)}، والعشاء ${format(DEFAULT_DINNER_HOUR, 0)}.`,
       };
     } catch (error) {
       this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
