@@ -41,6 +41,14 @@ const MEAL_DB_API = 'https://www.themealdb.com/api/json/v1/1/search.php';
 const WIKIBOOKS_API = 'https://en.wikibooks.org/w/api.php';
 
 const ARABIC_ALIASES: Array<{ terms: string[]; english: string }> = [
+  { terms: ['شوربة لسان عصفور', 'لسان عصفور', 'شوربه لسان عصفور'], english: 'orzo soup' },
+  { terms: ['بصارة', 'بصاره'], english: 'egyptian bessara' },
+  { terms: ['زلابية', 'لقمة القاضي', 'لقيمات'], english: 'zalabia' },
+  { terms: ['بسبوسة', 'بسبوسه', 'هريسة'], english: 'basbousa' },
+  { terms: ['فول مدمس', 'فول'], english: 'egyptian ful medames' },
+  { terms: ['رز معمر', 'أرز معمر', 'رز باللبن'], english: 'egyptian baked rice' },
+  { terms: ['مسقعة مصرية', 'مسقعة باللحمة'], english: 'egyptian moussaka' },
+  { terms: ['فتة مصرية', 'فتة باللحمة', 'فتة بالخل والثوم'], english: 'egyptian fatta' },
   { terms: ['سمبوسك', 'سمبوسة', 'سمبوسه', 'سمبوسك باللحمة', 'سمبوسك بالجبنة'], english: 'samosa' },
   { terms: ['كبسة', 'كبسه', 'كبسة دجاج', 'كبسة فراخ'], english: 'kabsa' },
   { terms: ['كشري', 'كشرى'], english: 'koshari' },
@@ -154,6 +162,26 @@ const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
       url: 'https://www.themealdb.com/',
       extract: 'المكونات (4 أفراد): نصف كيلو مكرونة قلم، 300 جم لحم مفروم، بصلة، 3 ملاعق دقيق، 3 ملاعق زبدة، 3 أكواب حليب، ملح وفلفل وجوزة الطيب.\n\nالطريقة: اسلق المكرونة نصف سلقة. شوّح البصل واللحم وتبّله. حضّر البشاميل بتحمير الدقيق في الزبدة ثم أضف الحليب تدريجيًا مع التقليب. ضع طبقة بشاميل ثم المكرونة واللحم وباقي البشاميل، واخبز حتى يحمر الوجه.',
     },
+  },
+  {
+    terms: ['شوربة لسان عصفور', 'لسان عصفور', 'orzo soup'],
+    recipe: { title: 'شوربة لسان عصفور مصرية', servings: 4, pageId: 900011, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): كوب لسان عصفور، ملعقة سمن أو زيت، 5 أكواب شوربة دجاج أو لحم، ملح وفلفل، ورشة حبهان حسب الرغبة.\n\nطريقة التحضير: سخّن السمن في حلة على نار متوسطة. أضف لسان العصفور وقلّبه حتى يصبح ذهبي اللون. أضف الشوربة الساخنة تدريجيًا مع التقليب. اتركه على نار هادئة من 10 إلى 15 دقيقة حتى ينضج. اضبط الملح والفلفل وقدّمه ساخنًا.' }
+  },
+  {
+    terms: ['بصارة', 'بصاره', 'egyptian bessara'],
+    recipe: { title: 'بصارة مصرية', servings: 4, pageId: 900012, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): 2 كوب فول مدشوش منقوع، بصلة، 4 فصوص ثوم، حزمة كزبرة خضراء، شبت، ملح وكمون، ملعقة كزبرة ناشفة، وبصل للتقلية.\n\nطريقة التحضير: صفّي الفول المدشوش وضعه في حلة مع البصل والثوم والماء. اتركه حتى ينضج تمامًا. أضف الكزبرة والشبت والكمون والملح، ثم اخلط المكونات بالخلاط حتى يصبح القوام ناعمًا. حمّر شرائح البصل في قليل من الزيت حتى تصبح ذهبية. قدّم البصارة ساخنة مع البصل المحمّر.' }
+  },
+  {
+    terms: ['زلابية', 'لقمة القاضي', 'zalabia'],
+    recipe: { title: 'زلابية مصرية', servings: 4, pageId: 900013, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): 2 كوب دقيق، ملعقة صغيرة خميرة فورية، ملعقة صغيرة سكر، رشة ملح، نحو كوب ونصف ماء دافئ، وزيت للقلي. للشربات: كوب سكر ونصف كوب ماء وعصرة ليمون.\n\nطريقة التحضير: اخلط الدقيق والخميرة والسكر والملح. أضف الماء تدريجيًا حتى تحصل على عجينة لينة. غطّها واتركها تختمر حتى يتضاعف حجمها. حضّر الشربات بغلي السكر والماء ثم أضف الليمون واتركه يبرد. شكّل كرات صغيرة بملعقة مبللة واقلها في زيت متوسط الحرارة حتى تصبح ذهبية. صفّها ثم ضعها في الشربات البارد.' }
+  },
+  {
+    terms: ['بسبوسة', 'بسبوسه', 'basbousa'],
+    recipe: { title: 'بسبوسة مصرية', servings: 8, pageId: 900014, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (8 أفراد): 2 كوب سميد، نصف كوب سكر، نصف كوب سمن مذاب، كوب زبادي، ملعقة صغيرة بيكنج بودر، لوز للتزيين. للشربات: كوب ونصف سكر، كوب ماء، عصرة ليمون.\n\nطريقة التحضير: اخلط السميد والسكر والبيكنج بودر. أضف السمن وافركه برفق، ثم أضف الزبادي وقلّب دون عجن زائد. افرد الخليط في صينية مدهونة وقطّعه وزيّنه باللوز. اخبزه في فرن متوسط الحرارة حتى يحمر الوجه. اسقِ البسبوسة بالشربات الساخن فور خروجها من الفرن واتركها تبرد.' }
   },
 ];
 
@@ -331,12 +359,15 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
         item.status === 'fulfilled' ? [item.value] : [],
       );
 
-      if (!mapped.length) {
-        const localMatches = LOCAL_RECIPES.filter(item =>
-          item.terms.some(alias => matchesArabicSearchAlias(term, alias) || matchesArabicSearchAlias(englishTerm, alias))
-        ).map(item => ({ ...item.recipe }));
-        mapped = localMatches;
-      }
+      // Put a precise Egyptian home-style match first, then append relevant
+      // international matches without replacing the requested Egyptian dish.
+      const localMatches = LOCAL_RECIPES.filter(item =>
+        item.terms.some(alias => matchesArabicSearchAlias(term, alias) || matchesArabicSearchAlias(englishTerm, alias))
+      ).map(item => ({ ...item.recipe }));
+      mapped = [
+        ...localMatches,
+        ...mapped.filter(recipe => !localMatches.some(local => local.pageId === recipe.pageId)),
+      ];
 
       if (!mapped.length) {
         const wikiUrl = new URL(WIKIBOOKS_API);
@@ -519,14 +550,24 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
 
   const speakRecipe = async (recipe: OnlineRecipe) => {
     const sections = parseRecipeSections(recipe.extract, familySize, recipe.servings || 4);
+    const cleanForSpeech = (value: string) => value
+      .replace(/[•*_#]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/\bجم\b/g, 'جرام')
+      .replace(/\bمل\b/g, 'مليلتر')
+      .replace(/\bم ص\b/g, 'ملعقة صغيرة')
+      .replace(/\bم ك\b/g, 'ملعقة كبيرة')
+      .replace(/\b\d+\s*\/\s*\d+\b/g, ' ')
+      .trim();
     const spokenText = [
-      recipe.title,
-      `المقادير محسوبة لعدد ${familySize} أفراد`,
-      'المكونات',
-      ...sections.ingredients,
-      'طريقة التحضير',
-      ...sections.steps.map((step, index) => `الخطوة ${index + 1}. ${step}`),
-    ].filter(Boolean).join('. ');
+      cleanForSpeech(recipe.title),
+      `الوصفة تكفي ${familySize} أفراد`,
+      'أولًا، المكونات.',
+      ...sections.ingredients.map(cleanForSpeech),
+      'والآن طريقة التحضير، خطوة بخطوة.',
+      ...sections.steps.map((step, index) => `الخطوة رقم ${index + 1}. ${cleanForSpeech(step)}. ثم ننتقل للخطوة التالية.`),
+      'وبالهنا والشفا.',
+    ].filter(Boolean).join('، ');
     try {
       if (Capacitor.isNativePlatform()) {
         await recipeVoice.speak({ text: spokenText });
