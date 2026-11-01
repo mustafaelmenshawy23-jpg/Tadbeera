@@ -645,10 +645,11 @@ export function getPayCycleRange(
     end = thisMonthPayday;
   }
 
+  const endInclusive = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1);
   return {
     startDate: toLocalDateKey(start),
     endDateExclusive: toLocalDateKey(end),
-    label: `${start.toLocaleDateString('ar-EG')} – ${new Date(end.getTime() - 86400000).toLocaleDateString('ar-EG')}`
+    label: `${start.toLocaleDateString('ar-EG')} – ${endInclusive.toLocaleDateString('ar-EG')}`
   };
 }
 
