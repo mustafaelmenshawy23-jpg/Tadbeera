@@ -684,6 +684,22 @@ export default function App() {
         if (!result.success) {
           console.warn('Tadbeera meal reminder scheduling failed:', result.message);
           showToast(result.message);
+        } else {
+          // Send one immediate test notification after first successful setup so
+          // users do not have to wait until the next meal to discover delivery issues.
+          const testKey = 'tedbeera_notification_test_sent_v1';
+          let testAlreadySent = false;
+          try { testAlreadySent = localStorage.getItem(testKey) === 'true'; } catch {}
+          if (!testAlreadySent) {
+            const testResult = await service.sendTestNotification();
+            if (cancelled) return;
+            if (testResult.success) {
+              try { localStorage.setItem(testKey, 'true'); } catch {}
+              showToast('تم ضبط مواعيد الوجبات. هيظهر إشعار اختبار خلال ثوانٍ للتأكد من وصول التنبيهات.');
+            } else {
+              showToast(testResult.message);
+            }
+          }
         }
       } finally {
         initializing = false;
