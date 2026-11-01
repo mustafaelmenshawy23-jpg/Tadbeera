@@ -317,6 +317,8 @@ export default function App() {
   const [usesLeftoversFilter, setUsesLeftoversFilter] = useState(false);
   const [isZeroMissingOnly, setIsZeroMissingOnly] = useState(false);
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
+  const [kitchenView, setKitchenView] = useState<'main' | 'offline'>('main');
+  const [offlineRecipeQuery, setOfflineRecipeQuery] = useState('');
 
   // Budget & Expense State
   const [budgetAmount, setBudgetAmount] = useState<string>(() => {
@@ -2004,6 +2006,47 @@ export default function App() {
               {/* ======================================================== */}
               {activeTab === 'food' && (
                 <div className="space-y-4">
+                  {kitchenView === 'offline' ? (
+                    <section dir="rtl" className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <button type="button" onClick={() => setKitchenView('main')} className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                          <ChevronRight className="h-4 w-4" /> رجوع للمطبخ
+                        </button>
+                        <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-800">تعمل بدون إنترنت</span>
+                      </div>
+                      <div className="rounded-2xl bg-[#F1F5EC] p-4">
+                        <h2 className="text-lg font-black text-[#40533A]">الوصفات المجانية 🌿</h2>
+                        <p className="mt-1 text-xs leading-5 text-[#68745F]">كل الوصفات الموجودة داخل تدبيرة، تقدر تفتحها حتى لو مفيش إنترنت.</p>
+                      </div>
+                      <input value={offlineRecipeQuery} onChange={event => setOfflineRecipeQuery(event.target.value)} placeholder="ابحث في الوصفات المجانية..." className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-500" />
+                      <div className="text-[11px] text-gray-500">عدد الوصفات: {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).length}</div>
+                      <div className="space-y-2">
+                        {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).map(recipe => (
+                          <button key={recipe.id} type="button" onClick={() => setSelectedRecipeModal(recipe)} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 text-right shadow-sm transition hover:border-emerald-300">
+                            <span className="min-w-0 flex-1">
+                              <strong className="block truncate text-sm text-gray-900">{recipe.name}</strong>
+                              <span className="mt-1 block text-[10px] text-gray-500">{recipe.mealType === 'breakfast' ? 'فطار' : recipe.mealType === 'lunch' ? 'غداء' : 'عشاء'} · {recipe.prepTimeMinutes} دقيقة · لـ {familySize} أفراد</span>
+                            </span>
+                            <span className="shrink-0 text-left">
+                              <strong className="block text-sm text-[#55764B]">~{getScaledCost(recipe)} ج.م</strong>
+                              <span className="text-[10px] text-gray-400">التفاصيل ←</span>
+                            </span>
+                          </button>
+                        ))}
+                        {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).length === 0 && (
+                          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 text-center text-xs text-gray-500">ملقيناش وصفة بالاسم ده. جرّب كلمة تانية.</div>
+                        )}
+                      </div>
+                    </section>
+                  ) : (
+                    <>
+                  <button type="button" onClick={() => setKitchenView('offline')} className="flex w-full items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-right transition hover:bg-emerald-100">
+                    <span className="flex items-center gap-2">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700"><BookOpen className="h-5 w-5" /></span>
+                      <span><strong className="block text-xs text-emerald-900">الوصفات المجانية – بدون إنترنت</strong><small className="mt-0.5 block text-[10px] text-emerald-700">افتح مكتبة الوصفات مباشرة من هنا</small></span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-emerald-700" />
+                  </button>
                   {/* Brand Concept Motto Card */}
                   <div className="bg-[#0D47A1] text-white p-3 rounded-2xl shadow-sm flex items-center justify-between">
                     <div>
@@ -3079,6 +3122,8 @@ export default function App() {
                       </div>
                     )}
                   </div>
+                    </>
+                  )}
                 </div>
               )}
 
