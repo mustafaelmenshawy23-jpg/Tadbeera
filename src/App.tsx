@@ -129,9 +129,16 @@ import {
 } from './data/affiliateDeals';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
-import { HouseholdHub } from './features/household/HouseholdHub';
-import { OnlineRecipeSearch } from './features/recipes/OnlineRecipeSearch';
-import { IngredientRecipeFinder } from './features/recipes/IngredientRecipeFinder';
+// Heavy feature screens are loaded on demand so the first app screen stays lighter.
+const HouseholdHub = React.lazy(() =>
+  import('./features/household/HouseholdHub').then(module => ({ default: module.HouseholdHub }))
+);
+const OnlineRecipeSearch = React.lazy(() =>
+  import('./features/recipes/OnlineRecipeSearch').then(module => ({ default: module.OnlineRecipeSearch }))
+);
+const IngredientRecipeFinder = React.lazy(() =>
+  import('./features/recipes/IngredientRecipeFinder').then(module => ({ default: module.IngredientRecipeFinder }))
+);
 import { householdProfileRepository } from './features/household/householdRepository';
 
 import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
@@ -1989,7 +1996,11 @@ export default function App() {
                   <button type="button" onClick={() => setActiveTab('daily')} className="w-full rounded-2xl bg-[#FFFEFA] border border-[#E8E1D3] p-3 text-right flex items-center justify-between"><span className="text-xs font-bold text-[#555548]">💡 تدبيرة اليوم — أفكار وحيل للتوفير</span><ChevronRight className="w-4 h-4 text-[#9A927F]" /></button>
                 </section>
               )}
-              {activeTab === 'household' && <HouseholdHub />}
+              {activeTab === 'household' && (
+                <React.Suspense fallback={<div className="rounded-2xl bg-white border border-[#E8E0D1] p-4 text-center text-xs text-[#667B58]">بنجهز إدارة البيت…</div>}>
+                  <HouseholdHub />
+                </React.Suspense>
+              )}
               {/* ======================================================== */}
               {/* === TAB 1: تدبيرة الأكل === */}
               {/* ======================================================== */}
@@ -2003,7 +2014,9 @@ export default function App() {
                     </div>
                     <span className="text-xs bg-[#FFB300] text-[#0D47A1] font-black px-2 py-0.5 rounded-lg">ج.م EGP</span>
                   </div>
-                  <OnlineRecipeSearch familySize={familySize} />
+                  <React.Suspense fallback={<div className="rounded-2xl bg-white border border-gray-200 p-4 text-center text-xs text-gray-500">بنجهز البحث عن الوصفات…</div>}>
+                    <OnlineRecipeSearch familySize={familySize} />
+                  </React.Suspense>
                   {/* Family Size Scaler Bar */}
                   <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs">
@@ -2355,7 +2368,9 @@ export default function App() {
                       })}
                     </div>
 
-                    <IngredientRecipeFinder availableIngredients={selectedIngredients} familySize={familySize} />
+                    <React.Suspense fallback={<div className="rounded-xl bg-white border border-gray-100 p-3 text-center text-[11px] text-gray-500">بنجهز اقتراحات الوجبات…</div>}>
+                      <IngredientRecipeFinder availableIngredients={selectedIngredients} familySize={familySize} />
+                    </React.Suspense>
 
                     {/* Quick Filters */}
                     <div className="flex flex-wrap gap-2 pt-3 mt-3 border-t border-gray-100 text-[11px]">
