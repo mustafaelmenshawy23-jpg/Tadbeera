@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import java.util.Calendar
+import java.util.TimeZone
 
 data class MealReminderTime(val id: Int, val hour: Int, val minute: Int)
 
@@ -50,6 +51,7 @@ class MealReminderReceiver : BroadcastReceiver() {
         private const val PREFS = "tedbeera_native_meal_reminders"
         private const val PREF_ENABLED = "enabled"
         private val MEAL_IDS = setOf(101, 102, 103)
+        private const val REMINDER_TIME_ZONE = "Africa/Cairo"
 
         fun scheduleDaily(context: Context, reminders: List<MealReminderTime>): Boolean {
             if (reminders.map { it.id }.toSet() != MEAL_IDS ||
@@ -118,11 +120,9 @@ class MealReminderReceiver : BroadcastReceiver() {
 
         private fun scheduleNext(context: Context, id: Int, hour: Int, minute: Int): Boolean {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-                return false
-            }
-
-            val next = Calendar.getInstance().apply {
+            // Meal reminders always follow Egypt's wall-clock time, regardless of
+            // the phone's current country or time zone.
+            val next = Calendar.getInstance(TimeZone.getTimeZone(REMINDER_TIME_ZONE)).apply {
                 set(Calendar.HOUR_OF_DAY, hour)
                 set(Calendar.MINUTE, minute)
                 set(Calendar.SECOND, 0)
@@ -140,13 +140,24 @@ class MealReminderReceiver : BroadcastReceiver() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             return try {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    next.timeInMillis,
-                    pending
-                )
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()) {
+                    try {
+                        alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            next.timeInMillis,
+                            pending
+                        )
+                    } catch (_: SecurityException) {
+                        // Fall through to an inexact idle-capable alarm.
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.timeInMillis, pending)
+                    }
+                } else {
+                    // Exact-alarm access is special app access on Android 12+.
+                    // Do not block all reminders when the user has not granted it.
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.timeInMillis, pending)
+                }
                 true
-            } catch (_: SecurityException) {
+            } catch (_: Exception) {
                 false
             }
         }
