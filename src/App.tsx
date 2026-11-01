@@ -597,7 +597,7 @@ export default function App() {
 
   // AdMob State & Policy Compliance Controls (Google Mobile Ads)
   type AdStatus = 'loaded' | 'loading' | 'failed' | 'disabled';
-  const [adStatus, setAdStatus] = useState<AdStatus>('loaded');
+  const [adStatus, setAdStatus] = useState<AdStatus>('disabled');
   const [isInterstitialEnabled, setIsInterstitialEnabled] = useState<boolean>(false); // Strictly disabled by default
   const [sessionInterstitialCount, setSessionInterstitialCount] = useState<number>(0);
   const [lastInterstitialTime, setLastInterstitialTime] = useState<number>(0);
@@ -1918,7 +1918,7 @@ export default function App() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 z-50 bg-[#0D47A1] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 border border-[#FFB300] animate-bounce">
+        <div role="status" aria-live="polite" className="fixed top-[calc(env(safe-area-inset-top)+12px)] left-3 right-3 z-[100] mx-auto max-w-md bg-[#0D47A1] text-white px-5 py-3 rounded-xl shadow-xl flex items-center justify-center gap-2 border border-[#FFB300]">
           <Sparkles className="w-4 h-4 text-[#FFE54C]" />
           <span className="text-sm font-bold">{toastMessage}</span>
         </div>
