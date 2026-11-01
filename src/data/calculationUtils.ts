@@ -595,6 +595,17 @@ export function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
+const SEEDED_DEMO_EXPENSES: Record<string, string> = {
+  exp_1: 'سوق الخضار الأسبوعي وبصل وطماطم',
+  exp_2: 'فاتورة الكهرباء وشحن كارت العداد',
+  exp_3: 'اشتراك مترو ومواصلات شغل'
+};
+
+/** Remove only the app's known demo rows; preserve every user-created transaction. */
+export function removeSeedDemoExpenses<T extends { id: string; description: string }>(expenses: T[]): T[] {
+  return expenses.filter(expense => SEEDED_DEMO_EXPENSES[expense.id] !== expense.description);
+}
+
 export interface PayCycleRange {
   startDate: string;
   endDateExclusive: string;
