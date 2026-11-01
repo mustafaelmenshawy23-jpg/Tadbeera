@@ -2021,8 +2021,8 @@ export default function App() {
                         <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-800">تعمل بدون إنترنت</span>
                       </div>
                       <div className="rounded-2xl bg-[#F1F5EC] p-4">
-                        <h2 className="text-lg font-black text-[#40533A]">الوصفات المجانية 🌿</h2>
-                        <p className="mt-1 text-xs leading-5 text-[#68745F]">كل الوصفات الموجودة داخل تدبيرة، تقدر تفتحها حتى لو مفيش إنترنت.</p>
+                        <h2 className="text-lg font-black text-[#40533A]">مكتبة وصفات تدبيرة 🌿</h2>
+                        <p className="mt-1 text-xs leading-5 text-[#68745F]">كل الوصفات المصرية والبيتية المحفوظة داخل التطبيق في مكان واحد، وتقدر تفتحها بدون إنترنت.</p>
                       </div>
                       <input value={offlineRecipeQuery} onChange={event => setOfflineRecipeQuery(event.target.value)} placeholder="ابحث في الوصفات المجانية..." className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-500" />
                       <div className="text-[11px] text-gray-500">عدد الوصفات: {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).length}</div>
@@ -2465,139 +2465,9 @@ export default function App() {
                     <span>أضف أكلتك الخاصة 🍳</span>
                   </button>
 
-                  {/* Matching Recipes Count */}
-                  <div className="flex items-center justify-between text-xs text-gray-500 px-1">
-                    <span className="font-bold text-[#1E293B]">الوجبات المقترحة ({matchedRecipes.length}):</span>
-                    <span>تكلفة تقديرية لـ {familySize} أفراد</span>
+                  <div className="rounded-2xl border border-[#E4DECF] bg-[#FFFDF8] p-4 text-center text-sm text-[#626B49]">
+                    كل وصفات تدبيرة موجودة في مكان واحد داخل <strong>مكتبة الوصفات</strong> بالأعلى. افتح المكتبة للبحث والاختيار وعرض المقادير والخطوات.
                   </div>
-
-                  {/* Recipe Cards List */}
-                  {matchedRecipes.length === 0 ? (
-                    isZeroMissingOnly ? (
-                      <div className="bg-white p-6 rounded-2xl text-center border border-dashed border-emerald-300 space-y-2.5">
-                        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full mx-auto flex items-center justify-center">
-                          <Sparkles className="w-6 h-6" />
-                        </div>
-                        <p className="text-sm font-bold text-gray-800">مفيش أكلات مطابقة 100% لمكوناتك الحالية، زوّد مكون أو شوف المقترحات التانية</p>
-                        <button
-                          onClick={() => setIsZeroMissingOnly(false)}
-                          className="mt-1 inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>إلغاء فلتر "اطبخ باللي عندي"</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="bg-white p-6 rounded-2xl text-center border border-dashed border-gray-300">
-                        <p className="text-sm font-bold text-gray-700">مفيش وصفات مطابقة للفلاتر دي</p>
-                        <p className="text-xs text-gray-500 mt-1">جرب تلغي بعض الفلاتر أو اختار مكونات إضافية من اللي في بيتك.</p>
-                      </div>
-                    )
-                  ) : (
-                    <div className="space-y-3">
-                      {matchedRecipes.map(({ recipe, scaledCost, missing, isCompleteMatch, availableCount, totalCount }) => {
-                        const isSaved = savedRecipeIds.includes(recipe.id);
-                        const isBrokenImg = brokenImages[recipe.id];
-
-                        return (
-                          <div
-                            key={recipe.id}
-                            className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition hover:border-[#626B49]"
-                          >
-                            {/* Card Header with Image & Fallback */}
-                            <div className="relative h-32 w-full bg-gray-100 overflow-hidden cursor-pointer" onClick={() => setSelectedRecipeModal(recipe)}>
-                              {!isBrokenImg ? (
-                                <img
-                                  src={recipe.imageUrl}
-                                  alt={recipe.name}
-                                  onError={() => handleImageError(recipe.id)}
-                                  className="w-full h-full object-cover transition duration-300 hover:scale-105"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center p-4">
-                                  <SvgIllustration type={recipe.svgFallbackIcon} className="w-24 h-24" />
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-
-                              {/* Top Action Tags */}
-                              <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
-                                <span className="bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-                                  {recipe.mealType === 'breakfast' ? 'فطار' : recipe.mealType === 'lunch' ? 'غداء' : 'عشاء'}
-                                </span>
-                              </div>
-
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleSaveRecipe(recipe.id);
-                                }}
-                                className={`absolute top-2.5 left-2.5 p-1.5 rounded-full backdrop-blur-xs transition ${
-                                  isSaved ? 'bg-[#D8C69A] text-[#626B49]' : 'bg-black/40 text-white hover:bg-black/60'
-                                }`}
-                                title={isSaved ? 'محفوظة' : 'حفظ الوجبة'}
-                              >
-                                <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-[#626B49]' : ''}`} />
-                              </button>
-
-                              <div className="absolute bottom-2.5 right-2.5 left-2.5">
-                                <h3 className="font-bold text-sm text-white drop-shadow-sm">{recipe.name}</h3>
-                              </div>
-                            </div>
-
-                            <div className="p-3.5 space-y-2.5">
-                              {/* Meta Details */}
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">⏱️ {recipe.prepTimeMinutes} دقيقة</span>
-                                <div className="text-left">
-                                  <span className="bg-[#FFE54C]/40 text-[#626B49] font-bold text-xs px-2.5 py-0.5 rounded-md border border-[#D8C69A]/40 inline-block">
-                                    🏷️ تكلفة تقديرية: ~{scaledCost} ج.م
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 block mt-0.5">
-                                    سعر استرشادي لـ {familySize} أفراد
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Completeness Badge */}
-                              {isCompleteMatch ? (
-                                <div className="bg-emerald-50 text-emerald-800 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-emerald-200">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>جاهزة بالكامل بمكوناتك الحالية! 🎉</span>
-                                </div>
-                              ) : (
-                                <div className="bg-[#FFE54C]/25 text-[#626B49] text-[11px] font-medium px-2.5 py-1 rounded-lg flex items-center justify-between border border-[#FFE54C]">
-                                  <span>متوفر {availableCount} من {totalCount} مكونات (ناقصك {missing.length})</span>
-                                  <button
-                                    onClick={() => handleAddMissingToShopping(missing, recipe.baseServings)}
-                                    className="text-xs font-bold text-[#626B49] flex items-center gap-1 hover:underline"
-                                  >
-                                    <ShoppingCart className="w-3 h-3" />
-                                    <span>+ النواقص</span>
-                                  </button>
-                                </div>
-                              )}
-
-                              {/* Missing Items Note */}
-                              {!isCompleteMatch && (
-                                <p className="text-[11px] text-gray-500 truncate">
-                                  النواقص: {missing.map(m => m.name).join('، ')}
-                                </p>
-                              )}
-
-                              <button
-                                onClick={() => setSelectedRecipeModal(recipe)}
-                                className="w-full text-center text-xs font-bold text-[#626B49] bg-gray-50 hover:bg-gray-100 py-2 rounded-xl transition"
-                              >
-                                عرض المقادير وبدائل المكونات والخطوات ←
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                     </>
                   )}
                 </div>
