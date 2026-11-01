@@ -583,6 +583,7 @@ export default function App() {
 
   // Phase 4B: Visual Spending Donut Segment Selection State
   const [selectedDonutSegmentId, setSelectedDonutSegmentId] = useState<string | null>(null);
+  const [showAllExpenseHistory, setShowAllExpenseHistory] = useState(false);
 
   // AdMob State & Policy Compliance Controls (Google Mobile Ads)
   type AdStatus = 'loaded' | 'loading' | 'failed' | 'disabled';
@@ -1359,6 +1360,10 @@ export default function App() {
   const payCycleExpenses = useMemo(
     () => filterExpensesForPayCycle(expenses, payCycleRange),
     [expenses, payCycleRange]
+  );
+  const displayedExpenses = useMemo(
+    () => (showAllExpenseHistory ? [...expenses].sort((a, b) => b.date.localeCompare(a.date)) : payCycleExpenses),
+    [showAllExpenseHistory, expenses, payCycleExpenses]
   );
 
   // Budget Reconciled Breakdown & Calculations
@@ -3006,9 +3011,16 @@ export default function App() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-extrabold text-xs text-gray-900">سجل المصاريف الحقيقية:</h3>
-                        <span className="text-[10px] text-gray-400">سجل كل عملية شراء لحظة بلحظة</span>
+                        <span className="text-[10px] text-gray-400">{showAllExpenseHistory ? 'كل المصروفات المسجلة' : 'مصروفات دورة الراتب الحالية'}</span>
                       </div>
-                      <button
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setShowAllExpenseHistory(value => !value)}
+                          className="text-[10px] font-bold text-[#0D47A1] border border-blue-100 rounded-lg px-2 py-1"
+                        >
+                          {showAllExpenseHistory ? 'الدورة الحالية' : 'كل السجل'}
+                        </button>
+                        <button
                         onClick={() => setIsAddExpenseModalOpen(true)}
                         className="bg-[#0D47A1] hover:bg-[#002171] text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition"
                       >
@@ -3018,13 +3030,13 @@ export default function App() {
                     </div>
 
                     <div className="text-[10px] text-gray-400 -mt-1">دورة الراتب الحالية: {payCycleRange.label}</div>
-                    {payCycleExpenses.length === 0 ? (
+                    {displayedExpenses.length === 0 ? (
                       <div className="p-4 text-center text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">
                         لا توجد مصروفات مسجلة في دورة الراتب الحالية. المصروفات السابقة محفوظة في سجلها ولا تؤثر على رصيد الدورة الجديدة.
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {payCycleExpenses.slice(0, 5).map(exp => {
+                        {displayedExpenses.slice(0, 5).map(exp => {
                           const cat = categories.find(c => c.id === exp.categoryId);
                           return (
                             <div key={exp.id} className="p-2.5 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between text-xs">
