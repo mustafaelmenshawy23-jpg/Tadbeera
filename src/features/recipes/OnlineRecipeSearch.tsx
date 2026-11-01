@@ -372,7 +372,6 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       setResults(mapped);
       setSelected(mapped[0]);
     } catch {
-      const englishTerm = await getEnglishSearchTerm(term);
       const fallbackLocalMatches = LOCAL_RECIPES.filter(item =>
         item.terms.some(alias => matchesArabicSearchAlias(term, alias))
       ).map(item => ({ ...item.recipe }));
