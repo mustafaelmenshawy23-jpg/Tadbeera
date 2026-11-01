@@ -93,6 +93,7 @@ import {
   calculatePaydayCountdown,
   getPayCycleRange,
   filterExpensesForPayCycle,
+  removeSeedDemoExpenses,
   calculateDonutSegments,
   matchSpokenIngredients,
   calculateUniqueAchievementCount,
@@ -362,20 +363,17 @@ export default function App() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          return parsed.filter(e => e && typeof e === 'object').map(e => ({
+          const normalizedExpenses = parsed.filter(e => e && typeof e === 'object').map(e => ({
             id: String(e.id || Math.random().toString(36).substring(2, 8)),
             categoryId: String(e.categoryId || 'food'),
             amount: parseSafePrice(e.amount) || 0,
             date: String(e.date || new Date().toISOString().split('T')[0]),
             description: String(e.description || 'مصروف عام')
           }));
+          return removeSeedDemoExpenses(normalizedExpenses);
         }
       }
-      return [
-        { id: 'exp_1', categoryId: 'food', amount: 350, date: '2026-10-24', description: 'سوق الخضار الأسبوعي وبصل وطماطم' },
-        { id: 'exp_2', categoryId: 'bills', amount: 220, date: '2026-10-22', description: 'فاتورة الكهرباء وشحن كارت العداد' },
-        { id: 'exp_3', categoryId: 'transport', amount: 85, date: '2026-10-25', description: 'اشتراك مترو ومواصلات شغل' }
-      ];
+      return [];
     } catch {
       return [];
     }
