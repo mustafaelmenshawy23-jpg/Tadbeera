@@ -2029,7 +2029,10 @@ export default function App() {
                       <div className="text-[11px] text-gray-500">عدد الوصفات: {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).length}</div>
                       <div className="space-y-2">
                         {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).map(recipe => (
-                          <button key={recipe.id} type="button" onClick={() => setSelectedRecipeModal(recipe)} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 text-right shadow-sm transition hover:border-emerald-300">
+                          <button key={recipe.id} type="button" onClick={() => setSelectedRecipeModal(recipe)} className="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white p-2.5 text-right shadow-sm transition hover:border-emerald-300">
+                            <span className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#F1F5EC]">
+                              {recipe.imageUrl ? <img src={recipe.imageUrl} alt={recipe.name} loading="lazy" className="h-full w-full object-cover" /> : <SvgIllustration type={recipe.svgFallbackIcon || 'koshari'} />}
+                            </span>
                             <span className="min-w-0 flex-1">
                               <strong className="block truncate text-sm text-gray-900">{recipe.name}</strong>
                               <span className="mt-1 block text-[10px] text-gray-500">{recipe.mealType === 'breakfast' ? 'فطار' : recipe.mealType === 'lunch' ? 'غداء' : 'عشاء'} · {recipe.prepTimeMinutes} دقيقة · لـ {familySize} أفراد</span>
