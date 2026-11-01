@@ -77,6 +77,28 @@ jobs:
             exit 1
           fi
 
+      - name: Verify native permission plugin registration
+        run: |
+          MAIN_ACTIVITY="android/app/src/main/java/com/tedbeera/egypt/MainActivity.kt"
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          APP_GRADLE="android/app/build.gradle.kts"
+          for plugin in MicrophonePermission NotificationPermission MealReminderScheduler; do
+            grep -q "registerPlugin(${plugin}Plugin::class.java)" "$MAIN_ACTIVITY" || {
+              echo "::error file=$MAIN_ACTIVITY::Missing native registration for ${plugin}Plugin"
+              exit 1
+            }
+          done
+          for permission in android.permission.POST_NOTIFICATIONS android.permission.RECORD_AUDIO android.permission.SCHEDULE_EXACT_ALARM; do
+            grep -q "$permission" "$MANIFEST" || {
+              echo "::error file=$MANIFEST::Missing required permission $permission"
+              exit 1
+            }
+          done
+          grep -Eq 'targetSdk[[:space:]]*=[[:space:]]*(3[3-9]|[4-9][0-9])' "$APP_GRADLE" || {
+            echo "::error file=$APP_GRADLE::Android target SDK must be 33 or newer."
+            exit 1
+          }
+
       - name: Validate merged Android manifest and compile Kotlin (no APK)
         run: |
           cd android
