@@ -2050,6 +2050,13 @@ export default function App() {
                     </section>
                   ) : (
                     <>
+                  <button type="button" onClick={() => setKitchenView('offline')} className="flex w-full items-center justify-between rounded-2xl border border-[#DCE5D3] bg-[#F1F5EC] p-3 text-right transition hover:bg-[#E8EFE1]">
+                    <span className="flex items-center gap-2">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#526748]"><BookOpen className="h-5 w-5" /></span>
+                      <span><strong className="block text-xs text-[#40533A]">مكتبة الوصفات</strong><small className="mt-0.5 block text-[10px] text-[#68745F]">وصفات مجانية جاهزة داخل التطبيق</small></span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-[#526748]" />
+                  </button>
                   <button type="button" onClick={() => setKitchenView('online')} className="flex w-full items-center justify-between rounded-2xl border border-blue-200 bg-blue-50 p-3 text-right transition hover:bg-blue-100">
                     <span className="flex items-center gap-2">
                       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700"><Mic className="h-5 w-5" /></span>
