@@ -73,14 +73,16 @@ body { color: var(--td-ink); }
 ::-webkit-scrollbar-thumb { background: #C9C5B5; }
 
 /* Map legacy bright brand utilities to the calm olive-and-cream palette. */
-[class*="bg-blue-700"], [class*="bg-blue-800"], [class*="bg-blue-900"],
-[class*="bg-[#1565C0]"], [class*="bg-[#002171]"], [class*="bg-[#1E40AF]"] {
+[class*="from-[#1565C0]"], [class*="via-[#1565C0]"], [class*="to-[#1565C0]"] { --tw-gradient-from: #78815B var(--tw-gradient-from-position); --tw-gradient-to: rgb(120 129 91 / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[class*="from-[#002171]"], [class*="via-[#002171]"], [class*="to-[#002171]"] { --tw-gradient-from: #626B49 var(--tw-gradient-from-position); --tw-gradient-to: rgb(98 107 73 / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[class*="bg-blue-"], [class*="bg-[#0D47A1]"], [class*="bg-[#002171]"], [class*="bg-[#1565C0]"],
+[class*="bg-[#1E40AF]"], [class*="bg-[#0D47A1]"] {
   background-color: var(--td-olive-dark) !important;
 }
 [class*="bg-blue-50"], [class*="bg-blue-100"], [class*="bg-blue-200"] {
   background-color: #EEF0E6 !important;
 }
-[class*="text-blue-"], [class*="text-[#1565C0]"], [class*="text-[#1E293B]"] {
+[class*="text-blue-"], [class*="text-[#0D47A1]"], [class*="text-[#1565C0]"], [class*="text-[#1E293B]"] {
   color: var(--td-olive-dark) !important;
 }
 [class*="border-blue-"] { border-color: #D8DDCB !important; }
