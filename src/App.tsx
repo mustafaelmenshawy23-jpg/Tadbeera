@@ -3,6 +3,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import {
   Utensils,
+  BookOpen,
   Wallet,
   Lightbulb,
   Bookmark,
