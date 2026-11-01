@@ -1949,22 +1949,6 @@ export default function App() {
                 <span className="font-extrabold text-sm sm:text-base">تدبيرة — كل جنيه ليه قيمة 💛</span>
               </div>
               <div className="flex items-center gap-2">
-                {/* AdMob Test Mode Pill Button (Development Only) */}
-                {IS_DEV && (
-                  <button
-                    onClick={() => setIsAdControlsOpen(true)}
-                    className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition flex items-center gap-1 border ${
-                      adStatus === 'loaded' ? 'bg-[#D8C69A] text-[#626B49] border-[#FFA000]' :
-                      adStatus === 'loading' ? 'bg-[#EFE5C8] text-[#765B3A] border-amber-300 animate-pulse' :
-                      adStatus === 'failed' ? 'bg-rose-100 text-rose-800 border-rose-300' :
-                      'bg-gray-200 text-gray-700 border-gray-300'
-                    }`}
-                    title="لوحة اختبار ومحاكاة AdMob (وضع التطوير)"
-                  >
-                    <span>AdMob:</span>
-                    <span>{adStatus === 'loaded' ? 'نشط' : adStatus === 'loading' ? 'تحميل...' : adStatus === 'failed' ? 'فشل (انهيار)' : 'معطل'}</span>
-                  </button>
-                )}
                 <button
                   onClick={() => setIsSettingsModalOpen(true)}
                   className="p-1.5 rounded-lg bg-[#E8EDDF] hover:bg-[#DCE5D3] text-[#5F7651] transition"
