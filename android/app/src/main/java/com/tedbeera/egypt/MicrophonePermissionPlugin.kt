@@ -164,7 +164,8 @@ class MicrophonePermissionPlugin : Plugin() {
                 return
             }
         }
-        engine.setSpeechRate(0.9f)
+        engine.setSpeechRate(0.82f)
+        engine.setPitch(0.96f)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 notifyListeners("speechPlaybackStatus", JSObject().put("status", "speaking"))
