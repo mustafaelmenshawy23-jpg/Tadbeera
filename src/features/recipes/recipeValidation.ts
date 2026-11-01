@@ -5,7 +5,7 @@
  */
 function normalizeText(value: string): string {
   return value.toLocaleLowerCase().normalize('NFKC')
-    .replace(/[^\\p{L}\\p{N}]+/gu, ' ').replace(/\\s+/g, ' ').trim();
+    .replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function queryTokens(query: string): string[] {
