@@ -1962,7 +1962,7 @@ export default function App() {
             </div>
 
             {/* Scrollable Screen Content with shared layout clearance ensuring 70-90px breathing room */}
-            <div className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 bg-[#FBF8F1] ${getBottomScrollPaddingClass(adStatus)} ${isNativeApp ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}>
+            <div className={`tadbeera-screen-content flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 bg-[#FBF8F1] ${getBottomScrollPaddingClass(adStatus)} ${isNativeApp ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}>
 
 
               {activeTab === 'home' && (
@@ -2710,7 +2710,7 @@ export default function App() {
                         </div>
                         <div>
                           <h3 className="text-xs font-extrabold text-gray-900">توزيع المصروف الفعلي حسب البنود</h3>
-                          <span className="text-[10px] text-gray-400">تحليل بياني لحجم إنفاقك الحقيقي حتى الآن</span>
+                          <span className="text-[10px] text-gray-400">تحليل إنفاق دورة الراتب الحالية ({payCycleRange.label})</span>
                         </div>
                       </div>
                       {selectedDonutSegmentId && (
@@ -3017,7 +3017,7 @@ export default function App() {
                       </button>
                     </div>
 
-                    <div className="text-[10px] text-gray-400 -mt-1">المعاملات المعروضة لدورة الراتب الحالية: {payCycleRange.startDate} إلى {payCycleRange.endDateExclusive}</div>
+                    <div className="text-[10px] text-gray-400 -mt-1">دورة الراتب الحالية: {payCycleRange.label}</div>
                     {payCycleExpenses.length === 0 ? (
                       <div className="p-4 text-center text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">
                         لا توجد مصروفات مسجلة في دورة الراتب الحالية. المصروفات السابقة محفوظة في سجلها ولا تؤثر على رصيد الدورة الجديدة.
