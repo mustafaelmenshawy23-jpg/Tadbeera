@@ -12,6 +12,7 @@ interface RecipeVoicePlugin {
   stopSpeaking(): Promise<void>;
   addListener(eventName: 'speechResult', listener: (event: { transcript?: string }) => void): Promise<{ remove(): Promise<void> }>;
   addListener(eventName: 'speechError', listener: (event: { error?: string }) => void): Promise<{ remove(): Promise<void> }>;
+  addListener(eventName: 'speechPlaybackStatus', listener: (event: { status?: string }) => void): Promise<{ remove(): Promise<void> }>;
 }
 const recipeVoice = registerPlugin<RecipeVoicePlugin>('MicrophonePermission');
 
@@ -563,11 +564,24 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
     }
   };
 
-  useEffect(() => () => {
-    try { recognitionRef.current?.stop?.(); } catch {}
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
-    voiceListenersRef.current.forEach(listener => { void listener.remove(); });
-    if (Capacitor.isNativePlatform()) void recipeVoice.stopListening();
+  useEffect(() => {
+    let playbackListener: { remove(): Promise<void> } | undefined;
+    if (Capacitor.isNativePlatform()) {
+      void recipeVoice.addListener('speechPlaybackStatus', event => {
+        if (event.status === 'completed' || event.status === 'stopped' || event.status === 'error') setSpeaking(false);
+        if (event.status === 'speaking') setSpeaking(true);
+      }).then(listener => { playbackListener = listener; });
+    }
+    return () => {
+      try { recognitionRef.current?.stop?.(); } catch {}
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+      voiceListenersRef.current.forEach(listener => { void listener.remove(); });
+      if (playbackListener) void playbackListener.remove();
+      if (Capacitor.isNativePlatform()) {
+        void recipeVoice.stopListening();
+        void recipeVoice.stopSpeaking();
+      }
+    };
   }, []);
 
   const saveRecipe = (recipe: OnlineRecipe) => {
