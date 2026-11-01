@@ -2031,7 +2031,7 @@ export default function App() {
                         {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).map(recipe => (
                           <button key={recipe.id} type="button" onClick={() => setSelectedRecipeModal(recipe)} className="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white p-2.5 text-right shadow-sm transition hover:border-emerald-300">
                             <span className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#F1F5EC]">
-                              {recipe.imageUrl ? <img src={recipe.imageUrl} alt={recipe.name} loading="lazy" className="h-full w-full object-cover" /> : <SvgIllustration type={recipe.svgFallbackIcon || 'koshari'} />}
+                              {recipe.imageUrl && !brokenImages[recipe.id] ? <img src={recipe.imageUrl} alt={recipe.name} loading="lazy" onError={() => handleImageError(recipe.id)} className="h-full w-full object-cover" /> : <SvgIllustration type={recipe.svgFallbackIcon || 'koshari'} />}
                             </span>
                             <span className="min-w-0 flex-1">
                               <strong className="block truncate text-sm text-gray-900">{recipe.name}</strong>
@@ -2056,13 +2056,6 @@ export default function App() {
                       <span><strong className="block text-xs text-blue-900">ابحث عن وصفة أونلاين 🎙️</strong><small className="mt-0.5 block text-[10px] text-blue-700">اتكلم أو اكتب اسم الأكلة، واسمع طريقة التحضير</small></span>
                     </span>
                     <ChevronRight className="h-4 w-4 text-blue-700" />
-                  </button>
-                  <button type="button" onClick={() => setKitchenView('offline')} className="flex w-full items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-right transition hover:bg-emerald-100">
-                    <span className="flex items-center gap-2">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700"><BookOpen className="h-5 w-5" /></span>
-                      <span><strong className="block text-xs text-emerald-900">الوصفات المجانية – بدون إنترنت</strong><small className="mt-0.5 block text-[10px] text-emerald-700">افتح مكتبة الوصفات مباشرة من هنا</small></span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-emerald-700" />
                   </button>
                   {/* Brand Concept Motto Card */}
                   <div className="bg-[#0D47A1] text-white p-3 rounded-2xl shadow-sm flex items-center justify-between">
