@@ -73,3 +73,51 @@ body { background: #FBF8F1; color: #454A3C; }
 .tadbeera-appbar { min-height: 58px; }
 .tadbeera-bottom-nav button { min-height: 48px; }
 .tadbeera-bottom-nav button:focus-visible { outline: 2px solid #82966F; outline-offset: 2px; }
+
+
+/* Lightweight, consistent feedback when switching between app sections. */
+html {
+  scroll-behavior: smooth;
+}
+
+.tadbeera-screen-content > section,
+.tadbeera-screen-content > div {
+  animation: tadbeera-screen-enter 180ms ease-out both;
+}
+
+button:not(:disabled),
+a {
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
+    box-shadow 160ms ease, transform 160ms ease;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+@keyframes tadbeera-screen-enter {
+  from {
+    opacity: 0.82;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .tadbeera-screen-content > section,
+  .tadbeera-screen-content > div {
+    animation: none;
+  }
+
+  button:not(:disabled),
+  a {
+    transition: none;
+  }
+}
