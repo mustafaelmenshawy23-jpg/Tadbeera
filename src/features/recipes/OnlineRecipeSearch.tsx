@@ -1,6 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import { ArrowRight, Mic, MicOff, Volume2, VolumeX, Search, Bookmark } from 'lucide-react';
 import { normalizeArabicSearchTerm as normalize, matchesArabicSearchAlias } from './arabicSearch';
 import { hasRecipeStructure, isRelevantRecipe } from './recipeValidation';
+
+interface RecipeVoicePlugin {
+  request(): Promise<{ granted: boolean }>;
+  startListening(): Promise<void>;
+  stopListening(): Promise<void>;
+  speak(options: { text: string }): Promise<void>;
+  stopSpeaking(): Promise<void>;
+  addListener(eventName: 'speechResult', listener: (event: { transcript?: string }) => void): Promise<{ remove(): Promise<void> }>;
+  addListener(eventName: 'speechError', listener: (event: { error?: string }) => void): Promise<{ remove(): Promise<void> }>;
+}
+const recipeVoice = registerPlugin<RecipeVoicePlugin>('MicrophonePermission');
 
 type OnlineRecipe = {
   title: string;
@@ -270,7 +283,7 @@ async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineReci
   };
 }
 
-export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) {
+export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: number; onBack?: () => void }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<OnlineRecipe[]>([]);
   const [selected, setSelected] = useState<OnlineRecipe | null>(null);
@@ -278,14 +291,18 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
   const [showSaved, setShowSaved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceMessage, setVoiceMessage] = useState('');
+  const [speaking, setSpeaking] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const voiceListenersRef = useRef<Array<{ remove(): Promise<void> }>>([]);
 
   useEffect(() => {
     try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch { /* storage may be full */ }
   }, [saved]);
 
-  const search = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const term = query.trim();
+  const searchForTerm = async (rawTerm: string) => {
+    const term = rawTerm.trim();
     if (!term || loading) return;
     setLoading(true);
     setError('');
@@ -408,6 +425,151 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
     }
   };
 
+  const search = (event: React.FormEvent) => {
+    event.preventDefault();
+    void searchForTerm(query);
+  };
+
+  const stopVoiceSearch = async () => {
+    try {
+      recognitionRef.current?.stop?.();
+      recognitionRef.current = null;
+      if (Capacitor.isNativePlatform()) await recipeVoice.stopListening();
+    } catch { /* recognition may already have stopped */ }
+    setVoiceListening(false);
+  };
+
+  const startVoiceSearch = async () => {
+    if (voiceListening) {
+      await stopVoiceSearch();
+      return;
+    }
+    setVoiceMessage('');
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const permission = await recipeVoice.request();
+        if (!permission.granted) {
+          setVoiceMessage('اسمح لتدبيرة باستخدام الميكروفون من إعدادات الجهاز ثم حاول مرة أخرى.');
+          return;
+        }
+        voiceListenersRef.current.forEach(listener => { void listener.remove(); });
+        voiceListenersRef.current = [];
+        const resultListener = await recipeVoice.addListener('speechResult', event => {
+          const transcript = (event.transcript || '').trim();
+          setVoiceListening(false);
+          if (!transcript) {
+            setVoiceMessage('ملقطناش كلام واضح. اضغط على الميكروفون وجرب تاني.');
+            return;
+          }
+          setQuery(transcript);
+          setVoiceMessage(`سمعت: ${transcript}`);
+          void searchForTerm(transcript);
+        });
+        const errorListener = await recipeVoice.addListener('speechError', event => {
+          setVoiceListening(false);
+          const reason = event.error === 'no-speech' ? 'ملقطناش صوت. اتكلم بوضوح وجرب تاني.' :
+            event.error === 'network' ? 'خدمة التعرف على الكلام محتاجة إنترنت.' :
+            event.error === 'not-allowed' ? 'إذن الميكروفون غير متاح. فعّله من إعدادات التطبيق.' :
+            'تعذر تشغيل الميكروفون. تأكد من توفر خدمة التعرف على الكلام على جهازك.';
+          setVoiceMessage(reason);
+        });
+        voiceListenersRef.current = [resultListener, errorListener];
+        await recipeVoice.startListening();
+        setVoiceListening(true);
+        setVoiceMessage('بتسمعك دلوقتي… قول اسم الأكلة 🎙️');
+        return;
+      }
+
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setVoiceMessage('البحث الصوتي غير مدعوم في المتصفح الحالي. استخدم الكتابة أو افتح التطبيق على جهاز يدعم التعرف على الكلام.');
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ar-EG';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onstart = () => {
+        setVoiceListening(true);
+        setVoiceMessage('بتسمعك دلوقتي… قول اسم الأكلة 🎙️');
+      };
+      recognition.onresult = (event: any) => {
+        const transcript = (event.results?.[0]?.[0]?.transcript || '').trim();
+        setVoiceListening(false);
+        if (transcript) {
+          setQuery(transcript);
+          setVoiceMessage(`سمعت: ${transcript}`);
+          void searchForTerm(transcript);
+        } else {
+          setVoiceMessage('ملقطناش كلام واضح. جرب تاني.');
+        }
+      };
+      recognition.onerror = (event: any) => {
+        setVoiceListening(false);
+        setVoiceMessage(event.error === 'not-allowed' ? 'فعّل إذن الميكروفون من إعدادات الجهاز.' : 'تعذر سماع طلبك. حاول مرة أخرى.');
+      };
+      recognition.onend = () => setVoiceListening(false);
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setVoiceListening(false);
+      setVoiceMessage('مش قادرين نشغل الميكروفون دلوقتي. راجع الإذن وحاول تاني.');
+    }
+  };
+
+  const stopRecipeSpeech = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) await recipeVoice.stopSpeaking();
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    } catch { /* playback may already have stopped */ }
+    setSpeaking(false);
+  };
+
+  const speakRecipe = async (recipe: OnlineRecipe) => {
+    const sections = parseRecipeSections(recipe.extract, familySize, recipe.servings || 4);
+    const spokenText = [
+      recipe.title,
+      `المقادير محسوبة لعدد ${familySize} أفراد`,
+      'المكونات',
+      ...sections.ingredients,
+      'طريقة التحضير',
+      ...sections.steps.map((step, index) => `الخطوة ${index + 1}. ${step}`),
+    ].filter(Boolean).join('. ');
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await recipeVoice.speak({ text: spokenText });
+        setSpeaking(true);
+        return;
+      }
+      if (!('speechSynthesis' in window)) {
+        setVoiceMessage('تشغيل الصوت غير مدعوم على هذا الجهاز.');
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(spokenText);
+      utterance.lang = 'ar-EG';
+      utterance.rate = 0.88;
+      utterance.onstart = () => setSpeaking(true);
+      utterance.onend = () => setSpeaking(false);
+      utterance.onerror = () => {
+        setSpeaking(false);
+        setVoiceMessage('تعذر تشغيل الصوت. تأكد من تثبيت صوت عربي على الجهاز.');
+      };
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      setSpeaking(false);
+      setVoiceMessage('تعذر تشغيل الصوت العربي. تأكد من وجود محرك تحويل النص إلى كلام وصوت عربي على الجهاز.');
+    }
+  };
+
+  useEffect(() => () => {
+    try { recognitionRef.current?.stop?.(); } catch {}
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    voiceListenersRef.current.forEach(listener => { void listener.remove(); });
+    if (Capacitor.isNativePlatform()) void recipeVoice.stopListening();
+  }, []);
+
   const saveRecipe = (recipe: OnlineRecipe) => {
     setSaved(current => current.some(item => item.pageId === recipe.pageId) ? current : [recipe, ...current]);
   };
@@ -415,12 +577,16 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
   const currentItems = showSaved ? saved : results;
 
   return (
-    <section dir="rtl" className="rounded-2xl border border-emerald-200 bg-white p-3 shadow-sm space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-black text-gray-900">🌍 ابحث عن وصفة من العالم</h3>
-          <p className="text-[10px] text-gray-500 mt-1">بحث بالعربي أو الإنجليزي، والوصفة بتظهر بالعربي ومقاديرها محسوبة لأسرتك ({familySize} أفراد).</p>
+    <section dir="rtl" className="min-h-full space-y-3" aria-label="البحث الصوتي عن الوصفات أونلاين">
+      <div className="flex items-center gap-2">
+        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700"><ArrowRight className="h-4 w-4" /> رجوع</button>}
+        <div className="min-w-0 flex-1 rounded-2xl bg-gradient-to-l from-[#EEF6EC] to-white p-3">
+          <h3 className="text-base font-black text-gray-900">مساعد الوصفات الصوتي 🎙️</h3>
+          <p className="mt-1 text-[11px] leading-5 text-gray-600">ابحث بالكلام أو الكتابة، واسمع المكونات وطريقة التحضير بالعربي.</p>
         </div>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] text-gray-500">لأسرة من {familySize} أفراد</span>
         <button type="button" onClick={() => { setShowSaved(value => !value); setSelected(null); }}
           className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">
           {showSaved ? 'نتائج البحث' : 'المحفوظات'} ({saved.length})
@@ -430,15 +596,21 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       {!showSaved && (
         <form onSubmit={search} className="flex gap-2">
           <input value={query} onChange={event => setQuery(event.target.value)}
-            placeholder="مثال: كبسة، ملوخية، sushi..." maxLength={80}
-            className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+            placeholder="قول أو اكتب اسم الأكلة..." maxLength={80}
+            className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none focus:border-emerald-500" />
+          <button type="button" onClick={() => void startVoiceSearch()} disabled={loading}
+            aria-label={voiceListening ? 'إيقاف الاستماع' : 'البحث بالصوت'}
+            className={`rounded-xl px-3 py-2 text-white disabled:opacity-50 ${voiceListening ? 'bg-red-600' : 'bg-[#667B58]'}`}>
+            {voiceListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+          </button>
           <button type="submit" disabled={loading || !query.trim()}
             className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
-            {loading ? 'جاري البحث…' : 'ابحث'}
+            {loading ? 'جاري البحث…' : <><Search className="inline h-4 w-4 ml-1" /> ابحث</>}
           </button>
         </form>
       )}
 
+      {voiceMessage && <p role="status" className="rounded-xl bg-blue-50 p-3 text-xs leading-6 text-blue-900">{voiceMessage}</p>}
       {error && <p role="status" className="rounded-xl bg-amber-50 p-3 text-xs leading-6 text-amber-900">{error}</p>}
 
       {currentItems.length > 0 && (
@@ -463,17 +635,21 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
               const sections = parseRecipeSections(selected.extract, familySize, selected.servings || 4);
               return <div className="space-y-3">
                 {sections.ingredients.length > 0 && <section>
-                  <h5 className="mb-1 text-xs font-black text-gray-900">المكونات المطلوبة</h5>
-                  <ul className="list-disc space-y-1 pr-5 text-xs leading-6 text-gray-700">{sections.ingredients.map((ingredient,index)=><li key={index}>{ingredient}</li>)}</ul>
+                  <h5 className="mb-1 text-base font-black text-gray-900">المكونات المطلوبة</h5>
+                  <ul className="list-disc space-y-1 pr-5 text-sm leading-8 text-gray-800">{sections.ingredients.map((ingredient,index)=><li key={index}>{ingredient}</li>)}</ul>
                 </section>}
                 <section>
-                  <h5 className="mb-1 text-xs font-black text-gray-900">طريقة التحضير خطوة بخطوة</h5>
-                  <ol className="list-decimal space-y-2 pr-5 text-xs leading-7 text-gray-700">{sections.steps.map((step,index)=><li key={index}>{step}</li>)}</ol>
+                  <h5 className="mb-1 text-base font-black text-gray-900">طريقة التحضير خطوة بخطوة</h5>
+                  <ol className="list-decimal space-y-2 pr-5 text-sm leading-8 text-gray-800">{sections.steps.map((step,index)=><li key={index}>{step}</li>)}</ol>
                 </section>
               </div>;
             })()}
             {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit || 'TheMealDB'} — {selected.imageLicense || 'راجع المصدر الأصلي'}</p>}
             <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => void (speaking ? stopRecipeSpeech() : speakRecipe(selected))}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-[11px] font-bold text-white">
+                {speaking ? <><VolumeX className="h-4 w-4" /> إيقاف الاستماع</> : <><Volume2 className="h-4 w-4" /> اسمع الوصفة</>}
+              </button>
               <button type="button" onClick={() => saveRecipe(selected)}
                 className="rounded-xl bg-amber-100 px-3 py-2 text-[11px] font-bold text-amber-900">
                 {saved.some(item => item.pageId === selected.pageId) ? '✓ محفوظة' : '☆ احفظ الوصفة'}
