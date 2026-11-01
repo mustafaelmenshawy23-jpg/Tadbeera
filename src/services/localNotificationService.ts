@@ -41,7 +41,6 @@ export const REMINDER_STORAGE_KEY = 'tedbeera_phase4d_reminder_enabled';
 export const REMINDER_TIME_KEY = 'tedbeera_phase4d_reminder_time';
 // Distinguish a first-time Android permission request from a permission the user already declined.
 const NOTIFICATION_PERMISSION_REQUESTED_KEY = 'tedbeera_notification_permission_requested';
-let exactAlarmSettingsOpenedThisSession = false;
 let notificationSettingsOpenedThisSession = false;
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'prompt' | 'unsupported';
@@ -143,28 +142,6 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     }
   }
 
-  private async ensureExactAlarmPermission(): Promise<boolean> {
-    // The manifest declaration alone does not grant exact-alarm access on Android 12+.
-    const current = await LocalNotifications.checkExactNotificationSetting();
-    if (current.exact_alarm === 'granted') {
-      exactAlarmSettingsOpenedThisSession = false;
-      return true;
-    }
-
-    // Open the Android system "Alarms & reminders" settings at most once
-    // per app session. The app retries scheduling when it returns to foreground.
-    if (!exactAlarmSettingsOpenedThisSession) {
-      exactAlarmSettingsOpenedThisSession = true;
-      await LocalNotifications.changeExactNotificationSetting();
-    }
-
-    const refreshed = await LocalNotifications.checkExactNotificationSetting();
-    if (refreshed.exact_alarm === 'granted') {
-      exactAlarmSettingsOpenedThisSession = false;
-      return true;
-    }
-    return false;
-  }
 
   async scheduleDailyReminder(
     breakfastHour: number = DEFAULT_REMINDER_HOUR,
@@ -208,14 +185,6 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         notifications: times.map(item => ({ id: item.id })),
       });
 
-      if (!(await this.ensureExactAlarmPermission())) {
-        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
-        return {
-          success: false,
-          message: 'لازم تسمح لتدبيرة بإذن «المنبّهات والتذكيرات» من إعدادات الهاتف. افتح الصفحة التي ظهرت، فعّل الإذن، ثم ارجع للتطبيق.',
-        };
-      }
-
       await LocalNotifications.createChannel({
         id: DAILY_REMINDER_CHANNEL_ID,
         name: 'تذكيرات وجبات تدبيرة',
@@ -236,8 +205,8 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         };
       }
 
-      // Use the app-owned AlarmManager receiver: it schedules each meal with
-      // setExactAndAllowWhileIdle and re-arms the next local day after delivery.
+      // Native scheduler uses exact alarms when Android permits them and
+      // automatically falls back to inexact alarms otherwise. Times are Egypt time.
       const scheduleResult = await MealReminderScheduler.scheduleDailyReminders({
         breakfastHour,
         breakfastMinute,
@@ -257,7 +226,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
           success: false,
           message: missingMeals.length
             ? `تعذر تأكيد جدولة تذكير ${missingMeals.map(item => item.label).join(' و')} على أندرويد.`
-            : 'تعذر على أندرويد تسجيل منبّهات الوجبات الدقيقة. راجع إعدادات الهاتف ثم حاول مرة أخرى.',
+            : 'تعذر على أندرويد تسجيل تذكيرات الوجبات. تأكد من السماح بإشعارات تدبيرة ثم حاول مرة أخرى.',
         };
       }
 
@@ -289,9 +258,6 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       const notificationsEnabled = await LocalNotifications.areEnabled();
       if (!notificationsEnabled.value) {
         return { success: false, message: 'إشعارات تدبيرة مقفولة من إعدادات الهاتف. فعّلها ثم أعد الاختبار.' };
-      }
-      if (!(await this.ensureExactAlarmPermission())) {
-        return { success: false, message: 'اسمح لتدبيرة بإذن «المنبّهات والتذكيرات» من إعدادات الهاتف ثم أعد الاختبار.' };
       }
       await LocalNotifications.createChannel({
         id: DAILY_REMINDER_CHANNEL_ID,
