@@ -270,8 +270,8 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
         item.terms.some(alias => matchesArabicSearchAlias(term, alias))
       ).map(item => ({ ...item.recipe }));
       if (localMatches.length) {
-        setResults(fallbackLocalMatches);
-        setSelected(fallbackLocalMatches[0]);
+        setResults(localMatches);
+        setSelected(localMatches[0]);
         setLoading(false);
         return;
       }
@@ -357,8 +357,8 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
         item.terms.some(alias => matchesArabicSearchAlias(term, alias) || matchesArabicSearchAlias(englishTerm, alias))
       ).map(item => ({ ...item.recipe }));
       if (fallbackLocalMatches.length) {
-        setResults(localMatches);
-        setSelected(localMatches[0]);
+        setResults(fallbackLocalMatches);
+        setSelected(fallbackLocalMatches[0]);
       } else {
         setError('تعذر الاتصال بمكتبة الوصفات المجانية. تأكد من الإنترنت وحاول مرة أخرى؛ تقدر تستخدم الوصفات المحفوظة بدون اتصال.');
       }
