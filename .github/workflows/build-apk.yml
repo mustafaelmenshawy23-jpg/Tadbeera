@@ -1,6 +1,16 @@
 name: Build Tedbeera Android APK
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'src/**'
+      - 'public/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build-apk.yml'
   push:
     branches: [main]
     paths:
