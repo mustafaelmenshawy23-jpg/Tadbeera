@@ -8,6 +8,9 @@ import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import java.util.Locale
 import com.getcapacitor.JSObject
 import com.getcapacitor.PermissionState
 import com.getcapacitor.Plugin
@@ -26,6 +29,8 @@ import com.getcapacitor.annotation.PermissionCallback
 class MicrophonePermissionPlugin : Plugin() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var speechRecognizer: SpeechRecognizer? = null
+    private var textToSpeech: TextToSpeech? = null
+    private var pendingSpeechCall: PluginCall? = null
 
     @PluginMethod
     fun request(call: PluginCall) {
@@ -108,6 +113,93 @@ class MicrophonePermissionPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun speak(call: PluginCall) {
+        val text = call.getString("text")?.trim().orEmpty()
+        if (text.isBlank()) {
+            call.reject("Speech text is empty")
+            return
+        }
+        mainHandler.post {
+            try {
+                pendingSpeechCall?.reject("Speech request replaced")
+                pendingSpeechCall = call
+                val engine = textToSpeech
+                if (engine != null) {
+                    speakWithEngine(engine, text, call)
+                } else {
+                    textToSpeech = TextToSpeech(context) { status ->
+                        mainHandler.post {
+                            val currentCall = pendingSpeechCall
+                            if (currentCall !== call) return@post
+                            if (status != TextToSpeech.SUCCESS) {
+                                pendingSpeechCall = null
+                                call.reject("Arabic text-to-speech engine is unavailable")
+                                return@post
+                            }
+                            val readyEngine = textToSpeech
+                            if (readyEngine == null) {
+                                pendingSpeechCall = null
+                                call.reject("Text-to-speech engine failed to initialize")
+                                return@post
+                            }
+                            speakWithEngine(readyEngine, text, call)
+                        }
+                    }
+                }
+            } catch (error: Exception) {
+                pendingSpeechCall = null
+                call.reject("Unable to speak recipe: ${error.message}")
+            }
+        }
+    }
+
+    private fun speakWithEngine(engine: TextToSpeech, text: String, call: PluginCall) {
+        val arabic = Locale("ar", "EG")
+        val languageResult = engine.setLanguage(arabic)
+        if (languageResult == TextToSpeech.LANG_MISSING_DATA || languageResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+            val fallbackResult = engine.setLanguage(Locale("ar"))
+            if (fallbackResult == TextToSpeech.LANG_MISSING_DATA || fallbackResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+                pendingSpeechCall = null
+                call.reject("Arabic voice data is not installed on this device")
+                return
+            }
+        }
+        engine.setSpeechRate(0.9f)
+        engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {
+                notifyListeners("speechPlaybackStatus", JSObject().put("status", "speaking"))
+            }
+            override fun onDone(utteranceId: String?) {
+                notifyListeners("speechPlaybackStatus", JSObject().put("status", "completed"))
+            }
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+                notifyListeners("speechPlaybackStatus", JSObject().put("status", "error"))
+            }
+            override fun onError(utteranceId: String?, errorCode: Int) {
+                notifyListeners("speechPlaybackStatus", JSObject().put("status", "error"))
+            }
+        })
+        val result = engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "tadbeera-recipe-${System.currentTimeMillis()}")
+        if (result == TextToSpeech.ERROR) {
+            pendingSpeechCall = null
+            call.reject("Unable to start Arabic speech playback")
+        } else {
+            pendingSpeechCall = null
+            call.resolve()
+        }
+    }
+
+    @PluginMethod
+    fun stopSpeaking(call: PluginCall) {
+        mainHandler.post {
+            try { textToSpeech?.stop() } catch (_: Exception) {}
+            notifyListeners("speechPlaybackStatus", JSObject().put("status", "stopped"))
+            call.resolve()
+        }
+    }
+
+    @PluginMethod
     fun stopListening(call: PluginCall) {
         mainHandler.post {
             stopRecognizer()
@@ -127,7 +219,12 @@ class MicrophonePermissionPlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
-        mainHandler.post { stopRecognizer() }
+        mainHandler.post {
+            stopRecognizer()
+            try { textToSpeech?.stop() } catch (_: Exception) {}
+            try { textToSpeech?.shutdown() } catch (_: Exception) {}
+            textToSpeech = null
+        }
         super.handleOnDestroy()
     }
 }
