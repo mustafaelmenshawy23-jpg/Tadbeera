@@ -78,6 +78,32 @@ jobs:
           fi
           echo "Local Notifications plugin registration verified."
 
+      - name: Verify Native Permission and Reminder Plugins
+        run: |
+          MAIN_ACTIVITY="android/app/src/main/java/com/tedbeera/egypt/MainActivity.kt"
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          APP_GRADLE="android/app/build.gradle.kts"
+          for plugin in MicrophonePermission NotificationPermission MealReminderScheduler; do
+            if ! grep -q "registerPlugin(${plugin}Plugin::class.java)" "$MAIN_ACTIVITY"; then
+              echo "::error file=$MAIN_ACTIVITY::Missing native registration for ${plugin}Plugin"
+              exit 1
+            fi
+          done
+          for permission in android.permission.POST_NOTIFICATIONS android.permission.RECORD_AUDIO android.permission.SCHEDULE_EXACT_ALARM; do
+            if ! grep -q "$permission" "$MANIFEST"; then
+              echo "::error file=$MANIFEST::Missing required permission $permission"
+              exit 1
+            fi
+          done
+          if ! grep -Eq 'targetSdk[[:space:]]*=[[:space:]]*(3[3-9]|[4-9][0-9])' "$APP_GRADLE"; then
+            echo "::error file=$APP_GRADLE::Android target SDK must be 33 or newer for runtime notification permission."
+            exit 1
+          fi
+          test -f "android/app/src/main/java/com/tedbeera/egypt/NotificationPermissionPlugin.kt"
+          test -f "android/app/src/main/java/com/tedbeera/egypt/MicrophonePermissionPlugin.kt"
+          test -f "android/app/src/main/java/com/tedbeera/egypt/MealReminderSchedulerPlugin.kt"
+          echo "Native permission and reminder plugin registration verified."
+
       - name: Accept Android SDK Licenses & Prepare Gradle
         run: |
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || yes | sdkmanager --licenses 2>/dev/null || true
