@@ -46,6 +46,11 @@ class NotificationPermissionPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun check(call: PluginCall) {
+        resolveResult(call)
+    }
+
+    @PluginMethod
     fun request(call: PluginCall) {
         if (android.os.Build.VERSION.SDK_INT < 33 ||
             getPermissionState("notifications") == PermissionState.GRANTED
