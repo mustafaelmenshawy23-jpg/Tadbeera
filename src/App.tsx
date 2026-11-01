@@ -132,6 +132,7 @@ import {
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
 // Online recipe discovery is intentionally mounted as its own focused kitchen sub-screen.
+// The dedicated online search always attempts remote recipe providers before local fallbacks.
 // Heavy feature screens are loaded on demand so the first app screen stays lighter.
 const HouseholdHub = React.lazy(() =>
   import('./features/household/HouseholdHub').then(module => ({ default: module.HouseholdHub }))
