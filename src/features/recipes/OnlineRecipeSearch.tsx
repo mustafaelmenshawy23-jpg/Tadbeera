@@ -27,6 +27,7 @@ const MEAL_DB_API = 'https://www.themealdb.com/api/json/v1/1/search.php';
 const WIKIBOOKS_API = 'https://en.wikibooks.org/w/api.php';
 
 const ARABIC_ALIASES: Array<{ terms: string[]; english: string }> = [
+  { terms: ['سمبوسك', 'سمبوسة', 'سمبوسه', 'سمبوسك باللحمة', 'سمبوسك بالجبنة'], english: 'samosa' },
   { terms: ['كبسة', 'كبسه', 'كبسة دجاج', 'كبسة فراخ'], english: 'kabsa' },
   { terms: ['كشري', 'كشرى'], english: 'koshari' },
   { terms: ['ملوخية', 'ملوخيه'], english: 'molokhia' },
@@ -42,6 +43,14 @@ const ARABIC_ALIASES: Array<{ terms: string[]; english: string }> = [
 ];
 
 const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
+  {
+    terms: ['سمبوسك', 'سمبوسة', 'سمبوسه', 'samosa'],
+    recipe: {
+      title: 'سمبوسك مقرمش بحشوة اللحمة', servings: 4, pageId: 900010,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات (تكفي 4 أفراد): 2 كوب دقيق، نصف كوب ماء دافئ تقريبًا، ملعقة كبيرة زيت، نصف ملعقة صغيرة ملح. للحشوة: 250 جم لحم مفروم، بصلة صغيرة مفرومة، ملح وفلفل وبهارات، ملعقة زيت.\n\nطريقة التحضير: اخلط الدقيق والملح والزيت، ثم أضف الماء تدريجيًا واعجن حتى تتكون عجينة ناعمة. غطّ العجينة واتركها ترتاح 20 دقيقة. شوّح البصل في الزيت ثم أضف اللحم والبهارات وقلّب حتى ينضج تمامًا واترك الحشوة تبرد. افرد العجينة وقطّعها دوائر أو شرائط، ضع مقدارًا من الحشوة واغلقها جيدًا. اقْلِ السمبوسك في زيت متوسط السخونة حتى يصبح ذهبيًا ومقرمشًا، ثم صفّه وقدّمه.'
+    },
+  },
   {
     terms: ['كبسة', 'kabsa'],
     recipe: {
