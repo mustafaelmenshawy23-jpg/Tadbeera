@@ -5,6 +5,8 @@ interface NotificationPermissionPlugin {
   check(): Promise<{ granted: boolean }>;
   request(): Promise<{ granted: boolean }>;
   openSettings(): Promise<void>;
+  checkExactAlarmPermission(): Promise<{ granted: boolean }>;
+  openExactAlarmSettings(): Promise<{ granted: boolean }>;
 }
 
 const NotificationPermission = registerPlugin<NotificationPermissionPlugin>('NotificationPermission');
@@ -213,8 +215,20 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       // The native receiver creates its own channel before displaying a meal reminder.
       // Therefore the core daily schedule does not depend on LocalNotifications being registered.
 
-      // Native scheduler uses exact alarms when Android permits them and
-      // automatically falls back to inexact alarms otherwise. Times are Egypt time.
+      // Android 12+ requires a separate special-access grant for exact alarms.
+      // Do not report a successful schedule when Android would only accept an inexact,
+      // potentially delayed alarm. Open the system grant screen and retry on resume.
+      const exactAlarmAccess = await NotificationPermission.checkExactAlarmPermission();
+      if (!exactAlarmAccess.granted) {
+        await NotificationPermission.openExactAlarmSettings();
+        return {
+          success: false,
+          message: 'اسمح لتدبيرة بالمنبهات الدقيقة من شاشة الإعدادات التي ظهرت، ثم ارجع للتطبيق لتفعيل مواعيد الوجبات بدقة.',
+        };
+      }
+
+      // Schedule all three reminders with exact, idle-capable Android alarms.
+      // Times are Egypt time.
       const scheduleResult = await MealReminderScheduler.scheduleDailyReminders({
         breakfastHour,
         breakfastMinute,
