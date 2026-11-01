@@ -91,6 +91,8 @@ import {
   validateBackupPayload,
   calculateCategoryAnalytics,
   calculatePaydayCountdown,
+  getPayCycleRange,
+  filterExpensesForPayCycle,
   calculateDonutSegments,
   matchSpokenIngredients,
   calculateUniqueAchievementCount,
@@ -818,7 +820,9 @@ export default function App() {
       const currentList = [...prev];
       newItems.forEach(newItem => {
         const existingIndex = currentList.findIndex(
-          item => item.name.trim().toLowerCase() === newItem.name.trim().toLowerCase()
+          item =>
+            item.name.trim().toLocaleLowerCase() === newItem.name.trim().toLocaleLowerCase() &&
+            item.unit.trim().toLocaleLowerCase() === newItem.unit.trim().toLocaleLowerCase()
         );
         if (existingIndex >= 0) {
           currentList[existingIndex] = {
@@ -1350,17 +1354,24 @@ export default function App() {
     showToast(`تمت إضافة بند "${newCat.name}" وإعادة التوزيع بنسبة 100% بالتمام 🎉`);
   };
 
+  // Budget calculations use the active salary cycle, not every historical expense.
+  const payCycleRange = useMemo(() => getPayCycleRange(paydayDay), [paydayDay]);
+  const payCycleExpenses = useMemo(
+    () => filterExpensesForPayCycle(expenses, payCycleRange),
+    [expenses, payCycleRange]
+  );
+
   // Budget Reconciled Breakdown & Calculations
   const budgetBreakdown = useMemo(() => {
-    return reconcileBudgetAllocations(parsedBudgetAmount, categoryPercentages, categories, expenses);
-  }, [parsedBudgetAmount, categoryPercentages, categories, expenses]);
+    return reconcileBudgetAllocations(parsedBudgetAmount, categoryPercentages, categories, payCycleExpenses);
+  }, [parsedBudgetAmount, categoryPercentages, categories, payCycleExpenses]);
 
   const totalSpentAll = useMemo(() => {
-    return expenses.reduce((acc, curr) => {
+    return payCycleExpenses.reduce((acc, curr) => {
       const amt = parseSafePrice(curr.amount) || 0;
       return acc + amt;
     }, 0);
-  }, [expenses]);
+  }, [payCycleExpenses]);
 
   const totalRemainingAll = Math.round(parsedBudgetAmount - totalSpentAll);
 
@@ -3006,13 +3017,14 @@ export default function App() {
                       </button>
                     </div>
 
-                    {expenses.length === 0 ? (
+                    <div className="text-[10px] text-gray-400 -mt-1">المعاملات المعروضة لدورة الراتب الحالية: {payCycleRange.startDate} إلى {payCycleRange.endDateExclusive}</div>
+                    {payCycleExpenses.length === 0 ? (
                       <div className="p-4 text-center text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">
-                        لسه مسجلتش مصاريف. اضغط على "تسجيل مصروف" عشان تتابع رصيدك.
+                        لا توجد مصروفات مسجلة في دورة الراتب الحالية. المصروفات السابقة محفوظة في سجلها ولا تؤثر على رصيد الدورة الجديدة.
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {expenses.slice(0, 5).map(exp => {
+                        {payCycleExpenses.slice(0, 5).map(exp => {
                           const cat = categories.find(c => c.id === exp.categoryId);
                           return (
                             <div key={exp.id} className="p-2.5 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between text-xs">
