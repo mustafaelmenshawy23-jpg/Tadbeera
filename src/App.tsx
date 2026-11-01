@@ -318,7 +318,7 @@ export default function App() {
   const [usesLeftoversFilter, setUsesLeftoversFilter] = useState(false);
   const [isZeroMissingOnly, setIsZeroMissingOnly] = useState(false);
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
-  const [kitchenView, setKitchenView] = useState<'main' | 'offline'>('main');
+  const [kitchenView, setKitchenView] = useState<'main' | 'offline' | 'online'>('main');
   const [offlineRecipeQuery, setOfflineRecipeQuery] = useState('');
 
   // Budget & Expense State
@@ -2007,7 +2007,11 @@ export default function App() {
               {/* ======================================================== */}
               {activeTab === 'food' && (
                 <div className="space-y-4">
-                  {kitchenView === 'offline' ? (
+                  {kitchenView === 'online' ? (
+                    <React.Suspense fallback={<div className="rounded-2xl border border-emerald-200 bg-white p-5 text-center text-sm text-gray-600">بنجهز مساعد الوصفات الصوتي…</div>}>
+                      <OnlineRecipeSearch familySize={familySize} onBack={() => setKitchenView('main')} />
+                    </React.Suspense>
+                  ) : kitchenView === 'offline' ? (
                     <section dir="rtl" className="space-y-3">
                       <div className="flex items-center justify-between gap-2">
                         <button type="button" onClick={() => setKitchenView('main')} className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700">
@@ -2041,6 +2045,13 @@ export default function App() {
                     </section>
                   ) : (
                     <>
+                  <button type="button" onClick={() => setKitchenView('online')} className="flex w-full items-center justify-between rounded-2xl border border-blue-200 bg-blue-50 p-3 text-right transition hover:bg-blue-100">
+                    <span className="flex items-center gap-2">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700"><Mic className="h-5 w-5" /></span>
+                      <span><strong className="block text-xs text-blue-900">ابحث عن وصفة أونلاين 🎙️</strong><small className="mt-0.5 block text-[10px] text-blue-700">اتكلم أو اكتب اسم الأكلة، واسمع طريقة التحضير</small></span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-blue-700" />
+                  </button>
                   <button type="button" onClick={() => setKitchenView('offline')} className="flex w-full items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-right transition hover:bg-emerald-100">
                     <span className="flex items-center gap-2">
                       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700"><BookOpen className="h-5 w-5" /></span>
@@ -2056,9 +2067,6 @@ export default function App() {
                     </div>
                     <span className="text-xs bg-[#FFB300] text-[#0D47A1] font-black px-2 py-0.5 rounded-lg">ج.م EGP</span>
                   </div>
-                  <React.Suspense fallback={<div className="rounded-2xl bg-white border border-gray-200 p-4 text-center text-xs text-gray-500">بنجهز البحث عن الوصفات…</div>}>
-                    <OnlineRecipeSearch familySize={familySize} />
-                  </React.Suspense>
                   {/* Family Size Scaler Bar */}
                   <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs">
