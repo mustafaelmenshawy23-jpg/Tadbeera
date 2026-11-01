@@ -3026,13 +3026,14 @@ export default function App() {
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>تسجيل مصروف</span>
-                      </button>
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="text-[10px] text-gray-400 -mt-1">دورة الراتب الحالية: {payCycleRange.label}</div>
+                    <div className="text-[10px] text-gray-400 -mt-1">{showAllExpenseHistory ? 'كل السجل المالي' : `دورة الراتب الحالية: ${payCycleRange.label}`}</div>
                     {displayedExpenses.length === 0 ? (
                       <div className="p-4 text-center text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">
-                        لا توجد مصروفات مسجلة في دورة الراتب الحالية. المصروفات السابقة محفوظة في سجلها ولا تؤثر على رصيد الدورة الجديدة.
+                        {showAllExpenseHistory ? 'لا توجد مصروفات مسجلة حتى الآن.' : 'لا توجد مصروفات مسجلة في دورة الراتب الحالية. المصروفات السابقة محفوظة ولا تؤثر على رصيد الدورة الجديدة.'}
                       </div>
                     ) : (
                       <div className="space-y-2">
