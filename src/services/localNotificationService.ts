@@ -81,9 +81,15 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     return this.isNativePlatform() && Capacitor.isPluginAvailable('NotificationPermission');
   }
 
+  private isLocalNotificationsAvailable(): boolean {
+    return this.isNativePlatform() && Capacitor.isPluginAvailable('LocalNotifications');
+  }
+
   isPluginAvailable(): boolean {
+    // Daily meal alarms are owned by the app's native AlarmManager receiver.
+    // LocalNotifications is only an optional helper for channel inspection,
+    // cleanup of legacy alarms, and the manual test notification.
     return this.isPermissionPluginAvailable() &&
-      Capacitor.isPluginAvailable('LocalNotifications') &&
       Capacitor.isPluginAvailable('MealReminderScheduler');
   }
 
@@ -169,41 +175,43 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
         return { success: false, message: 'لم يتم منح إذن الإشعارات. فعّله من إعدادات الهاتف ثم حاول مرة أخرى.' };
       }
 
-      const notificationsEnabled = await LocalNotifications.areEnabled();
-      if (!notificationsEnabled.value) {
-        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
-        return {
-          success: false,
-          message: 'إشعارات تدبيرة مقفولة من إعدادات الهاتف. فعّل إشعارات التطبيق من إعدادات أندرويد ثم ارجع للتطبيق.',
-        };
-      }
+      if (this.isLocalNotificationsAvailable()) {
+        const notificationsEnabled = await LocalNotifications.areEnabled();
+        if (!notificationsEnabled.value) {
+          this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+          return {
+            success: false,
+            message: 'إشعارات تدبيرة مقفولة من إعدادات الهاتف. فعّل إشعارات التطبيق من إعدادات أندرويد ثم ارجع للتطبيق.',
+          };
+        }
 
+        // Clean up alarms left by the previous LocalNotifications-based implementation.
+        await LocalNotifications.cancel({
+          notifications: times.map(item => ({ id: item.id })),
+        });
 
-      // Remove any meal alarms left by the previous LocalNotifications-based
-      // implementation before switching to the native AlarmManager receiver.
-      await LocalNotifications.cancel({
-        notifications: times.map(item => ({ id: item.id })),
-      });
-
-      await LocalNotifications.createChannel({
-        id: DAILY_REMINDER_CHANNEL_ID,
-        name: 'تذكيرات وجبات تدبيرة',
-        description: 'تذكيرات الفطار والغداء والعشاء',
-        importance: 4,
-        visibility: 1,
-      });
-      const channelState = await LocalNotifications.listChannels();
-      const mealChannel = (channelState.channels || []).find(channel => channel.id === DAILY_REMINDER_CHANNEL_ID);
-      if (!mealChannel) {
-        throw new Error('تعذر إنشاء قناة إشعارات تذكيرات الوجبات على الجهاز.');
+        await LocalNotifications.createChannel({
+          id: DAILY_REMINDER_CHANNEL_ID,
+          name: 'تذكيرات وجبات تدبيرة',
+          description: 'تذكيرات الفطار والغداء والعشاء',
+          importance: 4,
+          visibility: 1,
+        });
+        const channelState = await LocalNotifications.listChannels();
+        const mealChannel = (channelState.channels || []).find(channel => channel.id === DAILY_REMINDER_CHANNEL_ID);
+        if (!mealChannel) {
+          throw new Error('تعذر إنشاء قناة إشعارات تذكيرات الوجبات على الجهاز.');
+        }
+        if (mealChannel.importance === 0) {
+          this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
+          return {
+            success: false,
+            message: 'قناة تذكيرات تدبيرة مكتومة من إعدادات الهاتف. افتح إعدادات إشعارات التطبيق واسمح لقناة تذكيرات الوجبات.',
+          };
+        }
       }
-      if (mealChannel.importance === 0) {
-        this.saveStoredConfig({ enabled: false, hour: breakfastHour, minute: breakfastMinute });
-        return {
-          success: false,
-          message: 'قناة تذكيرات تدبيرة مكتومة من إعدادات الهاتف. افتح إعدادات إشعارات التطبيق واسمح لقناة تذكيرات الوجبات.',
-        };
-      }
+      // The native receiver creates its own channel before displaying a meal reminder.
+      // Therefore the core daily schedule does not depend on LocalNotifications being registered.
 
       // Native scheduler uses exact alarms when Android permits them and
       // automatically falls back to inexact alarms otherwise. Times are Egypt time.
@@ -249,6 +257,9 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   async sendTestNotification(): Promise<{ success: boolean; message: string }> {
     if (!this.isPluginAvailable()) {
       return { success: false, message: 'الإشعارات غير متاحة: افتح نسخة Android المحدّثة من تدبيرة.' };
+    }
+    if (!this.isLocalNotificationsAvailable()) {
+      return { success: false, message: 'اختبار الإشعار غير متاح في هذه النسخة، لكن تذكيرات الوجبات اليومية تعمل من خلال خدمة أندرويد.' };
     }
     try {
       const permission = await this.checkPermission();
@@ -303,9 +314,11 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
     try {
       await MealReminderScheduler.cancelDailyReminders();
       // Also clear IDs scheduled by older app versions before the native scheduler migration.
-      await LocalNotifications.cancel({
-        notifications: MEAL_REMINDERS.map(item => ({ id: item.id })),
-      });
+      if (this.isLocalNotificationsAvailable()) {
+        await LocalNotifications.cancel({
+          notifications: MEAL_REMINDERS.map(item => ({ id: item.id })),
+        });
+      }
       this.saveStoredConfig({ enabled: false });
       return { success: true, message: 'تم إلغاء تذكيرات الفطار والغداء والعشاء.' };
     } catch (error) {
