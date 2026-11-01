@@ -140,22 +140,16 @@ class MealReminderReceiver : BroadcastReceiver() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             return try {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()) {
-                    try {
-                        alarmManager.setExactAndAllowWhileIdle(
-                            AlarmManager.RTC_WAKEUP,
-                            next.timeInMillis,
-                            pending
-                        )
-                    } catch (_: SecurityException) {
-                        // Fall through to an inexact idle-capable alarm.
-                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.timeInMillis, pending)
-                    }
-                } else {
-                    // Exact-alarm access is special app access on Android 12+.
-                    // Do not block all reminders when the user has not granted it.
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.timeInMillis, pending)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                    return false
                 }
+                // Never silently downgrade meal reminders to inexact alarms:
+                // Doze and OEM battery policies can defer those well past mealtime.
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    next.timeInMillis,
+                    pending
+                )
                 true
             } catch (_: Exception) {
                 false

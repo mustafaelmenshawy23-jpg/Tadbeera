@@ -1,6 +1,7 @@
 package com.tedbeera.egypt
 
 import android.Manifest
+import android.app.AlarmManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -43,6 +44,33 @@ class NotificationPermissionPlugin : Plugin() {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
         call.resolve()
+    }
+
+    @PluginMethod
+    fun checkExactAlarmPermission(call: PluginCall) {
+        val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+        call.resolve(JSObject().put("granted", granted))
+    }
+
+    @PluginMethod
+    fun openExactAlarmSettings(call: PluginCall) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+        ) {
+            call.resolve(JSObject().put("granted", true))
+            return
+        }
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            call.resolve(JSObject().put("granted", false))
+        } catch (error: Exception) {
+            call.reject("تعذر فتح إعدادات المنبهات الدقيقة", error)
+        }
     }
 
     @PluginMethod
