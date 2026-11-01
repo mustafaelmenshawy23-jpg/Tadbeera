@@ -1972,7 +1972,7 @@ export default function App() {
                 >
                   <Settings className="w-4 h-4" />
                 </button>
-                <span className="text-[11px] bg-blue-800 text-blue-200 px-2 py-0.5 rounded-md font-medium">أوفلاين</span>
+                <button type="button" onClick={() => setKitchenView('offline')} className="text-[11px] bg-[#E7EDDF] text-[#526748] px-3 py-1.5 rounded-lg font-bold border border-[#D8E2D0]" title="افتح مكتبة الوصفات بدون إنترنت">أوفلاين</button>
               </div>
             </div>
 
