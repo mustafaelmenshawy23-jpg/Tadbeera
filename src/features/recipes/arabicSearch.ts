@@ -24,7 +24,5 @@ export function matchesArabicSearchAlias(query: string, alias: string): boolean 
   if (normalizedQuery === normalizedAlias) return true;
   // Support natural Egyptian phrases such as "عايز محشي كرنب" without
   // matching a short alias in the middle of an unrelated word.
-  return normalizedQuery.split(' ').includes(normalizedAlias) ||
-    normalizedQuery.startsWith(normalizedAlias + ' ') ||
-    normalizedQuery.endsWith(' ' + normalizedAlias);
+  return ` ${normalizedQuery} `.includes(` ${normalizedAlias} `);
 }
