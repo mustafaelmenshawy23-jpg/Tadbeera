@@ -2,6 +2,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
 interface NotificationPermissionPlugin {
+  check(): Promise<{ granted: boolean }>;
   request(): Promise<{ granted: boolean }>;
   openSettings(): Promise<void>;
 }
@@ -73,45 +74,45 @@ const MEAL_REMINDERS = [
 
 
 class CapacitorLocalNotificationServiceImpl implements LocalNotificationService {
+  private isNativePlatform(): boolean {
+    return typeof window !== 'undefined' && Capacitor.isNativePlatform();
+  }
+
+  private isPermissionPluginAvailable(): boolean {
+    return this.isNativePlatform() && Capacitor.isPluginAvailable('NotificationPermission');
+  }
+
   isPluginAvailable(): boolean {
-    return typeof window !== 'undefined' && Capacitor.isNativePlatform() &&
+    return this.isPermissionPluginAvailable() &&
       Capacitor.isPluginAvailable('LocalNotifications') &&
       Capacitor.isPluginAvailable('MealReminderScheduler');
   }
 
   async checkPermission(): Promise<NotificationPermissionStatus> {
-    if (!this.isPluginAvailable()) return 'unsupported';
+    if (!this.isPermissionPluginAvailable()) return 'unsupported';
     try {
-      const status = await LocalNotifications.checkPermissions();
-      if (status.display === 'granted') {
+      // Query the app-owned native permission bridge. Do not couple permission
+      // prompts to the scheduler or LocalNotifications plugin being available.
+      const status = await NotificationPermission.check();
+      if (status.granted) {
         notificationSettingsOpenedThisSession = false;
         return 'granted';
       }
-      if (status.display === 'denied') {
-        // Some Android 13 devices report "denied" even before the app has
-        // actually displayed the runtime prompt. Allow exactly one first-launch
-        // request, then respect the user's decision on later launches.
-        let alreadyRequested = false;
-        try {
-          alreadyRequested = typeof window !== 'undefined' &&
-            localStorage.getItem(NOTIFICATION_PERMISSION_REQUESTED_KEY) === 'true';
-        } catch {
-          // If storage is unavailable, allow the native permission check to decide.
-        }
-        return alreadyRequested ? 'denied' : 'prompt';
+      let alreadyRequested = false;
+      try {
+        alreadyRequested = localStorage.getItem(NOTIFICATION_PERMISSION_REQUESTED_KEY) === 'true';
+      } catch {
+        // Treat unavailable storage as a first request; Android remains authoritative.
       }
-      return 'prompt';
+      return alreadyRequested ? 'denied' : 'prompt';
     } catch (error) {
-      // A transient bridge/checkPermissions failure must not suppress the first
-      // Android runtime permission request. The caller will attempt the native
-      // request once; requestPermission() remains the authoritative result.
-      console.warn('Tadbeera notification permission check failed; attempting request:', error);
+      console.warn('Tadbeera native notification permission check failed:', error);
       return 'prompt';
     }
   }
 
   async requestPermission(): Promise<boolean> {
-    if (!this.isPluginAvailable()) return false;
+    if (!this.isPermissionPluginAvailable()) return false;
     try {
       // Use the app-owned native permission bridge rather than relying on the
       // LocalNotifications plugin's permission alias on Android 13+.
@@ -123,7 +124,8 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       } catch {
         // Permission state remains authoritative if local storage is unavailable.
       }
-      notificationSettingsOpenedThisSession = !result.granted;
+      // Mark the settings page as opened only when openNotificationSettings()
+      // actually runs. A denied runtime prompt must not block that recovery path.
       return result.granted;
     } catch (error) {
       console.warn('Tadbeera notification permission request failed:', error);
@@ -132,7 +134,7 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
   }
 
   async openNotificationSettings(): Promise<void> {
-    if (!this.isPluginAvailable() || notificationSettingsOpenedThisSession) return;
+    if (!this.isPermissionPluginAvailable() || notificationSettingsOpenedThisSession) return;
     notificationSettingsOpenedThisSession = true;
     try {
       await NotificationPermission.openSettings();

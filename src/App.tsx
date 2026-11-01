@@ -661,17 +661,45 @@ export default function App() {
 
         // If the user previously denied notifications (or disabled them in Android
         // Settings), take them to the phone's app-notification settings once per session.
+        if (permission === 'unsupported') {
+          showToast('تعذر الاتصال بخدمة أذونات أندرويد. حدّث التطبيق إلى أحدث نسخة ثم حاول مرة أخرى.');
+          return;
+        }
+
         if (permissionWasPreviouslyDenied && permission !== 'granted') {
+          showToast('إذن الإشعارات مرفوض. هنفتح إعدادات تدبيرة علشان تسمح بالتنبيهات.');
           await service.openNotificationSettings();
           return;
         }
 
-        // If permission is already granted (including from Android Settings), always
-        // restore all three reminders. Do not depend on an old in-app enabled flag.
-        if (permission === 'granted') {
-          const result = await service.scheduleDailyReminder(config.hour, config.minute);
-          if (cancelled) return;
-          if (!result.success) console.warn('Tadbeera meal reminder scheduling failed:', result.message);
+        if (permission !== 'granted') {
+          showToast('علشان توصلك مواعيد الفطار والغداء والعشاء، اسمح لتدبيرة بإرسال الإشعارات.');
+          return;
+        }
+
+        // Permission is granted: restore all three alarms and report failures visibly.
+        const result = await service.scheduleDailyReminder(config.hour, config.minute);
+        if (cancelled) return;
+        setIsDailyReminderEnabled(result.success);
+        if (!result.success) {
+          console.warn('Tadbeera meal reminder scheduling failed:', result.message);
+          showToast(result.message);
+        } else {
+          // Send one immediate test notification after first successful setup so
+          // users do not have to wait until the next meal to discover delivery issues.
+          const testKey = 'tedbeera_notification_test_sent_v1';
+          let testAlreadySent = false;
+          try { testAlreadySent = localStorage.getItem(testKey) === 'true'; } catch {}
+          if (!testAlreadySent) {
+            const testResult = await service.sendTestNotification();
+            if (cancelled) return;
+            if (testResult.success) {
+              try { localStorage.setItem(testKey, 'true'); } catch {}
+              showToast('تم ضبط مواعيد الوجبات. هيظهر إشعار اختبار خلال ثوانٍ للتأكد من وصول التنبيهات.');
+            } else {
+              showToast(testResult.message);
+            }
+          }
         }
       } finally {
         initializing = false;

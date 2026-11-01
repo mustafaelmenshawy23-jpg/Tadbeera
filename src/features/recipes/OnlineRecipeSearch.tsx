@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { normalizeArabicSearchTerm as normalize, matchesArabicSearchAlias } from './arabicSearch';
 
 type OnlineRecipe = {
   title: string;
@@ -28,7 +29,7 @@ const ARABIC_ALIASES: Array<{ terms: string[]; english: string }> = [
   { terms: ['كبسة', 'كبسه', 'كبسة دجاج', 'كبسة فراخ'], english: 'kabsa' },
   { terms: ['كشري', 'كشرى'], english: 'koshari' },
   { terms: ['ملوخية', 'ملوخيه'], english: 'molokhia' },
-  { terms: ['محشي', 'محشى', 'ورق عنب'], english: 'stuffed vegetables' },
+  { terms: ['محشي', 'محشى', 'محشي كرنب', 'محشي ملفوف', 'كرنب', 'ملفوف', 'ورق كرنب', 'ورق ملفوف', 'ورق عنب', 'كوسة محشية', 'باذنجان محشي', 'فلفل محشي'], english: 'stuffed cabbage' },
   { terms: ['فتة', 'فته'], english: 'fatteh' },
   { terms: ['طعمية', 'فلافل'], english: 'falafel' },
   { terms: ['شكشوكة'], english: 'shakshuka' },
@@ -58,6 +59,36 @@ const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
       pageId: 900002,
       url: 'https://www.themealdb.com/',
       extract: 'المكونات (4 أفراد): كوب أرز، كوب عدس بجبة، كوب مكرونة صغيرة، نصف كوب شعرية، حمص مسلوق، بصلتان، عصير طماطم، ثوم، خل، كمون، ملح وزيت.\n\nالطريقة: اسلق العدس حتى يقارب النضج، ثم أضف الأرز والشعرية المحمرة والماء والملح حتى ينضجوا. اسلق المكرونة والحمص. حضّر صلصة الطماطم بالثوم والخل والكمون، وحمّر البصل شرائح حتى يصبح مقرمشًا. قدّم الأرز والعدس ثم المكرونة والحمص والصلصة والبصل.',
+    },
+  },
+  {
+    terms: ['محشي', 'محشى', 'محشي كرنب', 'محشي ملفوف', 'كرنب', 'ملفوف', 'ورق كرنب', 'ورق ملفوف', 'stuffed cabbage'],
+    recipe: {
+      title: 'محشي كرنب وخضار مصري',
+      servings: 4,
+      pageId: 900007,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات (تكفي 4 أفراد): كرنب متوسط، كوب ونصف أرز مصري مغسول، بصلة كبيرة مفرومة، 2 كوب عصير طماطم، ملعقة صلصة، حزمة شبت وبقدونس وكزبرة خضراء، 3 فصوص ثوم، ملح وفلفل وكمون وكسبرة ناشفة ونعناع ناشف، ملعقتان زيت أو سمن، وشوربة أو ماء ساخن. ويمكن استخدام نفس الخلطة للكوسة والباذنجان والفلفل وورق العنب.\\n\\nالطريقة: اسلق أوراق الكرنب في ماء مغلي حتى تلين ثم قطّعها قطعًا مناسبة. اخلط الأرز مع البصل والخضرة والثوم وعصير الطماطم والصلصة والتوابل والزيت. احشِ الأوراق بكمية مناسبة من الخلطة ولفّها دون إحكام شديد حتى يتمدد الأرز. رصّ المحشي في حلة، وأضف شوربة ساخنة حتى تقترب من تغطيته. اتركه يغلي ثم هدّئ النار حتى ينضج الأرز والكرنب. لا تملأ الورق أكثر من اللازم.'
+    },
+  },
+  {
+    terms: ['ورق عنب', 'محشي ورق عنب', 'دوالي', 'grape leaves'],
+    recipe: {
+      title: 'ورق عنب محشي',
+      servings: 4,
+      pageId: 900008,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): نصف كيلو ورق عنب، كوب أرز مصري مغسول، بصلة مفرومة، 2 كوب عصير طماطم، شبت وبقدونس وكزبرة خضراء، عصير ليمونة، زيت، ملح وفلفل وكمون ونعناع ناشف.\\n\\nالطريقة: اسلق ورق العنب سريعًا حتى يلين. اخلط الأرز مع البصل والخضرة والطماطم والتوابل والزيت. ضع مقدارًا صغيرًا من الحشوة على كل ورقة واطوِ الجانبين ثم لفها. رصّ اللفائف في حلة، أضف شوربة أو ماءً ساخنًا وعصير الليمون، واتركها على نار هادئة حتى ينضج الأرز.'
+    },
+  },
+  {
+    terms: ['كوسة محشية', 'كوسه محشيه', 'باذنجان محشي', 'فلفل محشي', 'محشي كوسة', 'محشي باذنجان', 'stuffed zucchini'],
+    recipe: {
+      title: 'محشي كوسة وباذنجان وفلفل',
+      servings: 4,
+      pageId: 900009,
+      url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): كيلو كوسة وباذنجان وفلفل مناسب للحشو، كوب ونصف أرز مصري، بصلة مفرومة، 2 كوب عصير طماطم، شبت وبقدونس وكزبرة خضراء، ثوم، ملح وفلفل وكمون وكسبرة ناشفة، زيت أو سمن، وشوربة ساخنة.\\n\\nالطريقة: اغسل الخضار وفرّغ الكوسة والباذنجان برفق مع ترك جدار مناسب، وجهّز الفلفل بإزالة البذور. اخلط الأرز مع البصل والخضرة والطماطم والثوم والتوابل والزيت. احشِ الخضار حتى ثلثيه فقط، ثم رصّه في حلة وأضف الشوربة الساخنة. اتركه يغلي ثم هدّئ النار حتى ينضج الأرز والخضار.'
     },
   },
   {
@@ -109,10 +140,6 @@ function readSaved(): OnlineRecipe[] {
   } catch {
     return [];
   }
-}
-
-function normalize(value: string): string {
-  return value.toLocaleLowerCase('ar').replace(/[\u064B-\u065F\u0670]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').trim();
 }
 
 function scaleArabicRecipeExtract(extract: string, baseServings: number, familySize: number): string {
@@ -191,8 +218,7 @@ async function translateText(value: string, source: 'ar' | 'en', target: 'ar' | 
 }
 
 async function getEnglishSearchTerm(term: string): Promise<string> {
-  const normalized = normalize(term);
-  const known = ARABIC_ALIASES.find(alias => alias.terms.some(item => normalize(item) === normalized))?.english;
+  const known = ARABIC_ALIASES.find(alias => alias.terms.some(item => matchesArabicSearchAlias(term, item)))?.english;
   return known || (hasArabic(term) ? await translateText(term, 'ar', 'en') : term);
 }
 
@@ -258,6 +284,18 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
     setResults([]);
 
     try {
+      // Resolve common Egyptian dishes locally first. This makes colloquial
+      // aliases reliable even when translation or an external recipe API is down.
+      const localMatches = LOCAL_RECIPES.filter(item =>
+        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
+      ).map(item => ({ ...item.recipe }));
+      if (localMatches.length) {
+        setResults(localMatches);
+        setSelected(localMatches[0]);
+        setLoading(false);
+        return;
+      }
+
       const englishTerm = await getEnglishSearchTerm(term);
       const mealUrl = new URL(MEAL_DB_API);
       mealUrl.searchParams.set('s', englishTerm);
@@ -334,13 +372,12 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       setResults(mapped);
       setSelected(mapped[0]);
     } catch {
-      const englishTerm = await getEnglishSearchTerm(term);
-      const localMatches = LOCAL_RECIPES.filter(item =>
-        item.terms.some(alias => normalize(alias) === normalize(term) || normalize(alias) === normalize(englishTerm))
+      const fallbackLocalMatches = LOCAL_RECIPES.filter(item =>
+        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
       ).map(item => ({ ...item.recipe }));
-      if (localMatches.length) {
-        setResults(localMatches);
-        setSelected(localMatches[0]);
+      if (fallbackLocalMatches.length) {
+        setResults(fallbackLocalMatches);
+        setSelected(fallbackLocalMatches[0]);
       } else {
         setError('تعذر الاتصال بمكتبة الوصفات المجانية. تأكد من الإنترنت وحاول مرة أخرى؛ تقدر تستخدم الوصفات المحفوظة بدون اتصال.');
       }
