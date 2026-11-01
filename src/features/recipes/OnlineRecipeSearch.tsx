@@ -312,18 +312,8 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
     setResults([]);
 
     try {
-      // Resolve common Egyptian dishes locally first. This makes colloquial
-      // aliases reliable even when translation or an external recipe API is down.
-      const localMatches = LOCAL_RECIPES.filter(item =>
-        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
-      ).map(item => ({ ...item.recipe }));
-      if (localMatches.length) {
-        setResults(localMatches);
-        setSelected(localMatches[0]);
-        setLoading(false);
-        return;
-      }
-
+      // Always try the online recipe services first. Bundled recipes remain a
+      // fallback only when the online services return no suitable recipe.
       const englishTerm = await getEnglishSearchTerm(term);
       const mealUrl = new URL(MEAL_DB_API);
       mealUrl.searchParams.set('s', englishTerm);
