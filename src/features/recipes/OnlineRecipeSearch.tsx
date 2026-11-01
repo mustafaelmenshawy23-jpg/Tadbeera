@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { normalizeArabicSearchTerm as normalize, matchesArabicSearchAlias } from './arabicSearch';
+import { hasRecipeStructure, isRelevantRecipe } from './recipeValidation';
 
 type OnlineRecipe = {
   title: string;
@@ -303,14 +304,19 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       if (!mealResponse.ok) throw new Error('meal-service');
       const mealData = await mealResponse.json();
       const meals = (Array.isArray(mealData.meals) ? mealData.meals : []) as MealDbMeal[];
-      const mappedResults = await Promise.allSettled(meals.slice(0, 8).map(meal => mapMeal(meal, familySize)));
+      // The external API can return loose matches. Never show a result unless
+      // its title or source text actually matches the requested dish.
+      const relevantMeals = meals.filter(meal =>
+        isRelevantRecipe(englishTerm, meal.strMeal || '', meal.strInstructions || '')
+      );
+      const mappedResults = await Promise.allSettled(relevantMeals.slice(0, 8).map(meal => mapMeal(meal, familySize)));
       let mapped: OnlineRecipe[] = mappedResults.flatMap(item =>
         item.status === 'fulfilled' ? [item.value] : [],
       );
 
       if (!mapped.length) {
         const localMatches = LOCAL_RECIPES.filter(item =>
-          item.terms.some(alias => normalize(alias) === normalize(term) || normalize(alias) === normalize(englishTerm))
+          item.terms.some(alias => matchesArabicSearchAlias(term, alias) || matchesArabicSearchAlias(englishTerm, alias))
         ).map(item => ({ ...item.recipe }));
         mapped = localMatches;
       }
@@ -329,7 +335,10 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
         if (wikiResponse.ok) {
           const wikiData = await wikiResponse.json();
           const hits = (wikiData.query?.search || []) as Array<{ title: string; pageid: number; snippet?: string }>;
-          const recipeHits = hits.filter(hit => /cookbook|recipe|food/i.test(`${hit.title} ${hit.snippet || ''}`));
+          const recipeHits = hits.filter(hit =>
+            /cookbook:/i.test(hit.title) &&
+            isRelevantRecipe(englishTerm, hit.title, hit.snippet || '')
+          );
           if (recipeHits.length) {
             const pageUrl = new URL(WIKIBOOKS_API);
             pageUrl.search = new URLSearchParams({
@@ -341,7 +350,11 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
             if (pageResponse.ok) {
               const pageData = await pageResponse.json();
               const wikiPages = (Object.values(pageData.query?.pages || {}) as Array<{ pageid: number; title: string; extract?: string }>)
-                .filter(page => (page.extract || '').trim().length > 40);
+                .filter(page => (page.extract || '').trim().length > 100 &&
+                  isRelevantRecipe(englishTerm, page.title, page.extract || '') &&
+                  /ingredient|ingredients|method|preheat|cook|bake|fry|mix|stir|serve/i.test(page.extract || '') &&
+                  /ingredient|flour|salt|oil|water|onion|tomato|meat|chicken|egg|rice|sugar|milk/i.test(page.extract || '')
+                );
               const translatedPages = await Promise.allSettled(wikiPages.map(async page => {
                 const [title, extract] = await Promise.all([
                   translateText(page.title.replace(/^Cookbook:/i, '').replace(/_/g, ' '), 'en', 'ar'),
