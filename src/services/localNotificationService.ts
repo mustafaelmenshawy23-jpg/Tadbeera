@@ -124,7 +124,8 @@ class CapacitorLocalNotificationServiceImpl implements LocalNotificationService 
       } catch {
         // Permission state remains authoritative if local storage is unavailable.
       }
-      notificationSettingsOpenedThisSession = !result.granted;
+      // Mark the settings page as opened only when openNotificationSettings()
+      // actually runs. A denied runtime prompt must not block that recovery path.
       return result.granted;
     } catch (error) {
       console.warn('Tadbeera notification permission request failed:', error);
