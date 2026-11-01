@@ -1955,7 +1955,7 @@ export default function App() {
                     onClick={() => setIsAdControlsOpen(true)}
                     className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition flex items-center gap-1 border ${
                       adStatus === 'loaded' ? 'bg-[#D8C69A] text-[#626B49] border-[#FFA000]' :
-                      adStatus === 'loading' ? 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse' :
+                      adStatus === 'loading' ? 'bg-[#EFE5C8] text-[#765B3A] border-amber-300 animate-pulse' :
                       adStatus === 'failed' ? 'bg-rose-100 text-rose-800 border-rose-300' :
                       'bg-gray-200 text-gray-700 border-gray-300'
                     }`}
@@ -2056,12 +2056,12 @@ export default function App() {
                     </span>
                     <ChevronRight className="h-4 w-4 text-[#526748]" />
                   </button>
-                  <button type="button" onClick={() => setKitchenView('online')} className="flex w-full items-center justify-between rounded-2xl border border-blue-200 bg-blue-50 p-3 text-right transition hover:bg-blue-100">
+                  <button type="button" onClick={() => setKitchenView('online')} className="flex w-full items-center justify-between rounded-2xl border border-[#DCE2D0] bg-[#F1F3EA] p-3 text-right transition hover:bg-[#E8EBDD]">
                     <span className="flex items-center gap-2">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700"><Mic className="h-5 w-5" /></span>
-                      <span><strong className="block text-xs text-blue-900">ابحث عن وصفة أونلاين 🎙️</strong><small className="mt-0.5 block text-[10px] text-blue-700">اتكلم أو اكتب اسم الأكلة، واسمع طريقة التحضير</small></span>
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#78815B]"><Mic className="h-5 w-5" /></span>
+                      <span><strong className="block text-xs text-[#626B49]">ابحث عن وصفة أونلاين 🎙️</strong><small className="mt-0.5 block text-[10px] text-[#78815B]">اتكلم أو اكتب اسم الأكلة، واسمع طريقة التحضير</small></span>
                     </span>
-                    <ChevronRight className="h-4 w-4 text-blue-700" />
+                    <ChevronRight className="h-4 w-4 text-[#78815B]" />
                   </button>
                   {/* Brand Concept Motto Card */}
                   <div className="bg-[#626B49] text-white p-3 rounded-2xl shadow-sm flex items-center justify-between">
@@ -2074,7 +2074,7 @@ export default function App() {
                   {/* Family Size Scaler Bar */}
                   <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs">
-                      <div className="p-1.5 rounded-lg bg-blue-50 text-[#626B49]">
+                      <div className="p-1.5 rounded-lg bg-[#F1F3EA] text-[#626B49]">
                         <Users className="w-4 h-4" />
                       </div>
                       <div>
@@ -2103,7 +2103,7 @@ export default function App() {
                   <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3.5 space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-[#F7F0DE] text-amber-700 flex items-center justify-center shrink-0">
                           <CalendarCheck className="w-4 h-4" />
                         </div>
                         <div>
@@ -2115,7 +2115,7 @@ export default function App() {
                                 <span>مفتوحة ✓</span>
                               </span>
                             ) : (
-                              <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                              <span className="bg-[#EFE5C8] text-[#765B3A] text-[10px] font-bold px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
                                 <Lock className="w-2.5 h-2.5" />
                                 <span>مقفولة</span>
                               </span>
@@ -2145,17 +2145,17 @@ export default function App() {
 
                     {!isWeeklyPlanUnlocked ? (
                       /* Locked State: Rewarded Ad Entry Point */
-                      <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 p-3 rounded-xl border border-amber-200/80 space-y-2.5">
+                      <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 p-3 rounded-xl border border-[#E6D9B8]/80 space-y-2.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-amber-950 flex items-center gap-1">
                             <Sparkles className="w-3.5 h-3.5 text-[#D8C69A]" />
                             <span>فتح جدول وجبات 7 أيام وجدول التسوق المجمع</span>
                           </span>
-                          <span className="text-[10px] bg-amber-200/80 text-amber-900 font-bold px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] bg-amber-200/80 text-[#765B3A] font-bold px-1.5 py-0.5 rounded">
                             مجاني بمكافأة 🎁
                           </span>
                         </div>
-                        <p className="text-[11px] text-amber-900/80 leading-relaxed">
+                        <p className="text-[11px] text-[#765B3A]/80 leading-relaxed">
                           تخلصي من حيرة "هنطبخ إيه النهاردة؟" مع خطة متكاملة محسوبة بالجرام والتكلفة للأسبوع كله.
                         </p>
                         <button
@@ -2222,7 +2222,7 @@ export default function App() {
                                     className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between cursor-pointer hover:border-[#626B49] transition"
                                   >
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded">فطار</span>
+                                      <span className="text-[10px] bg-[#EFE5C8] text-[#765B3A] font-bold px-1.5 py-0.2 rounded">فطار</span>
                                       <span className="font-bold text-gray-800 text-[11px] truncate max-w-[170px]">{bRecipe.name}</span>
                                     </div>
                                     <span className="text-[10px] text-[#626B49] font-bold">~{calculateRecipeScaledCost(bRecipe, familySize)} ج.م</span>
@@ -2236,7 +2236,7 @@ export default function App() {
                                     className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between cursor-pointer hover:border-[#626B49] transition"
                                   >
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] bg-blue-100 text-blue-900 font-bold px-1.5 py-0.2 rounded">غداء</span>
+                                      <span className="text-[10px] bg-[#E8EBDD] text-[#626B49] font-bold px-1.5 py-0.2 rounded">غداء</span>
                                       <span className="font-bold text-gray-800 text-[11px] truncate max-w-[170px]">{lRecipe.name}</span>
                                     </div>
                                     <span className="text-[10px] text-[#626B49] font-bold">~{calculateRecipeScaledCost(lRecipe, familySize)} ج.م</span>
@@ -2266,7 +2266,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => setIsConsolidatedShoppingModalOpen(true)}
-                            className="flex-1 bg-white hover:bg-gray-50 text-[#626B49] font-bold py-2 px-2.5 rounded-xl text-[11px] border border-blue-200 flex items-center justify-center gap-1.5 transition"
+                            className="flex-1 bg-white hover:bg-gray-50 text-[#626B49] font-bold py-2 px-2.5 rounded-xl text-[11px] border border-[#DCE2D0] flex items-center justify-center gap-1.5 transition"
                           >
                             <CalendarCheck className="w-3.5 h-3.5" />
                             <span>جدول التسوق المجمع 📋</span>
@@ -2340,7 +2340,7 @@ export default function App() {
                           className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-xl transition ${
                             voiceState === 'listening'
                               ? 'bg-rose-600 text-white animate-pulse shadow-sm ring-2 ring-rose-300'
-                              : 'bg-blue-50 hover:bg-blue-100 text-[#626B49] border border-blue-200'
+                              : 'bg-[#F1F3EA] hover:bg-[#E8EBDD] text-[#626B49] border border-[#DCE2D0]'
                           }`}
                           title="اختيار المكونات بالصوت باللهجة المصرية"
                           aria-label="اختيار المكونات بالصوت"
@@ -2378,7 +2378,7 @@ export default function App() {
                           : voiceState === 'success'
                           ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
                           : voiceState === 'no-match'
-                          ? 'bg-amber-50 border-amber-200 text-amber-900'
+                          ? 'bg-[#F7F0DE] border-[#E6D9B8] text-[#765B3A]'
                           : 'bg-gray-50 border-gray-200 text-gray-800'
                       }`}>
                         <div className="flex items-center gap-1.5">
@@ -2459,7 +2459,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setIsAddCustomRecipeModalOpen(true)}
-                    className="w-full bg-white border border-[#626B49] text-[#626B49] hover:bg-blue-50 font-bold py-2.5 px-3 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
+                    className="w-full bg-white border border-[#626B49] text-[#626B49] hover:bg-[#F1F3EA] font-bold py-2.5 px-3 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
                   >
                     <Plus className="w-4 h-4" />
                     <span>أضف أكلتك الخاصة 🍳</span>
@@ -2639,9 +2639,9 @@ export default function App() {
                   </button>
 
                   {/* Smart Financial Advisor Banner */}
-                  <div className="bg-gradient-to-r from-amber-50 via-blue-50 to-emerald-50 p-3.5 rounded-2xl border border-amber-200/80 shadow-sm space-y-1.5">
+                  <div className="bg-gradient-to-r from-amber-50 via-[#78815B]50 to-emerald-50 p-3.5 rounded-2xl border border-[#E6D9B8]/80 shadow-sm space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-xl bg-[#EFE5C8] text-amber-800 flex items-center justify-center shrink-0">
                         <Lightbulb className="w-4 h-4" />
                       </div>
                       <span className="font-extrabold text-xs text-[#626B49]">💡 توجيه ذكي للميزانية</span>
@@ -2667,7 +2667,7 @@ export default function App() {
                   </div>
 
                   {/* Feature 3: Monthly Payday Cycle & Countdown Widget */}
-                  <div className="bg-gradient-to-l from-blue-900 to-[#626B49] text-white p-3.5 rounded-2xl shadow-sm space-y-2.5">
+                  <div className="bg-gradient-to-l from-[#78815B]900 to-[#626B49] text-white p-3.5 rounded-2xl shadow-sm space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-[#D8C69A]">
@@ -2764,7 +2764,7 @@ export default function App() {
 
                     {/* Financial Snapshot Tiles */}
                     <div className="grid grid-cols-2 gap-2 pt-1 text-center">
-                      <div className="bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
+                      <div className="bg-[#F1F3EA]/70 p-2.5 rounded-xl border border-[#E4DECF]">
                         <span className="text-[10px] text-gray-500 block">إجمالي المصروف الفعلي</span>
                         <span className="text-sm font-black text-[#626B49]">{totalSpentAll} ج.م</span>
                       </div>
@@ -2781,7 +2781,7 @@ export default function App() {
                   <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-blue-50 text-[#626B49]">
+                        <div className="p-1.5 rounded-lg bg-[#F1F3EA] text-[#626B49]">
                           <PieChart className="w-4 h-4" />
                         </div>
                         <div>
@@ -2863,7 +2863,7 @@ export default function App() {
 
                         {/* Interactive Detail Panel */}
                         {selectedDonutSegment && (
-                          <div className="bg-blue-50/70 p-3 rounded-xl border border-blue-200 text-xs space-y-1.5 animate-fadeIn">
+                          <div className="bg-[#F1F3EA]/70 p-3 rounded-xl border border-[#DCE2D0] text-xs space-y-1.5 animate-fadeIn">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-1.5 font-bold text-gray-900">
                                 <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: selectedDonutSegment.color }} />
@@ -2906,7 +2906,7 @@ export default function App() {
                                   }
                                 }}
                                 className={`p-1.5 rounded-lg text-right transition flex items-center justify-between ${
-                                  isSelected ? 'bg-blue-50 border border-blue-300' : 'hover:bg-gray-50'
+                                  isSelected ? 'bg-[#F1F3EA] border border-blue-300' : 'hover:bg-gray-50'
                                 } ${cat.spent === 0 ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}
                               >
                                 <div className="flex items-center gap-1.5 truncate">
@@ -2969,12 +2969,12 @@ export default function App() {
                               <div>
                                 <span className="font-bold text-sm text-gray-800 block">{cat.name}</span>
                                 {cat.isCustom && (
-                                  <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold">مخصص</span>
+                                  <span className="text-[9px] bg-[#EFE5C8] text-amber-800 px-1 py-0.2 rounded font-bold">مخصص</span>
                                 )}
                               </div>
                             </div>
                             <div className="text-left">
-                              <span className="bg-blue-50 text-[#626B49] text-xs font-extrabold px-2 py-0.5 rounded-md inline-block">
+                              <span className="bg-[#F1F3EA] text-[#626B49] text-xs font-extrabold px-2 py-0.5 rounded-md inline-block">
                                 {cat.percentage}% من الميزانية
                               </span>
                               <span className="text-[10px] text-gray-400 block mt-0.5">
@@ -3012,7 +3012,7 @@ export default function App() {
                                 analytics.colorStatus === 'red'
                                   ? 'bg-rose-500'
                                   : analytics.colorStatus === 'amber'
-                                  ? 'bg-amber-500'
+                                  ? 'bg-[#F7F0DE]0'
                                   : 'bg-emerald-500'
                               }`}
                               style={{ width: `${analytics.visualPercentage}%` }}
@@ -3087,7 +3087,7 @@ export default function App() {
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => setShowAllExpenseHistory(value => !value)}
-                          className="text-[10px] font-bold text-[#626B49] border border-blue-100 rounded-lg px-2 py-1"
+                          className="text-[10px] font-bold text-[#626B49] border border-[#E4DECF] rounded-lg px-2 py-1"
                         >
                           {showAllExpenseHistory ? 'الدورة الحالية' : 'كل السجل'}
                         </button>
@@ -3115,7 +3115,7 @@ export default function App() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-bold text-gray-800">{exp.description}</span>
-                                  <span className="text-[10px] bg-blue-100 text-[#626B49] px-1.5 py-0.2 rounded font-medium">
+                                  <span className="text-[10px] bg-[#E8EBDD] text-[#626B49] px-1.5 py-0.2 rounded font-medium">
                                     {cat?.name || 'عام'}
                                   </span>
                                 </div>
@@ -3172,7 +3172,7 @@ export default function App() {
 
                     <h3 className="font-extrabold text-sm text-gray-900 mt-2">{todayChallenge.title}</h3>
                     <p className="text-xs text-gray-700 mt-1 leading-relaxed">{todayChallenge.description}</p>
-                    <span className="inline-block mt-2 text-[11px] text-amber-800 bg-amber-100 font-semibold px-2 py-0.5 rounded">
+                    <span className="inline-block mt-2 text-[11px] text-amber-800 bg-[#EFE5C8] font-semibold px-2 py-0.5 rounded">
                       ✨ {todayChallenge.impactTag}
                     </span>
 
@@ -3191,7 +3191,7 @@ export default function App() {
 
                       <button
                         onClick={handleShareDailyChallenge}
-                        className="text-xs font-bold text-[#626B49] bg-white border border-gray-200 hover:bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 transition"
+                        className="text-xs font-bold text-[#626B49] bg-white border border-gray-200 hover:bg-[#F1F3EA] px-3 py-1.5 rounded-lg flex items-center gap-1 transition"
                       >
                         <Share2 className="w-3.5 h-3.5" />
                         <span>مشاركة الإنجاز</span>
@@ -3200,7 +3200,7 @@ export default function App() {
                   </div>
 
                   {/* Phase 4C: Achievement Counter & "أفكاري المحفوظة" Toggle Banner */}
-                  <div className="bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 p-3 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 p-3 rounded-2xl border border-[#E6D9B8]/80 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-xl bg-[#D8C69A] text-[#626B49] font-black flex items-center justify-center text-sm shadow-inner shrink-0">
                         🏆
@@ -3227,7 +3227,7 @@ export default function App() {
                       className={`text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1 border shrink-0 ${
                         dailyTipsViewMode === 'saved'
                           ? 'bg-[#626B49] text-white border-[#626B49] shadow-xs'
-                          : 'bg-white text-[#626B49] border-blue-200 hover:bg-blue-50'
+                          : 'bg-white text-[#626B49] border-[#DCE2D0] hover:bg-[#F1F3EA]'
                       }`}
                       title="عرض الحيل التي حفظتها للرجوع إليها"
                     >
@@ -3251,7 +3251,7 @@ export default function App() {
 
                     {/* Active Saved Mode Indicator */}
                     {dailyTipsViewMode === 'saved' && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs">
+                      <div className="bg-[#F1F3EA] border border-[#DCE2D0] rounded-xl px-3 py-1.5 flex items-center justify-between text-xs">
                         <span className="font-bold text-[#626B49] flex items-center gap-1">
                           <Bookmark className="w-3.5 h-3.5 fill-[#626B49]" />
                           <span>عرض أفكاري المحفوظة ({filteredDailyIdeas.length})</span>
@@ -3288,7 +3288,7 @@ export default function App() {
                   <div className="space-y-3">
                     {filteredDailyIdeas.length === 0 ? (
                       <div className="bg-white p-6 rounded-2xl border border-dashed border-gray-300 text-center space-y-2">
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-[#626B49] mx-auto flex items-center justify-center font-bold text-lg">
+                        <div className="w-10 h-10 rounded-full bg-[#F1F3EA] text-[#626B49] mx-auto flex items-center justify-center font-bold text-lg">
                           💡
                         </div>
                         <p className="text-xs font-bold text-gray-800">
@@ -3303,7 +3303,7 @@ export default function App() {
                             setSelectedDailyCategory('الكل');
                             setDailySearch('');
                           }}
-                          className="text-xs font-bold text-[#626B49] bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition"
+                          className="text-xs font-bold text-[#626B49] bg-[#F1F3EA] hover:bg-[#E8EBDD] px-3 py-1.5 rounded-xl transition"
                         >
                           عرض كل الحيل 💡
                         </button>
@@ -3352,7 +3352,7 @@ export default function App() {
                               </div>
                               <p className="text-xs text-gray-600 leading-relaxed">{idea.description}</p>
 
-                              <div className="bg-blue-50/70 p-2 rounded-xl text-[11px] text-[#626B49] flex items-center gap-1.5">
+                              <div className="bg-[#F1F3EA]/70 p-2 rounded-xl text-[11px] text-[#626B49] flex items-center gap-1.5">
                                 <span>💡</span>
                                 <span className="font-medium">{idea.practicalTip}</span>
                               </div>
@@ -3390,7 +3390,7 @@ export default function App() {
                                     onClick={() => toggleSaveTip(idea.id)}
                                     className={`text-xs font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition border ${
                                       isSaved
-                                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                        ? 'bg-[#EFE5C8] text-[#765B3A] border-amber-300'
                                         : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200'
                                     }`}
                                     title="حفظ في أفكاري المحفوظة"
@@ -3403,7 +3403,7 @@ export default function App() {
                                   <button
                                     type="button"
                                     onClick={() => handleShareTip(idea)}
-                                    className="text-xs font-bold text-[#626B49] hover:bg-blue-50 px-2.5 py-1.5 rounded-xl border border-gray-200 flex items-center gap-1 transition"
+                                    className="text-xs font-bold text-[#626B49] hover:bg-[#F1F3EA] px-2.5 py-1.5 rounded-xl border border-gray-200 flex items-center gap-1 transition"
                                     title="مشاركة النصيحة"
                                   >
                                     <Share2 className="w-3.5 h-3.5" />
@@ -3493,8 +3493,8 @@ export default function App() {
                         </button>
 
                         {/* Phase 4E: Smart Deals & Affiliate Widget */}
-                        <div className="bg-gradient-to-br from-blue-50 to-amber-50/50 p-3.5 rounded-2xl border border-blue-200 shadow-sm space-y-2.5">
-                          <div className="flex items-center justify-between border-b border-blue-100 pb-2">
+                        <div className="bg-gradient-to-br from-[#78815B]50 to-amber-50/50 p-3.5 rounded-2xl border border-[#DCE2D0] shadow-sm space-y-2.5">
+                          <div className="flex items-center justify-between border-b border-[#E4DECF] pb-2">
                             <div className="flex items-center gap-1.5">
                               <Sparkles className="w-4 h-4 text-[#D8C69A]" />
                               <h3 className="text-xs font-extrabold text-[#626B49]">🛒 عروض وتخفيضات متاحة على طلباتك</h3>
@@ -3512,7 +3512,7 @@ export default function App() {
                                     <div className="flex items-center gap-1.5">
                                       <span className="font-extrabold text-xs text-gray-900">{deal.partnerName}</span>
                                       {deal.verificationStatus === 'verified' && (
-                                        <span className="text-[9px] bg-blue-100 text-[#626B49] font-bold px-1.5 py-0.2 rounded">
+                                        <span className="text-[9px] bg-[#E8EBDD] text-[#626B49] font-bold px-1.5 py-0.2 rounded">
                                           مؤكد ✓
                                         </span>
                                       )}
@@ -3520,7 +3520,7 @@ export default function App() {
                                     <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">{deal.description}</p>
                                   </div>
                                   {deal.couponCode && (
-                                    <div className="bg-amber-50 border border-amber-200 px-2 py-1 rounded-xl text-center shrink-0">
+                                    <div className="bg-[#F7F0DE] border border-[#E6D9B8] px-2 py-1 rounded-xl text-center shrink-0">
                                       <span className="text-[9px] text-amber-800 block">كود الخصم:</span>
                                       <span className="font-mono font-bold text-xs text-amber-950">{deal.couponCode}</span>
                                     </div>
@@ -3544,7 +3544,7 @@ export default function App() {
                                           showToast(`كود الخصم: ${deal.couponCode} (انسخه يدوياً)`);
                                         }
                                       }}
-                                      className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-2.5 rounded-xl text-[11px] flex items-center justify-center gap-1 transition shadow-sm"
+                                      className="flex-1 bg-[#F7F0DE]0 hover:bg-amber-600 text-white font-bold py-1.5 px-2.5 rounded-xl text-[11px] flex items-center justify-center gap-1 transition shadow-sm"
                                     >
                                       <Copy className="w-3.5 h-3.5" />
                                       <span>نسخ الكود</span>
@@ -3612,7 +3612,7 @@ export default function App() {
                       {/* Empty State */}
                       {shoppingItems.length === 0 ? (
                         <div className="bg-white p-8 rounded-3xl text-center border border-dashed border-gray-300 space-y-3">
-                          <div className="w-14 h-14 bg-blue-50 text-[#626B49] rounded-full mx-auto flex items-center justify-center shadow-inner">
+                          <div className="w-14 h-14 bg-[#F1F3EA] text-[#626B49] rounded-full mx-auto flex items-center justify-center shadow-inner">
                             <ShoppingCart className="w-7 h-7" />
                           </div>
                           <h4 className="text-base font-extrabold text-gray-800">
@@ -3680,7 +3680,7 @@ export default function App() {
                                                 currentPrice: ''
                                               });
                                             }}
-                                            className="text-[10px] text-amber-700 font-bold bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1"
+                                            className="text-[10px] text-amber-700 font-bold bg-[#F7F0DE] hover:bg-[#EFE5C8] px-1.5 py-0.5 rounded border border-[#E6D9B8] flex items-center gap-1"
                                           >
                                             <span>السعر غير محدد</span>
                                             <span className="text-[#626B49] underline">حدد السعر</span>
@@ -3719,7 +3719,7 @@ export default function App() {
                                           {Math.round(lineTotal)} ج.م
                                         </span>
                                       ) : (
-                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded block">
+                                        <span className="text-[10px] font-bold text-amber-700 bg-[#F7F0DE] px-1.5 py-0.5 rounded block">
                                           غير مسعر
                                         </span>
                                       )}
@@ -3747,7 +3747,7 @@ export default function App() {
                     <div className="space-y-3">
                       {savedRecipeIds.length === 0 ? (
                         <div className="bg-white p-8 rounded-3xl text-center border border-dashed border-gray-300 space-y-2">
-                          <div className="w-12 h-12 bg-amber-50 text-[#D8C69A] rounded-full mx-auto flex items-center justify-center">
+                          <div className="w-12 h-12 bg-[#F7F0DE] text-[#D8C69A] rounded-full mx-auto flex items-center justify-center">
                             <Bookmark className="w-6 h-6" />
                           </div>
                           <p className="text-sm font-extrabold text-gray-800">
@@ -3785,7 +3785,7 @@ export default function App() {
                     <div className="space-y-3">
                       {savedTipIds.length === 0 ? (
                         <div className="bg-white p-8 rounded-3xl text-center border border-dashed border-gray-300 space-y-3">
-                          <div className="w-12 h-12 bg-blue-50 text-[#626B49] rounded-2xl mx-auto flex items-center justify-center text-xl shadow-inner">
+                          <div className="w-12 h-12 bg-[#F1F3EA] text-[#626B49] rounded-2xl mx-auto flex items-center justify-center text-xl shadow-inner">
                             🔖
                           </div>
                           <p className="text-sm font-extrabold text-gray-800">
@@ -3809,7 +3809,7 @@ export default function App() {
                             <div key={idea.id} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2.5">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] bg-blue-50 text-[#626B49] px-2 py-0.5 rounded font-bold">
+                                  <span className="text-[10px] bg-[#F1F3EA] text-[#626B49] px-2 py-0.5 rounded font-bold">
                                     {idea.category}
                                   </span>
                                   {isTried && (
@@ -3835,7 +3835,7 @@ export default function App() {
                                 <p className="text-xs text-gray-600 leading-relaxed mt-1">{idea.description}</p>
                               </div>
 
-                              <div className="bg-blue-50/70 p-2 rounded-xl text-[11px] text-[#626B49] flex items-center gap-1.5">
+                              <div className="bg-[#F1F3EA]/70 p-2 rounded-xl text-[11px] text-[#626B49] flex items-center gap-1.5">
                                 <span>💡</span>
                                 <span className="font-medium">{idea.practicalTip}</span>
                               </div>
@@ -3867,7 +3867,7 @@ export default function App() {
                                 <button
                                   type="button"
                                   onClick={() => handleShareTip(idea)}
-                                  className="text-xs font-bold text-[#626B49] hover:bg-blue-50 px-2.5 py-1.5 rounded-xl border border-gray-200 flex items-center gap-1 transition"
+                                  className="text-xs font-bold text-[#626B49] hover:bg-[#F1F3EA] px-2.5 py-1.5 rounded-xl border border-gray-200 flex items-center gap-1 transition"
                                 >
                                   <Share2 className="w-3.5 h-3.5" />
                                   <span>مشاركة</span>
@@ -3885,7 +3885,7 @@ export default function App() {
                     <div className="space-y-3">
                       {savedBudgets.length === 0 ? (
                         <div className="bg-white p-8 rounded-3xl text-center border border-dashed border-gray-300 space-y-2">
-                          <div className="w-12 h-12 bg-amber-50 text-[#D8C69A] rounded-full mx-auto flex items-center justify-center">
+                          <div className="w-12 h-12 bg-[#F7F0DE] text-[#D8C69A] rounded-full mx-auto flex items-center justify-center">
                             <Wallet className="w-6 h-6" />
                           </div>
                           <p className="text-sm font-extrabold text-gray-800">
@@ -3963,7 +3963,7 @@ export default function App() {
               {/* Banner Area (Fixed 50px Height Reservation) */}
               <div className="h-[50px] w-full rounded-lg overflow-hidden relative">
                 {adStatus === 'loaded' && (
-                  <div className="h-full w-full bg-gradient-to-r from-blue-50 via-amber-50 to-blue-50 border border-blue-200/80 rounded-lg flex items-center justify-between px-3 text-xs select-none shadow-inner">
+                  <div className="h-full w-full bg-gradient-to-r from-[#78815B]50 via-amber-50 to-[#626B49]50 border border-[#DCE2D0]/80 rounded-lg flex items-center justify-between px-3 text-xs select-none shadow-inner">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-md bg-[#626B49] text-[#D8C69A] font-black text-[10px] flex items-center justify-center shrink-0">
                         Ad
@@ -3977,7 +3977,7 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                    <span className="text-[9px] font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full shrink-0">
+                    <span className="text-[9px] font-bold bg-amber-200/80 text-[#765B3A] px-2 py-0.5 rounded-full shrink-0">
                       Sample Unit
                     </span>
                   </div>
@@ -4040,7 +4040,7 @@ export default function App() {
                   <button
                     onClick={() => { setAdStatus('loading'); showToast('محاكاة جارِ التحميل مع حجز المساحة ⏳'); }}
                     className={`py-1.5 px-1 rounded-xl text-center font-bold transition text-[10px] ${
-                      adStatus === 'loading' ? 'bg-amber-500 text-white animate-pulse shadow-sm' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                      adStatus === 'loading' ? 'bg-[#F7F0DE]0 text-white animate-pulse shadow-sm' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                     }`}
                   >
                     تحميل (Reserve)
@@ -4106,7 +4106,7 @@ export default function App() {
                     <span>إعلان المكافأة (Rewarded Video Ad):</span>
                   </span>
                   <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                    isWeeklyPlanUnlocked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                    isWeeklyPlanUnlocked ? 'bg-emerald-100 text-emerald-800' : 'bg-[#EFE5C8] text-[#765B3A]'
                   }`}>
                     {isWeeklyPlanUnlocked ? 'الخطة مفتوحة' : 'الخطة مقفولة'}
                   </span>
@@ -4118,7 +4118,7 @@ export default function App() {
                   <div className="flex gap-1">
                     <button
                       onClick={handleRequestRewardedAd}
-                      className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-xl transition shadow-xs flex items-center gap-1"
+                      className="bg-[#F7F0DE]0 hover:bg-amber-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-xl transition shadow-xs flex items-center gap-1"
                     >
                       <Play className="w-2.5 h-2.5 fill-white" />
                       <span>محاكاة المكافأة 🎬</span>
@@ -4572,10 +4572,10 @@ export default function App() {
                             {isAvailable ? '✓' : '✗'}
                           </span>
                           <span className="font-bold text-gray-900">{ing.name}</span>
-                          <span className="text-xs font-semibold text-[#626B49] bg-blue-50 px-2 py-1 rounded-lg">{scaled.text}</span>
+                          <span className="text-xs font-semibold text-[#626B49] bg-[#F1F3EA] px-2 py-1 rounded-lg">{scaled.text}</span>
                         </div>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                          isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-[#EFE5C8] text-amber-800'
                         }`}>
                           {isAvailable ? 'متوفر' : 'ناقص'}
                         </span>
@@ -4583,8 +4583,8 @@ export default function App() {
 
                       {/* Practical Alternative Suggestion if missing */}
                       {!isAvailable && ing.alternatives && ing.alternatives.length > 0 && (
-                        <div className="mt-1 pt-1 border-t border-gray-200/60 text-[11px] text-gray-600 bg-amber-50/60 p-1.5 rounded-lg">
-                          <span className="font-bold text-amber-900">بديل عملي مقترح: </span>
+                        <div className="mt-1 pt-1 border-t border-gray-200/60 text-[11px] text-gray-600 bg-[#F7F0DE]/60 p-1.5 rounded-lg">
+                          <span className="font-bold text-[#765B3A]">بديل عملي مقترح: </span>
                           <span className="font-bold text-gray-900">{ing.alternatives[0].name}</span>
                           <p className="text-[10px] text-gray-500 mt-0.5">{ing.alternatives[0].impact}</p>
                         </div>
@@ -4600,7 +4600,7 @@ export default function App() {
               <h4 className="font-bold text-xs text-gray-800 mb-2">طريقة التحضير خطوة بخطوة:</h4>
               <div className="space-y-2.5">
                 {selectedRecipeModal.steps.map((st, i) => (
-                  <div key={i} className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-3">
+                  <div key={i} className="flex items-start gap-3 rounded-xl border border-[#E4DECF] bg-[#F1F3EA]/50 p-3">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#626B49] text-xs font-extrabold text-white">{['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠'][i] || String(i + 1)}</span>
                     <p className="min-w-0 flex-1 text-sm leading-7 font-medium text-gray-800">{st}</p>
                   </div>
@@ -4617,7 +4617,7 @@ export default function App() {
                   handleAddMissingToShopping(missing, selectedRecipeModal.baseServings);
                   setSelectedRecipeModal(null);
                 }}
-                className="flex-1 bg-white border border-[#626B49] text-[#626B49] font-bold py-2.5 rounded-xl text-xs hover:bg-blue-50 transition flex items-center justify-center gap-1"
+                className="flex-1 bg-white border border-[#626B49] text-[#626B49] font-bold py-2.5 rounded-xl text-xs hover:bg-[#F1F3EA] transition flex items-center justify-center gap-1"
               >
                 <ShoppingCart className="w-3.5 h-3.5" />
                 <span>إضافة النواقص لقائمة المشتريات</span>
@@ -5022,7 +5022,7 @@ export default function App() {
             </div>
 
             {/* Household profile: saved locally and available offline */}
-            <div className="space-y-2 rounded-2xl border border-blue-100 bg-blue-50/50 p-3">
+            <div className="space-y-2 rounded-2xl border border-[#E4DECF] bg-[#F1F3EA]/50 p-3">
               <div className="flex items-center gap-2 text-[#626B49]">
                 <Users className="w-4 h-4" />
                 <span className="text-xs font-extrabold">بيانات الأسرة</span>
@@ -5082,7 +5082,7 @@ export default function App() {
 
               <button
                 onClick={handleExportData}
-                className="w-full bg-blue-50 hover:bg-blue-100 text-[#626B49] font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-blue-200"
+                className="w-full bg-[#F1F3EA] hover:bg-[#E8EBDD] text-[#626B49] font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-[#DCE2D0]"
               >
                 <div className="flex items-center gap-2">
                   <FileDown className="w-4 h-4 text-[#626B49]" />
@@ -5116,7 +5116,7 @@ export default function App() {
                   setIsSettingsModalOpen(false);
                   setIsClearShoppingConfirmOpen(true);
                 }}
-                className="w-full text-right bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-amber-200"
+                className="w-full text-right bg-[#F7F0DE] hover:bg-[#EFE5C8] text-[#765B3A] font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-[#E6D9B8]"
               >
                 <span>إفراغ قائمة النواقص فقط</span>
                 <Trash2 className="w-4 h-4 text-amber-700" />
@@ -5143,13 +5143,13 @@ export default function App() {
                     setIsSettingsModalOpen(false);
                     setIsAdControlsOpen(true);
                   }}
-                  className="w-full bg-amber-50 hover:bg-amber-100 text-amber-950 font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-amber-200"
+                  className="w-full bg-[#F7F0DE] hover:bg-[#EFE5C8] text-amber-950 font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-[#E6D9B8]"
                 >
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-600" />
                     <span>لوحة ضبط ومحاكاة الإعلانات (وضع التطوير)</span>
                   </div>
-                  <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-md font-extrabold">
+                  <span className="text-[10px] bg-amber-200/80 text-[#765B3A] px-2 py-0.5 rounded-md font-extrabold">
                     {adStatus === 'loaded' ? 'البانر نشط' : adStatus === 'loading' ? 'تحميل...' : adStatus === 'failed' ? 'منهار (أوفلاين)' : 'معطل'}
                   </span>
                 </button>
@@ -5174,7 +5174,7 @@ export default function App() {
               <p className="font-semibold text-gray-800">
                 هل تريد استبدال بيانات التطبيق الحالية بهذه النسخة؟
               </p>
-              <div className="bg-amber-50 text-amber-900 p-2.5 rounded-xl border border-amber-200 text-[11px] leading-relaxed">
+              <div className="bg-[#F7F0DE] text-[#765B3A] p-2.5 rounded-xl border border-[#E6D9B8] text-[11px] leading-relaxed">
                 ⚠️ تنبيه: سيتم استبدال الميزانية والمصاريف وقوائم النواقص الحالية بالبيانات المحفوظة في ملف النسخة الاحتياطية.
               </div>
 
@@ -5229,7 +5229,7 @@ export default function App() {
       {isClearShoppingConfirmOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
-            <h3 className="text-base font-extrabold text-amber-900">إفراغ قائمة النواقص؟</h3>
+            <h3 className="text-base font-extrabold text-[#765B3A]">إفراغ قائمة النواقص؟</h3>
             <p className="text-xs text-gray-600 leading-relaxed">
               سيتم حذف جميع الأصناف المسجلة في قائمة النواقص حالياً. الوجبات وخطط الميزانية والمصاريف ستظل محفوظة ولن تتأثر.
             </p>
@@ -5319,7 +5319,7 @@ export default function App() {
                 <button
                   onClick={() => { setAdStatus('loading'); showToast('محاكاة التحميل وحجز المساحة ⏳'); }}
                   className={`p-2 rounded-xl text-center font-bold text-xs transition border ${
-                    adStatus === 'loading' ? 'bg-amber-500 text-white border-amber-500 animate-pulse' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+                    adStatus === 'loading' ? 'bg-[#F7F0DE]0 text-white border-amber-500 animate-pulse' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
                   }`}
                 >
                   ⏳ تحميل (Reserve Space)
@@ -5412,7 +5412,7 @@ export default function App() {
             </div>
 
             {/* Ad Body Content */}
-            <div className="p-6 bg-gradient-to-b from-blue-50 to-white flex flex-col items-center text-center space-y-4">
+            <div className="p-6 bg-gradient-to-b from-[#78815B]50 to-white flex flex-col items-center text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-[#626B49] text-[#D8C69A] font-black flex items-center justify-center text-2xl shadow-lg">
                 تد
               </div>
@@ -5479,7 +5479,7 @@ export default function App() {
 
             {/* Body */}
             <div className="p-5 flex flex-col items-center text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center shadow-sm">
+              <div className="w-14 h-14 rounded-2xl bg-[#EFE5C8] text-[#765B3A] flex items-center justify-center shadow-sm">
                 <CalendarCheck className="w-7 h-7 text-[#626B49]" />
               </div>
 
@@ -5491,7 +5491,7 @@ export default function App() {
               </div>
 
               {/* Simulation Environment Notice */}
-              <div className="w-full bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-right text-[11px] space-y-1 text-amber-950">
+              <div className="w-full bg-[#F7F0DE] border border-[#E6D9B8] p-2.5 rounded-xl text-right text-[11px] space-y-1 text-amber-950">
                 <div className="font-bold flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                   <span>محاكاة تجريبية مخصصة للمعاينة:</span>
