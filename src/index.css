@@ -55,10 +55,8 @@ button {
 }
 
 
-/* Tadbeera calm cream & olive theme */
 :root {
   color-scheme: light;
-  background: #F8F3E9;
   --td-cream: #F8F3E9;
   --td-paper: #FFFDF8;
   --td-olive: #78815B;
@@ -68,20 +66,34 @@ button {
   --td-ink: #39382F;
   --td-muted: #898575;
   --td-line: #E4DECF;
-  --td-primary: #78815B;
-  --td-primary-dark: #626B49;
-  --td-accent: #A68B69;
 }
-html, body, #root { background: #F8F3E9; }
-body { background: #F8F3E9; color: #39382F; }
-::selection { background: #DCE1CB; color: #39382F; }
+html, body, #root { background: var(--td-cream) !important; }
+body { color: var(--td-ink); }
+::selection { background: #DCE1CB; color: var(--td-ink); }
 ::-webkit-scrollbar-thumb { background: #C9C5B5; }
-.tadbeera-bottom-nav button:focus-visible { outline-color: #78815B; }
-.tadbeera-appbar { min-height: 58px; }
-.tadbeera-bottom-nav button { min-height: 48px; }
-.tadbeera-bottom-nav button:focus-visible { outline: 2px solid #82966F; outline-offset: 2px; }
 
-
+/* Map legacy bright brand utilities to the calm olive-and-cream palette. */
+[class*="bg-blue-700"], [class*="bg-blue-800"], [class*="bg-blue-900"],
+[class*="bg-[#1565C0]"], [class*="bg-[#002171]"], [class*="bg-[#1E40AF]"] {
+  background-color: var(--td-olive-dark) !important;
+}
+[class*="bg-blue-50"], [class*="bg-blue-100"], [class*="bg-blue-200"] {
+  background-color: #EEF0E6 !important;
+}
+[class*="text-blue-"], [class*="text-[#1565C0]"], [class*="text-[#1E293B]"] {
+  color: var(--td-olive-dark) !important;
+}
+[class*="border-blue-"] { border-color: #D8DDCB !important; }
+[class*="bg-amber-"], [class*="bg-yellow-"], [class*="bg-orange-"],
+[class*="bg-[#FFE54C]"], [class*="bg-[#D8C69A]"] {
+  background-color: #EFE7D4 !important;
+}
+[class*="text-amber-"], [class*="text-yellow-"], [class*="text-orange-"] {
+  color: #796648 !important;
+}
+[class*="border-amber-"], [class*="border-yellow-"], [class*="border-orange-"] {
+  border-color: #E4D9C1 !important;
+}
 /* Lightweight, consistent feedback when switching between app sections. */
 html {
   scroll-behavior: smooth;
