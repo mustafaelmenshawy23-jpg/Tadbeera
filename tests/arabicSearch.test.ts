@@ -14,6 +14,7 @@ test('matches Egyptian mahshi and cabbage colloquialisms', () => {
     assert.equal(aliases.some(alias => matchesArabicSearchAlias(query, alias)), true, query);
   }
   assert.equal(matchesArabicSearchAlias('عايز محشي كرنب النهارده', 'محشي'), true);
+  assert.equal(matchesArabicSearchAlias('عايز ورق عنب النهارده', 'ورق عنب'), true);
   assert.equal(matchesArabicSearchAlias('ملفوف', 'كرنب'), false);
 });
 
