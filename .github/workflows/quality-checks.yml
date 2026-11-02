@@ -2,7 +2,7 @@ name: Tadbeera quality checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, recovery/feature-complete-baseline]
   pull_request:
     branches: [main]
   workflow_dispatch:
