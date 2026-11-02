@@ -1,24 +1,18 @@
-# Tadbeera offline recipe images
+# Recipe photo sources and licenses
 
-Upload the 16 reviewed recipe images into this folder using these exact filenames:
+This phase uses Wikimedia Commons-hosted image URLs for four matching seed recipes. Images are remote and become available to the service worker cache after a successful online load; they are **not bundled local image files**, so a first-ever offline install will still need the fallback illustration.
 
-01-shakshuka.jpg
-02-koshari.jpg
-03-baked-pasta.jpg
-04-lentil-soup.jpg
-05-egyptian-fatta.jpg
-06-ful-medames.jpg
-07-potato-salad.jpg
-08-pasta-tomato.jpg
-09-mashed-potatoes-eggs.jpg
-10-omelet.jpg
-11-moussaka.jpg
-12-stuffed-pigeon.jpg
-13-mahshi.jpg
-14-kebda.jpg
-15-basbousa.jpg
-16-kunafa.jpg
+| Tadbeera recipe | Commons file | Author | License | Source |
+|---|---|---|---|---|
+| Egyptian shakshuka | EgFoodShakshuka.jpg | Roland Unger | CC BY-SA 3.0 (also GFDL options listed on source page) | https://commons.wikimedia.org/wiki/File:EgFoodShakshuka.jpg |
+| Koshary | Koshary.jpg | Embabahcairo0009 | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Koshary.jpg |
+| Egyptian lentil soup | EgFoodLentilSoup.jpg | Roland Unger | CC BY-SA 3.0 (also GFDL options listed on source page) | https://commons.wikimedia.org/wiki/File:EgFoodLentilSoup.jpg |
+| Ful medames | Ful_medames.jpg | Zachbe at en.wikipedia | CC BY-SA 3.0 (also GFDL option listed on source page) | https://commons.wikimedia.org/wiki/File:Ful_medames.jpg |
 
-Use JPG/JPEG files. Keep the numbered filenames unchanged. The GitHub Actions workflow checks that every expected file exists; it does not verify recipe/image visual matching or image licensing.
+License links:
+- CC BY-SA 3.0: https://creativecommons.org/licenses/by-sa/3.0/
+- CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/
 
-These images are intended to be bundled locally by the app in a later implementation step. Uploading them here alone does not yet wire them into the app UI.
+No image edits were made. Attribution and license links are retained here. Any future cropping/resizing or other adaptations must be indicated in the app's attribution UI and distributed under compatible share-alike terms where required.
+
+The remaining recipe photos must be individually matched and license-checked before being added. Do not substitute unrelated food images merely to fill the catalog.
