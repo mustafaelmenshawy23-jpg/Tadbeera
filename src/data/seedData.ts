@@ -568,7 +568,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['عشاء', 'بروتين', 'سهل', 'سلطات'],
-    imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80',
+    imageUrl: 'https://kep.cdn.indexvas.hu/1/0/5737/57377/573775/57377541_6f567550428b63978c384deb58d477f9_wm.jpg',
     svgFallbackIcon: 'salad'
   },
   {
@@ -618,7 +618,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['عشاء', 'سريع', 'أطفال', 'اقتصادي'],
-    imageUrl: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281721?auto=format&fit=crop&w=600&q=80',
+    imageUrl: 'https://www.supermama.me/system/App/Entities/Recipe/images/000/102/904/watermarked/%D8%B7%D8%B1%D9%8A%D9%82%D8%A9-%D8%B9%D9%85%D9%84-%D8%A7%D9%84%D9%85%D9%83%D8%B1%D9%88%D9%86%D8%A9-%D8%A7%D9%84%D9%85%D8%AD%D9%85%D8%B1%D8%A9-%D8%A8%D8%A7%D9%84%D8%B5%D9%84%D8%B5%D8%A9.jpg',
     svgFallbackIcon: 'pasta'
   },
   {
@@ -718,7 +718,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['فطار', 'وجبة شعبية', 'عشاء', 'بروتين اقتصادي'],
-    imageUrl: 'https://images.unsplash.com/photo-1590412200988-a436970781fa?auto=format&fit=crop&w=600&q=80',
+    imageUrl: 'https://www.cairo24.com/Upload/libfiles/164/5/122.jpg',
     svgFallbackIcon: 'egg'
   },
   {
@@ -777,7 +777,7 @@ export const RECIPES: Recipe[] = [
     isQuick: false,
     usesLeftovers: false,
     tags: ['غداء', 'أكلات مصرية', 'شعبي', 'توفير'],
-    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
+    imageUrl: 'https://falasteenifoodie.com/wp-content/uploads/2025/01/Eggplant-and-Ground-Beef-Tomato-Bake.jpg',
     svgFallbackIcon: 'egg'
   }
 ];
