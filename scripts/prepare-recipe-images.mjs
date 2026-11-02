@@ -9,7 +9,7 @@ const photos = [
   { file: 'public/images/recipes/baked-eggs-vegetables.webp', url: 'https://www.cairo24.com/Upload/libfiles/164/5/122.jpg', label: 'Egyptian baked eggs with vegetables' },
   { file: 'public/images/recipes/feteer-meshaltet.webp', url: 'https://www.cairo24.com/Upload/libfiles/130/7/624.jpg', label: 'Egyptian feteer meshaltet' },
   { file: 'public/images/recipes/molokhia-egyptian.jpg', url: 'https://e.his-j.com/images/area7/egy/w944/meal/egy_molokheiyasoup_01.jpg', label: 'Egyptian molokhia' },
-  { file: 'public/images/recipes/basbousa-egyptian.jpg', url: 'https://www.youregypttours.com/storage/egyptian-basbousa.jpg', label: 'Egyptian basbousa' },
+  { file: 'public/images/recipes/basbousa-egyptian.jpg', url: 'https://commons.wikimedia.org/wiki/Special:Redirect/file/Basboosa.jpg', label: 'Egyptian basbousa (Stu Spivack, CC BY-SA 2.0)' },
   { file: 'public/images/recipes/taameya-egyptian.webp', url: 'https://afrotools.com/assets/img/kitchen/taameya-eg.webp', label: 'Egyptian taameya' },
   { file: 'public/images/recipes/mahshi-mixed-egyptian.webp', url: 'https://afrotools.com/assets/img/kitchen/mahshi-eg.webp', label: 'Egyptian mixed mahshi' },
   { file: 'public/images/recipes/bessara-egyptian.jpg', url: 'https://www.vetogate.com/Upload/libfiles/453/7/811.jpg', label: 'Egyptian bessara' },
