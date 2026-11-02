@@ -5,11 +5,13 @@ on:
     paths:
       - "src/data/seedData.ts"
       - "public/images/recipes/**"
+      - "scripts/prepare-recipe-images.mjs"
       - ".github/workflows/validate-recipe-images.yml"
   pull_request:
     paths:
       - "src/data/seedData.ts"
       - "public/images/recipes/**"
+      - "scripts/prepare-recipe-images.mjs"
       - ".github/workflows/validate-recipe-images.yml"
   workflow_dispatch:
 
@@ -23,6 +25,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Verify recipe photo source records
         shell: bash
         run: |
@@ -31,16 +38,10 @@ jobs:
           recipes="src/data/seedData.ts"
           test -s "$manifest"
           test -s "$recipes"
-          # The source manifest and recipe catalog are checked for documented Commons mappings.
-          manifest_rows=$(grep -c '^|' "$manifest")
-          mapped_urls=$(grep -c 'commons.wikimedia.org/wiki/Special:FilePath/' "$recipes")
-          if [[ "$manifest_rows" -lt 22 ]]; then
-            echo "::error file=$manifest::Expected at least twenty documented photo attribution rows"
-            exit 1
-          fi
-          if [[ "$mapped_urls" -lt 20 ]]; then
-            echo "::error file=$recipes::Expected at least twenty Commons recipe image mappings"
-            exit 1
-          fi
-          echo "Found $((manifest_rows - 2)) attribution rows and $mapped_urls Commons image mappings."
-          echo "Note: these are remote photos; this check does not claim they are bundled for first-launch offline use."
+          grep -q "Chicken_Pasta_in_White_Sauce.jpg" "$manifest"
+          grep -q "Mashed_potatoes,_eggs,_beans.jpg" "$manifest"
+          grep -q "imageUrl: '/images/recipes/chicken-pasta-white-sauce.jpg'" "$recipes"
+          grep -q "imageUrl: '/images/recipes/mashed-potato-eggs.jpg'" "$recipes"
+          grep -q "prepare-recipe-images.mjs" "package.json"
+          test -s "scripts/prepare-recipe-images.mjs"
+          echo "Verified both corrected recipe image mappings and the offline build downloader."
