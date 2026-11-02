@@ -1,8 +1,10 @@
 package com.tedbeera.egypt
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.WindowManager
+import org.json.JSONObject
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -17,9 +19,19 @@ class MainActivity : BridgeActivity() {
         configureImmersiveWindow()
     }
 
-    override fun onNewIntent(intent: android.content.Intent) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+
+        // Forward notification taps to the running WebView as well as cold-start intents.
+        val target = intent.getStringExtra("tadbeera_target_tab")
+        if (target == "food") {
+            val payload = JSONObject()
+                .put("target", target)
+                .put("meal", intent.getStringExtra("tadbeera_meal_type"))
+                .toString()
+            bridge?.triggerWindowJSEvent("tadbeeraMealReminderLaunch", payload)
+        }
     }
 
     override fun onResume() {
