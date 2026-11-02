@@ -391,7 +391,7 @@ type CommonsImagePage = {
 };
 
 async function findLicensedRecipePhoto(searchTerm: string): Promise<Pick<OnlineRecipe, 'imageUrl' | 'imageCredit' | 'imageLicense'> | null> {
-  const query = searchTerm.trim().replace(/\\s+/g, ' ');
+  const query = searchTerm.trim().replace(/\s+/g, ' ');
   if (!query) return null;
   const endpoint = new URL('https://commons.wikimedia.org/w/api.php');
   endpoint.search = new URLSearchParams({
@@ -422,8 +422,8 @@ async function findLicensedRecipePhoto(searchTerm: string): Promise<Pick<OnlineR
       return { page, info, license, mime, matchingWords };
     }).filter(item =>
       item.info && item.matchingWords > 0 &&
-      /^image\\/(jpeg|png|webp)$/i.test(item.mime) &&
-      /(public domain|cc0|cc by(?:-sa)? 4\\.0|cc by(?:-sa)? 3\\.0|cc by(?:-sa)? 2\\.0)/i.test(item.license)
+      /^image\/(jpeg|png|webp)$/i.test(item.mime) &&
+      /(public domain|cc0|cc by(?:-sa)? 4\.0|cc by(?:-sa)? 3\.0|cc by(?:-sa)? 2\.0)/i.test(item.license)
     ).sort((a, b) => b.matchingWords - a.matchingWords);
 
     const best = candidates[0];
