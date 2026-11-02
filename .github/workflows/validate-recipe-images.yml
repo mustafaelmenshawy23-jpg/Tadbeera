@@ -34,11 +34,11 @@ jobs:
           # The source manifest and recipe catalog are checked for documented Commons mappings.
           manifest_rows=$(grep -c '^|' "$manifest")
           mapped_urls=$(grep -c 'commons.wikimedia.org/wiki/Special:FilePath/' "$recipes")
-          if [[ "$manifest_rows" -lt 9 ]]; then
+          if [[ "$manifest_rows" -lt 22 ]]; then
             echo "::error file=$manifest::Expected at least nineteen documented photo attribution rows"
             exit 1
           fi
-          if [[ "$mapped_urls" -lt 7 ]]; then
+          if [[ "$mapped_urls" -lt 19 ]]; then
             echo "::error file=$recipes::Expected at least nineteen Commons recipe image mappings"
             exit 1
           fi
