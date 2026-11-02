@@ -277,19 +277,43 @@ function hasArabic(value: string): boolean {
   return arabicLetters > 0 && latinLetters <= Math.max(4, Math.floor(arabicLetters * 0.2));
 }
 
+function normalizeRecipeLineBreaks(value: string): string {
+  return value
+    .replace(/\r\n?/g, '\n')
+    // Some providers return the two characters "\n" instead of real line breaks.
+    .replace(/\\r\\n|\\n|\\r/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .trim();
+}
+
+function stripRecipeListPrefix(value: string): string {
+  let cleaned = value.trim();
+  // Strip repeated list markers (e.g. "1. 1. Step") so the UI owns numbering.
+  for (let pass = 0; pass < 3; pass += 1) {
+    const next = cleaned
+      .replace(/^\s*[٠-٩\d]+\s*[.)、:-]\s*/, '')
+      .replace(/^\s*[•*▪◦-]\s*/, '')
+      .trim();
+    if (next === cleaned) break;
+    cleaned = next;
+  }
+  return cleaned;
+}
+
 function parseRecipeSections(extract: string, familySize: number, baseServings: number): { ingredients: string[]; steps: string[] } {
-  const separator = extract.match(/طريقة التحضير\s*[:：]|الطريقة\s*[:：]/);
+  const normalized = normalizeRecipeLineBreaks(extract);
+  const separator = normalized.match(/(?:طريقة التحضير|الطريقة)\s*[:：]?/);
   const splitIndex = separator?.index ?? -1;
-  const ingredientsText = splitIndex >= 0 ? extract.slice(0, splitIndex) : '';
-  const methodText = splitIndex >= 0 ? extract.slice(splitIndex + separator![0].length) : extract;
+  const ingredientsText = splitIndex >= 0 ? normalized.slice(0, splitIndex) : '';
+  const methodText = splitIndex >= 0 ? normalized.slice(splitIndex + separator![0].length) : normalized;
   const ingredients = scaleArabicRecipeExtract(ingredientsText, baseServings, familySize)
     .replace(/^المكونات(?:\s*\([^)]*\))?\s*[:：]?/,'')
-    .split(/[\n،,]+/)
-    .map(item => item.replace(/^\s*[•*-]\s*/, '').trim())
-    .filter(Boolean);
+    .split(/[\n،,؛]+/)
+    .map(item => stripRecipeListPrefix(item))
+    .filter(item => item.length > 1);
   const steps = methodText
     .split(/\n+|(?<=[.!؟])\s+/)
-    .map(step => step.replace(/^\s*\d+[.)-]\s*/, '').trim())
+    .map(step => stripRecipeListPrefix(step))
     .filter(step => step.length > 2);
   return { ingredients, steps };
 }
