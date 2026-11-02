@@ -719,7 +719,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['فطار', 'وجبة شعبية', 'عشاء', 'بروتين اقتصادي'],
-    imageUrl: 'https://www.cairo24.com/Upload/libfiles/164/5/122.jpg',
+    imageUrl: '/images/recipes/baked-eggs-vegetables.jpg',
     svgFallbackIcon: 'egg'
   },
   {
