@@ -73,7 +73,7 @@ export default defineConfig(() => {
               // Cache recipe photos after their first successful online load so
               // previously viewed dishes remain visible without connectivity.
               urlPattern: ({ request, url }) =>
-                request.destination === 'image' || /\\.(?:png|jpe?g|webp|avif)$/i.test(url.pathname),
+                request.destination === 'image' || /\.(?:png|jpe?g|webp|avif)$/i.test(url.pathname),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'tadbeera-recipe-images-v1',
