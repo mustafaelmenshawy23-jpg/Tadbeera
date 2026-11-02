@@ -182,7 +182,14 @@ class MealReminderReceiver : BroadcastReceiver() {
                 else -> "مساء الخير من تدبيرة 🌙" to "جهّز عشاء بسيط وراجع نواقص البيت لبكرة."
             }
             val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            val mealType = when (id) {
+                101 -> "breakfast"
+                102 -> "lunch"
+                else -> "dinner"
+            }
             val contentIntent = launchIntent?.let {
+                it.putExtra("tadbeera_target_tab", "food")
+                it.putExtra("tadbeera_meal_type", mealType)
                 PendingIntent.getActivity(
                     context, id, it,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
