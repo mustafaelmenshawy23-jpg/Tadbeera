@@ -1,6 +1,6 @@
 # Recipe photo sources and licenses
 
-This phase uses Wikimedia Commons-hosted image URLs for twenty matching seed recipes. Images are remote and become available to the service worker cache after a successful online load; they are **not bundled local image files**, so a first-ever offline install will still need the fallback illustration.
+Most existing catalog photos are still remote and may only enter the service-worker cache after an online load. The two corrected photos below are downloaded during the production build and copied into the app bundle, so they are available on first launch without internet.
 
 | Tadbeera recipe | Commons file | Author | License | Source |
 |---|---|---|---|---|
@@ -43,3 +43,12 @@ All three are linked as remote images; no local binary files have been added. No
 | Egyptian renga salad | أسماك مملحة.JPG | Mohamad Radwan | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:أسماك_مملحة.JPG |
 | Egyptian stuffed pigeon | Hamam mahshi.jpg | medea_material | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Hamam_mahshi.jpg |
 | Egyptian fayesh | فايش.jpg | Youssefmohmmed23 | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:فايش.jpg |
+
+## Corrected offline recipe photos
+
+| Tadbeera recipe | Bundled file | Source / author | License | Source page |
+|---|---|---|---|---|
+| Chicken pasta with leftover chicken and white sauce | `chicken-pasta-white-sauce.jpg` | TourismSchool | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Chicken_Pasta_in_White_Sauce.jpg |
+| Mashed potatoes with eggs | `mashed-potato-eggs.jpg` | MOs810 | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Mashed_potatoes,_eggs,_beans.jpg |
+
+The production build runs `scripts/prepare-recipe-images.mjs` before Vite. It downloads these two verified JPEGs into `public/images/recipes/`; Vite then copies them into the web bundle and Capacitor packages them into the APK. The recipe records point to local `/images/recipes/` paths, not remote URLs. The mashed-potato reference photograph includes eggs and beans; it is a plated food photograph, not a retail/product image. The original photographs are not modified. Attribution and license links are retained above.
