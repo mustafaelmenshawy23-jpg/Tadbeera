@@ -1,6 +1,6 @@
 # Recipe photo sources and licenses
 
-This phase uses Wikimedia Commons-hosted image URLs for sixteen matching seed recipes. Images are remote and become available to the service worker cache after a successful online load; they are **not bundled local image files**, so a first-ever offline install will still need the fallback illustration.
+This phase uses Wikimedia Commons-hosted image URLs for nineteen matching seed recipes. Images are remote and become available to the service worker cache after a successful online load; they are **not bundled local image files**, so a first-ever offline install will still need the fallback illustration.
 
 | Tadbeera recipe | Commons file | Author | License | Source |
 |---|---|---|---|---|
@@ -38,3 +38,7 @@ All three are linked as remote images; no local binary files have been added. No
 | Egyptian taameya | Egypt falafel.jpg | Mohammed khaleefa | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Egypt_falafel.jpg |
 | Egyptian macaroni béchamel | Macarona bechamel.jpg | Zebi2424 | CC0 1.0 | https://commons.wikimedia.org/wiki/File:Macarona_bechamel.jpg |
 | Om Ali dessert | Om Ali Dessert.jpg | Reem Al-Kashif | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Om_Ali_Dessert.jpg |
+
+| Egyptian kebda iskandarani | Kebda Iskandarani (Alexandria Liver) sandowichs.jpg | Dalia fathallah | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Kebda_Iskandarani_(Alexandria_Liver)_sandowichs.jpg |
+| Egyptian renga salad | أسماك مملحة.JPG | Mohamad Radwan | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:أسماك_مملحة.JPG |
+| Egyptian stuffed pigeon | Hamam mahshi.jpg | medea_material | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Hamam_mahshi.jpg |
