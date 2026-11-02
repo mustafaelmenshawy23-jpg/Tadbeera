@@ -277,19 +277,46 @@ function hasArabic(value: string): boolean {
   return arabicLetters > 0 && latinLetters <= Math.max(4, Math.floor(arabicLetters * 0.2));
 }
 
+function normalizeRecipeLineBreaks(value: string): string {
+  return value
+    .replace(/\r\n?/g, '\n')
+    // Some providers return the two characters "\n" instead of real line breaks.
+    .replace(/\\r\\n|\\n|\\r/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .trim();
+}
+
+function stripRecipeListPrefix(value: string): string {
+  let cleaned = value.trim();
+  // Strip repeated list markers (e.g. "1. 1. Step") so the UI owns numbering.
+  for (let pass = 0; pass < 3; pass += 1) {
+    const next = cleaned
+      .replace(/^\s*[٠-٩\d]+\s*[.)、:-]\s*/, '')
+      .replace(/^\s*[•*▪◦-]\s*/, '')
+      .trim();
+    if (next === cleaned) break;
+    cleaned = next;
+  }
+  return cleaned;
+}
+
 function parseRecipeSections(extract: string, familySize: number, baseServings: number): { ingredients: string[]; steps: string[] } {
-  const separator = extract.match(/طريقة التحضير\s*[:：]|الطريقة\s*[:：]/);
+  const normalized = normalizeRecipeLineBreaks(extract);
+  const separator = normalized.match(/(?:طريقة التحضير|الطريقة)(?:\s+خطوة بخطوة)?\s*[:：]?/);
   const splitIndex = separator?.index ?? -1;
-  const ingredientsText = splitIndex >= 0 ? extract.slice(0, splitIndex) : '';
-  const methodText = splitIndex >= 0 ? extract.slice(splitIndex + separator![0].length) : extract;
+  const ingredientsText = splitIndex >= 0 ? normalized.slice(0, splitIndex) : '';
+  const methodText = splitIndex >= 0 ? normalized.slice(splitIndex + separator![0].length) : normalized;
   const ingredients = scaleArabicRecipeExtract(ingredientsText, baseServings, familySize)
-    .replace(/^المكونات(?:\s*\([^)]*\))?\s*[:：]?/,'')
-    .split(/[\n،,]+/)
-    .map(item => item.replace(/^\s*[•*-]\s*/, '').trim())
-    .filter(Boolean);
+    .replace(/^\s*المقادير محسوبة[^\n]*\n?/gm, '')
+    .replace(/^\s*#{1,6}\s*/gm, '')
+    .replace(/^\s*المكونات(?:\s+المطلوبة)?(?:\s*\([^)]*\))?\s*[:：]?/,'')
+    .split(/[\n،,؛]+/)
+    .map(item => stripRecipeListPrefix(item))
+    .filter(item => item.length > 1);
   const steps = methodText
+    .replace(/^\s*#{1,6}\s*/gm, '')
     .split(/\n+|(?<=[.!؟])\s+/)
-    .map(step => step.replace(/^\s*\d+[.)-]\s*/, '').trim())
+    .map(step => stripRecipeListPrefix(step))
     .filter(step => step.length > 2);
   return { ingredients, steps };
 }
@@ -450,10 +477,17 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
 
       // Put a precise Egyptian home-style match first, then append relevant
       // international matches without replacing the requested Egyptian dish.
+      const bundledMatches = findBundledEgyptianRecipes(term);
       const curatedMatches = LOCAL_RECIPES.filter(item =>
         item.terms.some(alias => matchesArabicSearchAlias(term, alias))
-      ).map(item => ({ ...item.recipe }));
-      const bundledMatches = findBundledEgyptianRecipes(term);
+      ).map(item => {
+        // Prefer the already-bundled dish photo when a curated Arabic recipe
+        // matches a recipe in the offline seed catalogue.
+        const bundledPhoto = bundledMatches.find(recipe =>
+          normalize(recipe.title) === normalize(item.recipe.title)
+        )?.imageUrl;
+        return { ...item.recipe, imageUrl: item.recipe.imageUrl || bundledPhoto };
+      });
       const localMatches = [...curatedMatches, ...bundledMatches].filter((recipe, index, all) =>
         all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index
       );
@@ -526,10 +560,23 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
       setResults(mapped);
       setSelected(mapped[0]);
     } catch {
+      const fallbackBundledMatches = findBundledEgyptianRecipes(term);
+      const fallbackCuratedMatches = LOCAL_RECIPES.filter(item =>
+        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
+      ).map(item => {
+        // Keep fallback results visually consistent with the online path:
+        // reuse a bundled image only when the dish titles match exactly.
+        const bundledPhoto = fallbackBundledMatches.find(recipe =>
+          normalize(recipe.title) === normalize(item.recipe.title)
+        )?.imageUrl;
+        return { ...item.recipe, imageUrl: item.recipe.imageUrl || bundledPhoto };
+      });
       const fallbackLocalMatches = [
-        ...LOCAL_RECIPES.filter(item => item.terms.some(alias => matchesArabicSearchAlias(term, alias))).map(item => ({ ...item.recipe })),
-        ...findBundledEgyptianRecipes(term),
-      ].filter((recipe, index, all) => all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index);
+        ...fallbackCuratedMatches,
+        ...fallbackBundledMatches,
+      ].filter((recipe, index, all) =>
+        all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index
+      );
       if (fallbackLocalMatches.length) {
         setResults(fallbackLocalMatches);
         setSelected(fallbackLocalMatches[0]);
@@ -654,13 +701,13 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
       .replace(/\b\d+\s*\/\s*\d+\b/g, ' ')
       .trim();
     const spokenText = [
-      cleanForSpeech(recipe.title),
-      `الوصفة تكفي ${familySize} أفراد`,
-      'أولًا، المكونات.',
-      ...sections.ingredients.map(cleanForSpeech),
-      'والآن طريقة التحضير، خطوة بخطوة.',
-      ...sections.steps.map((step, index) => `الخطوة رقم ${index + 1}. ${cleanForSpeech(step)}. ثم ننتقل للخطوة التالية.`),
-      'وبالهنا والشفا.',
+      `يلا نعمل ${cleanForSpeech(recipe.title)}.`,
+      `المقادير دي تكفي ${familySize} أفراد.`,
+      'تعالوا نجهز المكونات الأول.',
+      ...sections.ingredients.map(item => cleanForSpeech(item)),
+      'كده نبدأ طريقة التحضير، واحدة واحدة.',
+      ...sections.steps.map((step, index) => `أول حاجة، الخطوة رقم ${index + 1}: ${cleanForSpeech(step)}. وبعدها نروح للي بعدها.`),
+      'وبس كده، وصفتنا جاهزة. وبالهنا والشفا!',
     ].filter(Boolean).join('، ');
     try {
       if (Capacitor.isNativePlatform()) {
