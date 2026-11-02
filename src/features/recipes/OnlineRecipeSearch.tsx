@@ -374,6 +374,71 @@ export function scaleMeasure(measure: string, familySize: number, baseServings =
   return (Math.round(amount * Math.max(1, Math.min(30, Math.round(familySize))) / baseServings * 100) / 100).toString() + ' ' + match[2].trim();
 }
 
+
+
+type CommonsImagePage = {
+  title?: string;
+  imageinfo?: Array<{
+    thumburl?: string;
+    url?: string;
+    mime?: string;
+    extmetadata?: {
+      LicenseShortName?: { value?: string };
+      Artist?: { value?: string };
+      Credit?: { value?: string };
+    };
+  }>;
+};
+
+async function findLicensedRecipePhoto(searchTerm: string): Promise<Pick<OnlineRecipe, 'imageUrl' | 'imageCredit' | 'imageLicense'> | null> {
+  const query = searchTerm.trim().replace(/\\s+/g, ' ');
+  if (!query) return null;
+  const endpoint = new URL('https://commons.wikimedia.org/w/api.php');
+  endpoint.search = new URLSearchParams({
+    action: 'query',
+    generator: 'search',
+    gsrsearch: `${query} food dish`,
+    gsrnamespace: '6',
+    gsrlimit: '10',
+    prop: 'imageinfo',
+    iiprop: 'url|mime|extmetadata',
+    iiurlwidth: '900',
+    format: 'json',
+    origin: '*',
+  }).toString();
+
+  try {
+    const response = await fetch(endpoint.toString());
+    if (!response.ok) return null;
+    const data = await response.json();
+    const pages = Object.values((data.query?.pages || {}) as Record<string, CommonsImagePage>);
+    const queryWords = query.toLowerCase().split(/[^a-z0-9]+/).filter(word => word.length > 2 && !['food', 'dish', 'recipe'].includes(word));
+    const candidates = pages.map(page => {
+      const info = page.imageinfo?.[0];
+      const license = info?.extmetadata?.LicenseShortName?.value || '';
+      const mime = info?.mime || '';
+      const title = (page.title || '').toLowerCase();
+      const matchingWords = queryWords.filter(word => title.includes(word)).length;
+      return { page, info, license, mime, matchingWords };
+    }).filter(item =>
+      item.info && item.matchingWords > 0 &&
+      /^image\\/(jpeg|png|webp)$/i.test(item.mime) &&
+      /(public domain|cc0|cc by(?:-sa)? 4\\.0|cc by(?:-sa)? 3\\.0|cc by(?:-sa)? 2\\.0)/i.test(item.license)
+    ).sort((a, b) => b.matchingWords - a.matchingWords);
+
+    const best = candidates[0];
+    if (!best?.info) return null;
+    const artist = best.info.extmetadata?.Artist?.value || best.info.extmetadata?.Credit?.value || 'Wikimedia Commons';
+    return {
+      imageUrl: best.info.thumburl || best.info.url,
+      imageCredit: artist.replace(/<[^>]*>/g, '').slice(0, 180),
+      imageLicense: best.license,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineRecipe> {
   const ingredients: string[] = [];
   for (let index = 1; index <= 20; index += 1) {
@@ -495,6 +560,14 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
         ...localMatches,
         ...mapped.filter(recipe => !localMatches.some(local => normalize(local.title) === normalize(recipe.title))),
       ];
+
+      // Fill missing online photos from Wikimedia Commons only when a relevant,
+      // openly licensed real-food image is available. Otherwise keep the image absent.
+      mapped = await Promise.all(mapped.map(async recipe => {
+        if (recipe.imageUrl) return recipe;
+        const photo = await findLicensedRecipePhoto(englishTerm);
+        return photo ? { ...recipe, ...photo } : recipe;
+      }));
 
       if (!mapped.length) {
         const wikiUrl = new URL(WIKIBOOKS_API);
