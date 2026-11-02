@@ -34,3 +34,7 @@ All three are linked as remote images; no local binary files have been added. No
 | Egyptian eggah | Egga (عجة البيض ).jpg | Dr.Kerollos | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Egga_(عجة_البيض_).jpg |
 | Basbousa | البسبوسة .jpg | أطيب أكلة | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:البسبوسة_.jpg |
 | Egyptian hawawshi | Hawawshi Main 1 Mohamed Moheyeldin.jpg | Mohamed Moheyeldin | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Hawawshi_Main_1_Mohamed_Moheyeldin.jpg |
+
+| Egyptian taameya | Egypt falafel.jpg | Mohammed khaleefa | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Egypt_falafel.jpg |
+| Egyptian macaroni béchamel | Macarona bechamel.jpg | Zebi2424 | CC0 1.0 | https://commons.wikimedia.org/wiki/File:Macarona_bechamel.jpg |
+| Om Ali dessert | Om Ali Dessert.jpg | Reem Al-Kashif | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Om_Ali_Dessert.jpg |
