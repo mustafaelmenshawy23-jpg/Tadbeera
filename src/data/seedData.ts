@@ -719,7 +719,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['فطار', 'وجبة شعبية', 'عشاء', 'بروتين اقتصادي'],
-    imageUrl: '/images/recipes/baked-eggs-vegetables.jpg',
+    imageUrl: '/images/recipes/baked-eggs-vegetables.webp',
     svgFallbackIcon: 'egg'
   },
   {
