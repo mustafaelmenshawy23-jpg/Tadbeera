@@ -145,6 +145,7 @@ export const COMMON_INGREDIENTS = [
   'ثوم'
 ];
 
+// Each bundled recipe uses its own dish-matched image URL (31 distinct recipe photos).
 export const RECIPES: Recipe[] = [
   {
     id: 'rec_shakshouka',
