@@ -42,3 +42,4 @@ All three are linked as remote images; no local binary files have been added. No
 | Egyptian kebda iskandarani | Kebda Iskandarani (Alexandria Liver) sandowichs.jpg | Dalia fathallah | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Kebda_Iskandarani_(Alexandria_Liver)_sandowichs.jpg |
 | Egyptian renga salad | أسماك مملحة.JPG | Mohamad Radwan | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:أسماك_مملحة.JPG |
 | Egyptian stuffed pigeon | Hamam mahshi.jpg | medea_material | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Hamam_mahshi.jpg |
+| Egyptian fayesh | فايش.jpg | Youssefmohmmed23 | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:فايش.jpg |
