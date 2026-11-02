@@ -450,10 +450,17 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
 
       // Put a precise Egyptian home-style match first, then append relevant
       // international matches without replacing the requested Egyptian dish.
+      const bundledMatches = findBundledEgyptianRecipes(term);
       const curatedMatches = LOCAL_RECIPES.filter(item =>
         item.terms.some(alias => matchesArabicSearchAlias(term, alias))
-      ).map(item => ({ ...item.recipe }));
-      const bundledMatches = findBundledEgyptianRecipes(term);
+      ).map(item => {
+        // Prefer the already-bundled dish photo when a curated Arabic recipe
+        // matches a recipe in the offline seed catalogue.
+        const bundledPhoto = bundledMatches.find(recipe =>
+          normalize(recipe.title) === normalize(item.recipe.title)
+        )?.imageUrl;
+        return { ...item.recipe, imageUrl: item.recipe.imageUrl || bundledPhoto };
+      });
       const localMatches = [...curatedMatches, ...bundledMatches].filter((recipe, index, all) =>
         all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index
       );
@@ -526,10 +533,23 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
       setResults(mapped);
       setSelected(mapped[0]);
     } catch {
+      const fallbackBundledMatches = findBundledEgyptianRecipes(term);
+      const fallbackCuratedMatches = LOCAL_RECIPES.filter(item =>
+        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
+      ).map(item => {
+        // Keep fallback results visually consistent with the online path:
+        // reuse a bundled image only when the dish titles match exactly.
+        const bundledPhoto = fallbackBundledMatches.find(recipe =>
+          normalize(recipe.title) === normalize(item.recipe.title)
+        )?.imageUrl;
+        return { ...item.recipe, imageUrl: item.recipe.imageUrl || bundledPhoto };
+      });
       const fallbackLocalMatches = [
-        ...LOCAL_RECIPES.filter(item => item.terms.some(alias => matchesArabicSearchAlias(term, alias))).map(item => ({ ...item.recipe })),
-        ...findBundledEgyptianRecipes(term),
-      ].filter((recipe, index, all) => all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index);
+        ...fallbackCuratedMatches,
+        ...fallbackBundledMatches,
+      ].filter((recipe, index, all) =>
+        all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index
+      );
       if (fallbackLocalMatches.length) {
         setResults(fallbackLocalMatches);
         setSelected(fallbackLocalMatches[0]);
