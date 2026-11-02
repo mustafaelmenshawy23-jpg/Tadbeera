@@ -308,26 +308,43 @@ export default function App() {
   useEffect(() => {
     if (!isNativeApp) return;
     let active = true;
+    const applyLaunchTarget = (launch: { target?: string; meal?: string }) => {
+      if (!active || launch.target !== 'food') return;
+      setKitchenView('main');
+      setMealFilter(
+        launch.meal === 'breakfast' || launch.meal === 'lunch' || launch.meal === 'dinner'
+          ? launch.meal
+          : 'all'
+      );
+      setActiveTab('food');
+    };
     const consumeTarget = async () => {
       try {
-        const launch = await mealReminderLaunch.consumeLaunchTarget();
-        if (!active || !launch.target) return;
-        if (launch.target === 'food') {
-          setKitchenView('main');
-          setMealFilter(launch.meal === 'breakfast' || launch.meal === 'lunch' || launch.meal === 'dinner'
-            ? launch.meal : 'all');
-          setActiveTab('food');
-        }
+        applyLaunchTarget(await mealReminderLaunch.consumeLaunchTarget());
       } catch (error) {
         console.warn('Unable to route from Tadbeera meal reminder:', error);
       }
     };
+    // Cold starts are consumed from the launch intent; warm starts arrive through
+    // a native event because singleTop onNewIntent does not guarantee WebView focus.
+    const handleNativeLaunch = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      let launch: { target?: string; meal?: string } | null = null;
+      if (typeof detail === 'string') {
+        try { launch = JSON.parse(detail) as { target?: string; meal?: string }; } catch { launch = null; }
+      } else if (detail && typeof detail === 'object') {
+        launch = detail as { target?: string; meal?: string };
+      }
+      if (launch) applyLaunchTarget(launch);
+    };
     void consumeTarget();
     const handleResume = () => { void consumeTarget(); };
+    window.addEventListener('tadbeeraMealReminderLaunch', handleNativeLaunch);
     window.addEventListener('focus', handleResume);
     document.addEventListener('visibilitychange', handleResume);
     return () => {
       active = false;
+      window.removeEventListener('tadbeeraMealReminderLaunch', handleNativeLaunch);
       window.removeEventListener('focus', handleResume);
       document.removeEventListener('visibilitychange', handleResume);
     };
