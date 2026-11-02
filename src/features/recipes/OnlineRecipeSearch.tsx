@@ -3,6 +3,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { ArrowRight, Mic, MicOff, Volume2, VolumeX, Search, Bookmark } from 'lucide-react';
 import { normalizeArabicSearchTerm as normalize, matchesArabicSearchAlias } from './arabicSearch';
 import { hasRecipeStructure, isRelevantRecipe } from './recipeValidation';
+import { RECIPES, type Recipe } from '../../data/seedData';
 
 interface RecipeVoicePlugin {
   request(): Promise<{ granted: boolean }>;
@@ -40,7 +41,19 @@ const SAVED_KEY = 'tadbeera_online_recipes_v1';
 const MEAL_DB_API = 'https://www.themealdb.com/api/json/v1/1/search.php';
 const WIKIBOOKS_API = 'https://en.wikibooks.org/w/api.php';
 
-const ARABIC_ALIASES: Array<{ terms: string[]; english: string }> = [
+const ARABIC_ALIASES: Array<{ terms: string[  { terms: ['كشري', 'كشرى', 'كشري مصري', 'كشري اصلي'], english: 'egyptian koshari' },
+  { terms: ['فول مدمس', 'فول', 'فول بلدي'], english: 'egyptian ful medames' },
+  { terms: ['طعمية', 'طعميه', 'فلافل', 'طعمية مصرية'], english: 'egyptian taameya falafel' },
+  { terms: ['ملوخية', 'ملوخيه'], english: 'egyptian molokhia' },
+  { terms: ['محشي', 'محشى', 'محشي مشكل', 'كرنب', 'ورق عنب', 'كوسة محشية', 'باذنجان محشي'], english: 'egyptian mahshi stuffed vegetables' },
+  { terms: ['حمام محشي', 'حمام بالفريك', 'حمام صعيدي'], english: 'egyptian stuffed pigeon freekeh' },
+  { terms: ['فتة مصرية', 'فتة باللحمة', 'فتة', 'فته'], english: 'egyptian fatta meat rice' },
+  { terms: ['مكرونة بشاميل', 'بشاميل', 'مكرونه بالبشاميل'], english: 'egyptian macaroni bechamel' },
+  { terms: ['رقاق', 'رقاق باللحمة', 'صينية رقاق'], english: 'egyptian roqaq meat pie' },
+  { terms: ['بصارة', 'بصاره'], english: 'egyptian bessara' },
+  { terms: ['مسقعة مصرية', 'مسقعة باللحمة', 'مسقعة'], english: 'egyptian moussaka' },
+  { terms: ['ام علي', 'أم علي', 'طاجن ام علي'], english: 'egyptian om ali dessert' },
+]; english: string }> = [
   { terms: ['فايش', 'عيش فايش', 'فايش صعيدي', 'فايش ناشف'], english: 'egyptian faysh bread' },
   { terms: ['شابورة', 'شابوره', 'عيش شابورة', 'بقسماط'], english: 'egyptian shaboura rusk' },
   { terms: ['عيش شمسي', 'عيش بلدي', 'عيش فلاحي'], english: 'egyptian bread' },
@@ -375,6 +388,34 @@ async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineReci
   };
 }
 
+function localSeedRecipeToOnline(recipe: Recipe, familySize: number): OnlineRecipe {
+  const scaledIngredients = recipe.ingredients.map(item => {
+    const ratio = Math.max(1, Math.min(30, Math.round(familySize))) / Math.max(1, recipe.baseServings);
+    const quantity = item.baseAmount > 0
+      ? `${Math.round(item.baseAmount * ratio * 100) / 100} ${item.unit}`
+      : item.quantity;
+    return `• ${item.name} — ${quantity}`;
+  });
+  return {
+    title: recipe.name,
+    servings: recipe.baseServings,
+    pageId: 910000 + Math.abs(recipe.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)),
+    url: 'https://www.themealdb.com/',
+    imageUrl: recipe.imageUrl || undefined,
+    imageCredit: recipe.imageUrl ? 'صورة الوصفة المحفوظة في تدبيرة' : undefined,
+    extract: `المكونات (المقادير الأساسية لـ ${recipe.baseServings} أفراد):\\n${scaledIngredients.join('\\n')}\\n\\nطريقة التحضير:\\n${recipe.steps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}`,
+  };
+}
+
+function findBundledEgyptianRecipes(term: string): OnlineRecipe[] {
+  const normalized = normalize(term);
+  return RECIPES.filter(recipe => {
+    const haystack = [recipe.name, ...recipe.tags, ...recipe.ingredients.map(item => item.name)]
+      .map(normalize).join(' ');
+    return haystack.includes(normalized) || normalized.split(' ').some(word => word.length > 2 && haystack.includes(word));
+  }).slice(0, 12).map(recipe => localSeedRecipeToOnline(recipe, 4));
+}
+
 export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: number; onBack?: () => void }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<OnlineRecipe[]>([]);
@@ -424,12 +465,16 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
 
       // Put a precise Egyptian home-style match first, then append relevant
       // international matches without replacing the requested Egyptian dish.
-      const localMatches = LOCAL_RECIPES.filter(item =>
-        item.terms.some(alias => matchesArabicSearchAlias(term, alias) || matchesArabicSearchAlias(englishTerm, alias))
+      const curatedMatches = LOCAL_RECIPES.filter(item =>
+        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
       ).map(item => ({ ...item.recipe }));
+      const bundledMatches = findBundledEgyptianRecipes(term);
+      const localMatches = [...curatedMatches, ...bundledMatches].filter((recipe, index, all) =>
+        all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index
+      );
       mapped = [
         ...localMatches,
-        ...mapped.filter(recipe => !localMatches.some(local => local.pageId === recipe.pageId)),
+        ...mapped.filter(recipe => !localMatches.some(local => normalize(local.title) === normalize(recipe.title))),
       ];
 
       if (!mapped.length) {
@@ -496,9 +541,10 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
       setResults(mapped);
       setSelected(mapped[0]);
     } catch {
-      const fallbackLocalMatches = LOCAL_RECIPES.filter(item =>
-        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
-      ).map(item => ({ ...item.recipe }));
+      const fallbackLocalMatches = [
+        ...LOCAL_RECIPES.filter(item => item.terms.some(alias => matchesArabicSearchAlias(term, alias))).map(item => ({ ...item.recipe })),
+        ...findBundledEgyptianRecipes(term),
+      ].filter((recipe, index, all) => all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index);
       if (fallbackLocalMatches.length) {
         setResults(fallbackLocalMatches);
         setSelected(fallbackLocalMatches[0]);
