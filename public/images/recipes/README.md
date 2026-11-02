@@ -1,6 +1,6 @@
 # Recipe photo sources and licenses
 
-This phase uses Wikimedia Commons-hosted image URLs for ten matching seed recipes. Images are remote and become available to the service worker cache after a successful online load; they are **not bundled local image files**, so a first-ever offline install will still need the fallback illustration.
+This phase uses Wikimedia Commons-hosted image URLs for thirteen matching seed recipes. Images are remote and become available to the service worker cache after a successful online load; they are **not bundled local image files**, so a first-ever offline install will still need the fallback illustration.
 
 | Tadbeera recipe | Commons file | Author | License | Source |
 |---|---|---|---|---|
@@ -30,3 +30,7 @@ All three are linked as remote images; no local binary files have been added. No
 | Egyptian feteer | Egyptian-feteer.jpg | Turnopoems | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Egyptian-feteer.jpg |
 | Egyptian molokhia | Molokhia.JPG | Showshow777 | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Molokhia.JPG |
 | Egyptian meat fatta | Egyptian_fatta.gif | Mkevy | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Egyptian_fatta.gif |
+
+| Egyptian eggah | Egga (عجة البيض ).jpg | Dr.Kerollos | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Egga_(عجة_البيض_).jpg |
+| Basbousa | البسبوسة .jpg | أطيب أكلة | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:البسبوسة_.jpg |
+| Egyptian hawawshi | Hawawshi Main 1 Mohamed Moheyeldin.jpg | Mohamed Moheyeldin | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Hawawshi_Main_1_Mohamed_Moheyeldin.jpg |
