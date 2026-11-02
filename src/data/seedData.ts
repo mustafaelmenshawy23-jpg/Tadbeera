@@ -331,7 +331,7 @@ export const RECIPES: Recipe[] = [
     isQuick: false,
     usesLeftovers: true,
     tags: ['غداء', 'تدوير بواقي الأكل', 'سريع', 'أطفال'],
-    imageUrl: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281721?auto=format&fit=crop&w=600&q=80',
+    imageUrl: '/images/recipes/chicken-pasta-white-sauce.jpg',
     svgFallbackIcon: 'pasta'
   },
   {
@@ -668,7 +668,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['عشاء', 'وجبة متكاملة', 'توفير', 'أكلات زمان'],
-    imageUrl: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80',
+    imageUrl: '/images/recipes/mashed-potato-eggs.jpg',
     svgFallbackIcon: 'potatoes'
   },
   {
