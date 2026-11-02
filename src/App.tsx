@@ -4468,6 +4468,17 @@ export default function App() {
               </button>
             </div>
 
+            {/* Recipe detail photo: use the same licensed fallback as the recipe list. */}
+            <div className="w-full h-48 overflow-hidden rounded-2xl bg-[#F1F5EC]">
+              {recipePhotoFallbacks[selectedRecipeModal.id] ? (
+                <img src={recipePhotoFallbacks[selectedRecipeModal.id]} alt={selectedRecipeModal.name} loading="lazy" className="h-full w-full object-cover" />
+              ) : selectedRecipeModal.imageUrl && !brokenImages[selectedRecipeModal.id] ? (
+                <img src={selectedRecipeModal.imageUrl} alt={selectedRecipeModal.name} loading="lazy" onError={() => handleImageError(selectedRecipeModal.id, selectedRecipeModal.name)} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-bold text-gray-500">الصورة غير متاحة حاليًا</div>
+              )}
+            </div>
+
             <p className="text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
               🏷️ تكلفة تقديرية وغير ملزمة محسوبة لـ {familySize} أفراد تختلف حسب الأسعار الموسمية بالأسواق المصرية.
             </p>
