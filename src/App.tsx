@@ -937,11 +937,24 @@ export default function App() {
   const [selectedAndroidFile, setSelectedAndroidFile] = useState<string>('android/app/src/main/java/com/tedbeera/egypt/MainActivity.kt');
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // Fallback image error handling
+  // Fallback image handling: search for a matching openly licensed food photo
+  // before showing a neutral placeholder instead of a cartoon illustration.
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+  const [recipePhotoFallbacks, setRecipePhotoFallbacks] = useState<Record<string, string>>({});
 
-  const handleImageError = (id: string) => {
+  const handleImageError = (id: string, recipeTitle?: string) => {
     setBrokenImages(prev => ({ ...prev, [id]: true }));
+    if (!recipeTitle || recipePhotoFallbacks[id]) return;
+    void import('./features/recipes/OnlineRecipeSearch')
+      .then(module => module.findRecipePhotoByTitle(recipeTitle, true))
+      .then(photo => {
+        if (photo?.imageUrl) {
+          setRecipePhotoFallbacks(prev => ({ ...prev, [id]: photo.imageUrl! }));
+        }
+      })
+      .catch(() => {
+        // Keep the neutral placeholder when no licensed photo can be found.
+      });
   };
 
   // Sync family size safely
@@ -2060,7 +2073,13 @@ export default function App() {
                         {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).map(recipe => (
                           <button key={recipe.id} type="button" onClick={() => setSelectedRecipeModal(recipe)} className="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white p-2.5 text-right shadow-sm transition hover:border-emerald-300">
                             <span className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#F1F5EC]">
-                              {recipe.imageUrl && !brokenImages[recipe.id] ? <img src={recipe.imageUrl} alt={recipe.name} loading="lazy" onError={() => handleImageError(recipe.id)} className="h-full w-full object-cover" /> : <SvgIllustration type={recipe.svgFallbackIcon || 'koshari'} />}
+                              {recipePhotoFallbacks[recipe.id] ? (
+                                <img src={recipePhotoFallbacks[recipe.id]} alt={recipe.name} loading="lazy" className="h-full w-full object-cover" />
+                              ) : recipe.imageUrl && !brokenImages[recipe.id] ? (
+                                <img src={recipe.imageUrl} alt={recipe.name} loading="lazy" onError={() => handleImageError(recipe.id, recipe.name)} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-[#F1F5EC] px-1 text-center text-[9px] font-bold text-gray-500">الصورة غير متاحة</div>
+                              )}
                             </span>
                             <span className="min-w-0 flex-1">
                               <strong className="block truncate text-sm text-gray-900">{recipe.name}</strong>
@@ -4447,6 +4466,17 @@ export default function App() {
               >
                 ✕
               </button>
+            </div>
+
+            {/* Recipe detail photo: use the same licensed fallback as the recipe list. */}
+            <div className="w-full h-48 overflow-hidden rounded-2xl bg-[#F1F5EC]">
+              {recipePhotoFallbacks[selectedRecipeModal.id] ? (
+                <img src={recipePhotoFallbacks[selectedRecipeModal.id]} alt={selectedRecipeModal.name} loading="lazy" className="h-full w-full object-cover" />
+              ) : selectedRecipeModal.imageUrl && !brokenImages[selectedRecipeModal.id] ? (
+                <img src={selectedRecipeModal.imageUrl} alt={selectedRecipeModal.name} loading="lazy" onError={() => handleImageError(selectedRecipeModal.id, selectedRecipeModal.name)} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-bold text-gray-500">الصورة غير متاحة حاليًا</div>
+              )}
             </div>
 
             <p className="text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-xl border border-gray-100">

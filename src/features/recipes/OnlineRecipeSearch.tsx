@@ -26,6 +26,8 @@ type OnlineRecipe = {
   imageUrl?: string;
   imageLicense?: string;
   imageCredit?: string;
+  imageSourceUrl?: string;
+  imageLicenseUrl?: string;
 };
 
 type MealDbMeal = {
@@ -374,6 +376,87 @@ export function scaleMeasure(measure: string, familySize: number, baseServings =
   return (Math.round(amount * Math.max(1, Math.min(30, Math.round(familySize))) / baseServings * 100) / 100).toString() + ' ' + match[2].trim();
 }
 
+
+
+type CommonsImagePage = {
+  title?: string;
+  imageinfo?: Array<{
+    thumburl?: string;
+    url?: string;
+    mime?: string;
+    extmetadata?: {
+      LicenseShortName?: { value?: string };
+      Artist?: { value?: string };
+      Credit?: { value?: string };
+      LicenseUrl?: { value?: string };
+    };
+  }>;
+};
+
+async function findLicensedRecipePhoto(searchTerm: string, publicDomainOnly = false): Promise<Pick<OnlineRecipe, 'imageUrl' | 'imageCredit' | 'imageLicense' | 'imageSourceUrl' | 'imageLicenseUrl'> | null> {
+  const query = searchTerm.trim().replace(/\s+/g, ' ');
+  if (!query) return null;
+  const endpoint = new URL('https://commons.wikimedia.org/w/api.php');
+  endpoint.search = new URLSearchParams({
+    action: 'query',
+    generator: 'search',
+    gsrsearch: `${query} food dish`,
+    gsrnamespace: '6',
+    gsrlimit: '10',
+    prop: 'imageinfo',
+    iiprop: 'url|mime|extmetadata',
+    iiurlwidth: '900',
+    format: 'json',
+    origin: '*',
+  }).toString();
+
+  try {
+    const response = await fetch(endpoint.toString());
+    if (!response.ok) return null;
+    const data = await response.json();
+    const pages = Object.values((data.query?.pages || {}) as Record<string, CommonsImagePage>);
+    const queryWords = query.toLowerCase().split(/[^a-z0-9]+/).filter(word => word.length > 2 && !['food', 'dish', 'recipe'].includes(word));
+    const candidates = pages.map(page => {
+      const info = page.imageinfo?.[0];
+      const license = info?.extmetadata?.LicenseShortName?.value || '';
+      const mime = info?.mime || '';
+      const title = (page.title || '').toLowerCase();
+      const matchingWords = queryWords.filter(word => title.includes(word)).length;
+      return { page, info, license, mime, matchingWords };
+    }).filter(item =>
+      item.info && item.matchingWords > 0 &&
+      /^image\/(jpeg|png|webp)$/i.test(item.mime) &&
+      (publicDomainOnly
+        ? /(public domain|cc0)/i.test(item.license)
+        : /(public domain|cc0|cc by(?:-sa)? 4\.0|cc by(?:-sa)? 3\.0|cc by(?:-sa)? 2\.0)/i.test(item.license))
+    ).sort((a, b) => b.matchingWords - a.matchingWords);
+
+    const best = candidates[0];
+    if (!best?.info) return null;
+    const artist = best.info.extmetadata?.Artist?.value || best.info.extmetadata?.Credit?.value || 'Wikimedia Commons';
+    return {
+      imageUrl: best.info.thumburl || best.info.url,
+      imageCredit: artist.replace(/<[^>]*>/g, '').slice(0, 180),
+      imageLicense: best.license,
+      imageSourceUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(best.page.title || '')}`,
+      imageLicenseUrl: best.info.extmetadata?.LicenseUrl?.value,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function findRecipePhotoByTitle(title: string, publicDomainOnly = false) {
+  let searchTerm = title;
+  try {
+    const translatedTitle = await translateText(title, 'ar', 'en');
+    if (translatedTitle.trim()) searchTerm = translatedTitle;
+  } catch {
+    // Use the original title if translation is unavailable.
+  }
+  return findLicensedRecipePhoto(searchTerm, publicDomainOnly);
+}
+
 async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineRecipe> {
   const ingredients: string[] = [];
   for (let index = 1; index <= 20; index += 1) {
@@ -551,6 +634,21 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
           }
         }
       }
+
+      // Fill missing online photos from Wikimedia Commons only when a relevant,
+      // openly licensed real-food image is available. Otherwise keep the image absent.
+      mapped = await Promise.all(mapped.map(async recipe => {
+        if (recipe.imageUrl) return recipe;
+        let imageSearchTerm = englishTerm;
+        try {
+          const translatedTitle = await translateText(recipe.title, 'ar', 'en');
+          if (translatedTitle.trim()) imageSearchTerm = translatedTitle;
+        } catch {
+          // Keep the original search phrase if title translation is unavailable.
+        }
+        const photo = await findLicensedRecipePhoto(imageSearchTerm);
+        return photo ? { ...recipe, ...photo } : recipe;
+      }));
 
       if (!mapped.length) {
         setError('ملقيناش وصفة عربية مطابقة حاليًا. جرّب اسم أكلة تانية أو استخدم الوصفات المصرية الجاهزة. مش هنعرض وصفة بالإنجليزي.');
@@ -830,7 +928,7 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
                 </section>
               </div>;
             })()}
-            {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit || 'TheMealDB'} — {selected.imageLicense || 'راجع المصدر الأصلي'}</p>}
+            {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit || 'TheMealDB'} — {selected.imageLicense || 'راجع المصدر الأصلي'}{selected.imageSourceUrl && <> — <a href={selected.imageSourceUrl} target="_blank" rel="noreferrer" className="underline">صفحة الصورة</a></>}{selected.imageLicenseUrl && <> — <a href={selected.imageLicenseUrl} target="_blank" rel="noreferrer" className="underline">تفاصيل الترخيص</a></>}</p>}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => void (speaking ? stopRecipeSpeech() : speakRecipe(selected))}
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-[11px] font-bold text-white">
