@@ -2,7 +2,7 @@ name: Build Tedbeera Android APK
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, recovery/feature-complete-baseline]
     paths:
       - 'android/**'
       - 'src/**'
@@ -12,7 +12,7 @@ on:
       - 'package-lock.json'
       - '.github/workflows/build-apk.yml'
   push:
-    branches: [main]
+    branches: [main, recovery/feature-complete-baseline]
     paths:
       - 'android/**'
       - 'src/**'
