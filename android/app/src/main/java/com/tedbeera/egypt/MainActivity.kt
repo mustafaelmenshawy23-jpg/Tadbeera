@@ -17,6 +17,11 @@ class MainActivity : BridgeActivity() {
         configureImmersiveWindow()
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
     override fun onResume() {
         super.onResume()
         configureImmersiveWindow()
