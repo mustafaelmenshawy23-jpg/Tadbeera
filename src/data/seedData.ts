@@ -719,7 +719,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['فطار', 'وجبة شعبية', 'عشاء', 'بروتين اقتصادي'],
-    imageUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Egga%20(عجة%20البيض%20).jpg?width=900',
+    imageUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Eggs_omelette.jpg?width=900',
     svgFallbackIcon: 'egg'
   },
   {
