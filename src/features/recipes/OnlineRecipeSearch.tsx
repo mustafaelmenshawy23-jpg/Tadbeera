@@ -26,6 +26,8 @@ type OnlineRecipe = {
   imageUrl?: string;
   imageLicense?: string;
   imageCredit?: string;
+  imageSourceUrl?: string;
+  imageLicenseUrl?: string;
 };
 
 type MealDbMeal = {
@@ -386,11 +388,12 @@ type CommonsImagePage = {
       LicenseShortName?: { value?: string };
       Artist?: { value?: string };
       Credit?: { value?: string };
+      LicenseUrl?: { value?: string };
     };
   }>;
 };
 
-async function findLicensedRecipePhoto(searchTerm: string): Promise<Pick<OnlineRecipe, 'imageUrl' | 'imageCredit' | 'imageLicense'> | null> {
+async function findLicensedRecipePhoto(searchTerm: string, publicDomainOnly = false): Promise<Pick<OnlineRecipe, 'imageUrl' | 'imageCredit' | 'imageLicense' | 'imageSourceUrl' | 'imageLicenseUrl'> | null> {
   const query = searchTerm.trim().replace(/\s+/g, ' ');
   if (!query) return null;
   const endpoint = new URL('https://commons.wikimedia.org/w/api.php');
@@ -423,7 +426,9 @@ async function findLicensedRecipePhoto(searchTerm: string): Promise<Pick<OnlineR
     }).filter(item =>
       item.info && item.matchingWords > 0 &&
       /^image\/(jpeg|png|webp)$/i.test(item.mime) &&
-      /(public domain|cc0|cc by(?:-sa)? 4\.0|cc by(?:-sa)? 3\.0|cc by(?:-sa)? 2\.0)/i.test(item.license)
+      (publicDomainOnly
+        ? /(public domain|cc0)/i.test(item.license)
+        : /(public domain|cc0|cc by(?:-sa)? 4\.0|cc by(?:-sa)? 3\.0|cc by(?:-sa)? 2\.0)/i.test(item.license))
     ).sort((a, b) => b.matchingWords - a.matchingWords);
 
     const best = candidates[0];
@@ -433,13 +438,15 @@ async function findLicensedRecipePhoto(searchTerm: string): Promise<Pick<OnlineR
       imageUrl: best.info.thumburl || best.info.url,
       imageCredit: artist.replace(/<[^>]*>/g, '').slice(0, 180),
       imageLicense: best.license,
+      imageSourceUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(best.page.title || '')}`,
+      imageLicenseUrl: best.info.extmetadata?.LicenseUrl?.value,
     };
   } catch {
     return null;
   }
 }
 
-export async function findRecipePhotoByTitle(title: string) {
+export async function findRecipePhotoByTitle(title: string, publicDomainOnly = false) {
   let searchTerm = title;
   try {
     const translatedTitle = await translateText(title, 'ar', 'en');
@@ -447,7 +454,7 @@ export async function findRecipePhotoByTitle(title: string) {
   } catch {
     // Use the original title if translation is unavailable.
   }
-  return findLicensedRecipePhoto(searchTerm);
+  return findLicensedRecipePhoto(searchTerm, publicDomainOnly);
 }
 
 async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineRecipe> {
@@ -921,7 +928,7 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
                 </section>
               </div>;
             })()}
-            {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit || 'TheMealDB'} — {selected.imageLicense || 'راجع المصدر الأصلي'}</p>}
+            {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit || 'TheMealDB'} — {selected.imageLicense || 'راجع المصدر الأصلي'}{selected.imageSourceUrl && <> — <a href={selected.imageSourceUrl} target="_blank" rel="noreferrer" className="underline">صفحة الصورة</a></>}{selected.imageLicenseUrl && <> — <a href={selected.imageLicenseUrl} target="_blank" rel="noreferrer" className="underline">تفاصيل الترخيص</a></>}</p>}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => void (speaking ? stopRecipeSpeech() : speakRecipe(selected))}
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-[11px] font-bold text-white">
