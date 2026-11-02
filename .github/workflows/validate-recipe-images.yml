@@ -31,7 +31,7 @@ jobs:
           recipes="src/data/seedData.ts"
           test -s "$manifest"
           test -s "$recipes"
-          # Seven Commons photos are currently mapped to seven recipe records.
+          # The source manifest and recipe catalog are checked for documented Commons mappings.
           manifest_rows=$(grep -c '^|' "$manifest")
           mapped_urls=$(grep -c 'commons.wikimedia.org/wiki/Special:FilePath/' "$recipes")
           if [[ "$manifest_rows" -lt 9 ]]; then
