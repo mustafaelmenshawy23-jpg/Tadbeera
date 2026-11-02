@@ -16,3 +16,13 @@ License links:
 No image edits were made. Attribution and license links are retained here. Any future cropping/resizing or other adaptations must be indicated in the app's attribution UI and distributed under compatible share-alike terms where required.
 
 The remaining recipe photos must be individually matched and license-checked before being added. Do not substitute unrelated food images merely to fill the catalog.
+
+## Additional verified recipe photos
+
+| Tadbeera recipe | Commons file | Credit / source | License | Source |
+|---|---|---|---|---|
+| Egyptian moussaka | Egyptian-Musakaa-Musa3a.jpg | Uploaded by Shorouk.Ali; source credited as Saydety; original author listed as N/A | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Egyptian-Musakaa-Musa3a.jpg |
+| Mixed Egyptian mahshi | EgyptianMahshyStuffedAubergineTomatoWithRice PhotoByWaelNawara.jpg | Wael Nawara | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:EgyptianMahshyStuffedAubergineTomatoWithRice_PhotoByWaelNawara.jpg |
+| Egyptian cream kunafa | EgyptianKonafaWithCream PhotoByWaelNawaraKonafa.jpg | Wael Nawara | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:EgyptianKonafaWithCream_PhotoByWaelNawaraKonafa.jpg |
+
+All three are linked as remote images; no local binary files have been added. No modifications to the source photographs were made.
