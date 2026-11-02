@@ -439,6 +439,17 @@ async function findLicensedRecipePhoto(searchTerm: string): Promise<Pick<OnlineR
   }
 }
 
+export async function findRecipePhotoByTitle(title: string) {
+  let searchTerm = title;
+  try {
+    const translatedTitle = await translateText(title, 'ar', 'en');
+    if (translatedTitle.trim()) searchTerm = translatedTitle;
+  } catch {
+    // Use the original title if translation is unavailable.
+  }
+  return findLicensedRecipePhoto(searchTerm);
+}
+
 async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineRecipe> {
   const ingredients: string[] = [];
   for (let index = 1; index <= 20; index += 1) {
