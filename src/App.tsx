@@ -308,26 +308,38 @@ export default function App() {
   useEffect(() => {
     if (!isNativeApp) return;
     let active = true;
+    const applyLaunchTarget = (launch: { target?: string; meal?: string }) => {
+      if (!active || launch.target !== 'food') return;
+      setKitchenView('main');
+      setMealFilter(
+        launch.meal === 'breakfast' || launch.meal === 'lunch' || launch.meal === 'dinner'
+          ? launch.meal
+          : 'all'
+      );
+      setActiveTab('food');
+    };
     const consumeTarget = async () => {
       try {
-        const launch = await mealReminderLaunch.consumeLaunchTarget();
-        if (!active || !launch.target) return;
-        if (launch.target === 'food') {
-          setKitchenView('main');
-          setMealFilter(launch.meal === 'breakfast' || launch.meal === 'lunch' || launch.meal === 'dinner'
-            ? launch.meal : 'all');
-          setActiveTab('food');
-        }
+        applyLaunchTarget(await mealReminderLaunch.consumeLaunchTarget());
       } catch (error) {
         console.warn('Unable to route from Tadbeera meal reminder:', error);
       }
     };
+    // Cold starts are read from the activity intent; warm starts arrive as a
+    // native event because Android does not guarantee a WebView focus event
+    // when singleTop MainActivity receives onNewIntent().
+    const handleNativeLaunch = (event: Event) => {
+      const launch = (event as CustomEvent<{ target?: string; meal?: string }>).detail;
+      if (launch) applyLaunchTarget(launch);
+    };
     void consumeTarget();
     const handleResume = () => { void consumeTarget(); };
+    window.addEventListener('tadbeeraMealReminderLaunch', handleNativeLaunch);
     window.addEventListener('focus', handleResume);
     document.addEventListener('visibilitychange', handleResume);
     return () => {
       active = false;
+      window.removeEventListener('tadbeeraMealReminderLaunch', handleNativeLaunch);
       window.removeEventListener('focus', handleResume);
       document.removeEventListener('visibilitychange', handleResume);
     };
