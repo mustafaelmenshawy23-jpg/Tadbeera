@@ -164,6 +164,11 @@ interface MicrophonePermissionPlugin {
 
 const microphonePermission = registerPlugin<MicrophonePermissionPlugin>('MicrophonePermission');
 
+interface MealReminderLaunchPlugin {
+  consumeLaunchTarget(): Promise<{ target?: string; meal?: string }>;
+}
+const mealReminderLaunch = registerPlugin<MealReminderLaunchPlugin>('NotificationPermission');
+
 export interface SavedBudgetPlan {
   id: string;
   categoryTitle: string;
@@ -297,6 +302,35 @@ export default function App() {
     void CapacitorUpdater.notifyAppReady().catch((error) => {
       console.warn('Tadbeera live-update readiness check failed:', error);
     });
+  }, [isNativeApp]);
+
+  // Route taps on native meal reminders to the matching kitchen filter.
+  useEffect(() => {
+    if (!isNativeApp) return;
+    let active = true;
+    const consumeTarget = async () => {
+      try {
+        const launch = await mealReminderLaunch.consumeLaunchTarget();
+        if (!active || !launch.target) return;
+        if (launch.target === 'food') {
+          setKitchenView('main');
+          setMealFilter(launch.meal === 'breakfast' || launch.meal === 'lunch' || launch.meal === 'dinner'
+            ? launch.meal : 'all');
+          setActiveTab('food');
+        }
+      } catch (error) {
+        console.warn('Unable to route from Tadbeera meal reminder:', error);
+      }
+    };
+    void consumeTarget();
+    const handleResume = () => { void consumeTarget(); };
+    window.addEventListener('focus', handleResume);
+    document.addEventListener('visibilitychange', handleResume);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', handleResume);
+      document.removeEventListener('visibilitychange', handleResume);
+    };
   }, [isNativeApp]);
 
   const [viewMode, setViewMode] = useState<ViewMode>('emulator');
