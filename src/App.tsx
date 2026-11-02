@@ -946,7 +946,7 @@ export default function App() {
     setBrokenImages(prev => ({ ...prev, [id]: true }));
     if (!recipeTitle || recipePhotoFallbacks[id]) return;
     void import('./features/recipes/OnlineRecipeSearch')
-      .then(module => module.findRecipePhotoByTitle(recipeTitle))
+      .then(module => module.findRecipePhotoByTitle(recipeTitle, true))
       .then(photo => {
         if (photo?.imageUrl) {
           setRecipePhotoFallbacks(prev => ({ ...prev, [id]: photo.imageUrl! }));
