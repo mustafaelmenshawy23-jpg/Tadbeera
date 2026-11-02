@@ -7,6 +7,7 @@ import { savingsGoalsRepository } from '../savings/savingsRepository';
 import { getSavingsProgress, type SavingsGoal } from '../savings/savingsModels';
 import { financeTransactionsRepository } from '../finance/financeRepository';
 import { createFinanceTransaction, summarizeMonthlyFinance, type FinanceTransaction } from '../finance/financeModels';
+import { PRACTICAL_BUDGET_TIPS } from '../../data/seedData';
 
 const units: InventoryUnit[] = ['قطعة', 'كيلو', 'جرام', 'لتر', 'عبوة', 'علبة', 'رغيف'];
 const todayKey = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; };
@@ -40,6 +41,13 @@ export function HouseholdHub() {
   const expired = useMemo(() => items.filter(item => item.expiresOn !== null && item.expiresOn < todayKey()), [items]);
   const month = todayKey().slice(0, 7);
   const finance = useMemo(() => summarizeMonthlyFinance(transactions, month), [transactions, month]);
+  const monthlyExpenses = useMemo(() => transactions.filter(t => t.type === 'expense' && t.date.startsWith(month)), [transactions, month]);
+  const expenseBreakdown = useMemo(() => {
+    const totals = new Map<string, number>();
+    monthlyExpenses.forEach(item => totals.set(item.categoryId || 'عام', (totals.get(item.categoryId || 'عام') || 0) + item.amount));
+    return [...totals.entries()].sort((a, b) => b[1] - a[1]);
+  }, [monthlyExpenses]);
+  const dailyTip = PRACTICAL_BUDGET_TIPS[(Math.floor(Date.now() / 86400000) + new Date().getDate()) % PRACTICAL_BUDGET_TIPS.length];
 
   const addItem = () => {
     const name = itemName.trim(), quantity = Number(itemQty), minimumQuantity = Number(itemMin);
@@ -114,25 +122,29 @@ export function HouseholdHub() {
         ))}
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-3 space-y-3">
-        <h4 className="font-extrabold text-sm">الدخل والمصروفات 💳</h4>
-        <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-          <div className="rounded-xl bg-emerald-50 p-2"><span>الدخل</span><strong className="block text-sm">{finance.income.toLocaleString('ar-EG')} ج.م</strong></div>
-          <div className="rounded-xl bg-rose-50 p-2"><span>المصروف</span><strong className="block text-sm">{finance.expenses.toLocaleString('ar-EG')} ج.م</strong></div>
-          <div className="rounded-xl bg-blue-50 p-2"><span>المتبقي</span><strong className="block text-sm">{finance.balance.toLocaleString('ar-EG')} ج.م</strong></div>
+      <section className="rounded-2xl border border-[#DDE5D8] bg-white p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2"><div><h4 className="font-extrabold text-base text-[#45513D]">فلوس البيت 💳</h4><p className="mt-1 text-[11px] text-gray-500">ملخص واضح لحركة الفلوس خلال الشهر الحالي</p></div><span className="rounded-full bg-[#EEF3E9] px-3 py-1 text-[10px] font-bold text-[#59694D]">{month}</span></div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl bg-[#EFF7F0] p-2.5"><span className="block text-[10px] text-[#52715B]">الفلوس الداخلة</span><strong className="mt-1 block text-sm text-[#285B3A]">{finance.income.toLocaleString('ar-EG')} ج.م</strong></div>
+          <div className="rounded-xl bg-[#FFF1EF] p-2.5"><span className="block text-[10px] text-[#9A5A50]">الفلوس المصروفة</span><strong className="mt-1 block text-sm text-[#9B3F35]">{finance.expenses.toLocaleString('ar-EG')} ج.م</strong></div>
+          <div className="rounded-xl bg-[#F0F3E9] p-2.5"><span className="block text-[10px] text-[#68745B]">المتبقي من الدخل</span><strong className="mt-1 block text-sm text-[#4D6044]">{finance.balance.toLocaleString('ar-EG')} ج.م</strong></div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <select value={financeType} onChange={e => setFinanceType(e.target.value as 'income' | 'expense')} className="rounded-xl border p-2 text-xs"><option value="expense">مصروف</option><option value="income">دخل</option></select>
-          <select value={financeCategory} onChange={e => setFinanceCategory(e.target.value)} className="rounded-xl border p-2 text-xs"><option>عام</option><option>طعام</option><option>فواتير</option><option>مواصلات</option><option>تعليم</option><option>صحة</option><option>راتب</option><option>أخرى</option></select>
-          <input type="number" min="0.01" step="0.01" value={financeAmount} onChange={e => setFinanceAmount(e.target.value)} placeholder="المبلغ بالجنيه" className="rounded-xl border p-2 text-xs min-w-0" />
-          <input value={financeDescription} onChange={e => setFinanceDescription(e.target.value)} maxLength={80} placeholder="البيان" className="rounded-xl border p-2 text-xs min-w-0" />
+        <p className="rounded-xl bg-[#F8F8F4] px-3 py-2 text-[11px] leading-5 text-gray-600">المتبقي = الدخل المسجل هذا الشهر − المصروفات المسجلة. لو الرقم بالسالب، يبقى المصروفات أكبر من الدخل اللي سجلته.</p>
+        <div className="space-y-2"><div className="flex items-center justify-between"><h5 className="text-xs font-extrabold text-[#45513D]">المصروفات راحت فين؟</h5><span className="text-[10px] text-gray-400">{monthlyExpenses.length} حركة مصروف</span></div>
+          {expenseBreakdown.length===0 ? <p className="rounded-xl border border-dashed border-gray-200 p-3 text-center text-[11px] text-gray-500">مفيش مصروفات مسجلة الشهر ده. كل مصروف تضيفه هيظهر هنا حسب تصنيفه.</p> : expenseBreakdown.map(([category,amount])=><div key={category} className="space-y-1"><div className="flex items-center justify-between text-[11px]"><span>{category}</span><strong className="text-[#58694D]">{amount.toLocaleString('ar-EG')} ج.م · {finance.expenses>0?Math.round(amount/finance.expenses*100):0}%</strong></div><div className="h-2 overflow-hidden rounded-full bg-[#F0F1EC]"><div className="h-full rounded-full bg-[#899777]" style={{width:(finance.expenses>0?Math.min(100,amount/finance.expenses*100):0)+'%'}}/></div></div>)}
         </div>
-        <button type="button" onClick={addTransaction} className="w-full rounded-xl bg-[#0D47A1] p-2 text-xs font-bold text-white">تسجيل الحركة</button>
-        {transactions.filter(t => t.date.startsWith(month)).slice(0, 8).map(t => <div key={t.id} className="flex items-center justify-between gap-2 border-t pt-2 text-xs">
-          <span>{t.description} <span className="text-gray-400">({t.categoryId})</span></span>
-          <span className={t.type === 'income' ? 'font-bold text-emerald-700' : 'font-bold text-rose-700'}>{t.type === 'income' ? '+' : '−'}{t.amount.toLocaleString('ar-EG')} ج.م</span>
-          <button type="button" aria-label={'حذف ' + t.description} onClick={() => persistTransactions(transactions.filter(x => x.id !== t.id))} className="text-red-600">حذف</button>
-        </div>)}
+        <div className="rounded-xl border border-[#E7EAD9] bg-[#F8F8F0] p-3"><strong className="block text-xs text-[#58694D]">نصيحة تدبيرة المتجددة 🌿</strong><p className="mt-1 text-[11px] leading-6 text-[#626653]">{dailyTip}</p></div>
+        <div className="rounded-xl border border-gray-100 bg-white p-3 space-y-2"><h5 className="text-xs font-extrabold text-[#45513D]">سجّل دخل أو مصروف جديد</h5>
+          <div className="grid grid-cols-2 gap-2">
+            <select value={financeType} onChange={e=>setFinanceType(e.target.value as 'income'|'expense')} className="rounded-xl border p-2 text-xs"><option value="expense">مصروف</option><option value="income">دخل</option></select>
+            <select value={financeCategory} onChange={e=>setFinanceCategory(e.target.value)} className="rounded-xl border p-2 text-xs"><option>عام</option><option>طعام</option><option>فواتير</option><option>مواصلات</option><option>تعليم</option><option>صحة</option><option>راتب</option><option>أخرى</option></select>
+            <input type="number" min="0.01" step="0.01" value={financeAmount} onChange={e=>setFinanceAmount(e.target.value)} placeholder="المبلغ بالجنيه" className="rounded-xl border p-2 text-xs min-w-0"/>
+            <input value={financeDescription} onChange={e=>setFinanceDescription(e.target.value)} maxLength={80} placeholder="مثال: مشتريات السوق" className="rounded-xl border p-2 text-xs min-w-0"/>
+          </div><button type="button" onClick={addTransaction} className="w-full rounded-xl bg-[#647454] p-2.5 text-xs font-bold text-white">حفظ الحركة في حساب البيت</button>
+        </div>
+        <div className="space-y-2"><h5 className="text-xs font-extrabold text-[#45513D]">آخر الحركات المسجلة</h5>
+          {transactions.filter(t=>t.date.startsWith(month)).length===0?<p className="text-[11px] text-gray-500">الحركات اللي تسجلها هتظهر هنا وتقدر تراجعها أو تحذفها.</p>:transactions.filter(t=>t.date.startsWith(month)).slice(0,10).map(t=><div key={t.id} className="flex items-center justify-between gap-2 border-t border-gray-100 pt-2 text-xs"><span className="min-w-0 flex-1">{t.description}<small className="block text-gray-400">{t.categoryId} · {t.date}</small></span><span className={t.type==='income'?'font-bold text-emerald-700':'font-bold text-rose-700'}>{t.type==='income'?'+':'−'}{t.amount.toLocaleString('ar-EG')} ج.م</span><button type="button" aria-label={'حذف '+t.description} onClick={()=>persistTransactions(transactions.filter(x=>x.id!==t.id))} className="text-red-600">حذف</button></div>)}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-3 space-y-3">
