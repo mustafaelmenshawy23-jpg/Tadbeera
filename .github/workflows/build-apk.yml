@@ -60,7 +60,7 @@ jobs:
 
       - name: Verify corrected recipe photos are bundled
         run: |
-          for image in chicken-pasta-white-sauce.jpg mashed-potato-eggs.jpg baked-eggs-vegetables.webp feteer-meshaltet.jpg molokhia-egyptian.jpg basbousa-egyptian.jpg taameya-egyptian.webp mahshi-mixed-egyptian.webp bessara-egyptian.jpg om-ali-egyptian.jpg; do
+          for image in chicken-pasta-white-sauce.jpg mashed-potato-eggs.jpg baked-eggs-vegetables.webp feteer-meshaltet.webp molokhia-egyptian.jpg basbousa-egyptian.jpg taameya-egyptian.webp mahshi-mixed-egyptian.webp bessara-egyptian.jpg om-ali-egyptian.jpg; do
             image_path="dist/images/recipes/$image"
             if [ ! -s "$image_path" ]; then
               echo "::error file=$image_path::Required offline recipe photograph is missing or empty."
