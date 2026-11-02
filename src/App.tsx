@@ -2079,7 +2079,7 @@ export default function App() {
                                 <img src={recipe.imageUrl} alt={recipe.name} loading="lazy" onError={() => handleImageError(recipe.id, recipe.name)} className="h-full w-full object-cover" />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-[#F1F5EC] px-1 text-center text-[9px] font-bold text-gray-500">الصورة غير متاحة</div>
-                              )} alt={recipe.name} loading="lazy" onError={() => handleImageError(recipe.id)} className="h-full w-full object-cover" /> : <SvgIllustration type={recipe.svgFallbackIcon || 'koshari'} />}
+                              )}
                             </span>
                             <span className="min-w-0 flex-1">
                               <strong className="block truncate text-sm text-gray-900">{recipe.name}</strong>
