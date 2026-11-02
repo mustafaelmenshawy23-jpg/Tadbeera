@@ -131,7 +131,6 @@ import {
 } from './data/affiliateDeals';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
-import { findRecipePhotoByTitle } from './features/recipes/OnlineRecipeSearch';
 // Online recipe discovery is intentionally mounted as its own focused kitchen sub-screen.
 // The dedicated online search always attempts remote recipe providers before local fallbacks.
 // Heavy feature screens are loaded on demand so the first app screen stays lighter.
@@ -946,11 +945,16 @@ export default function App() {
   const handleImageError = (id: string, recipeTitle?: string) => {
     setBrokenImages(prev => ({ ...prev, [id]: true }));
     if (!recipeTitle || recipePhotoFallbacks[id]) return;
-    void findRecipePhotoByTitle(recipeTitle).then(photo => {
-      if (photo?.imageUrl) {
-        setRecipePhotoFallbacks(prev => ({ ...prev, [id]: photo.imageUrl! }));
-      }
-    });
+    void import('./features/recipes/OnlineRecipeSearch')
+      .then(module => module.findRecipePhotoByTitle(recipeTitle))
+      .then(photo => {
+        if (photo?.imageUrl) {
+          setRecipePhotoFallbacks(prev => ({ ...prev, [id]: photo.imageUrl! }));
+        }
+      })
+      .catch(() => {
+        // Keep the neutral placeholder when no licensed photo can be found.
+      });
   };
 
   // Sync family size safely
