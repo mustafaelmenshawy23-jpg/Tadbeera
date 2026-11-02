@@ -131,6 +131,7 @@ import {
 } from './data/affiliateDeals';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
+import { findRecipePhotoByTitle } from './features/recipes/OnlineRecipeSearch';
 // Online recipe discovery is intentionally mounted as its own focused kitchen sub-screen.
 // The dedicated online search always attempts remote recipe providers before local fallbacks.
 // Heavy feature screens are loaded on demand so the first app screen stays lighter.
@@ -937,11 +938,19 @@ export default function App() {
   const [selectedAndroidFile, setSelectedAndroidFile] = useState<string>('android/app/src/main/java/com/tedbeera/egypt/MainActivity.kt');
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // Fallback image error handling
+  // Fallback image handling: search for a matching openly licensed food photo
+  // before showing a neutral placeholder instead of a cartoon illustration.
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+  const [recipePhotoFallbacks, setRecipePhotoFallbacks] = useState<Record<string, string>>({});
 
-  const handleImageError = (id: string) => {
+  const handleImageError = (id: string, recipeTitle?: string) => {
     setBrokenImages(prev => ({ ...prev, [id]: true }));
+    if (!recipeTitle || recipePhotoFallbacks[id]) return;
+    void findRecipePhotoByTitle(recipeTitle).then(photo => {
+      if (photo?.imageUrl) {
+        setRecipePhotoFallbacks(prev => ({ ...prev, [id]: photo.imageUrl! }));
+      }
+    });
   };
 
   // Sync family size safely
@@ -2060,7 +2069,13 @@ export default function App() {
                         {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).map(recipe => (
                           <button key={recipe.id} type="button" onClick={() => setSelectedRecipeModal(recipe)} className="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white p-2.5 text-right shadow-sm transition hover:border-emerald-300">
                             <span className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#F1F5EC]">
-                              {recipe.imageUrl && !brokenImages[recipe.id] ? <img src={recipe.imageUrl} alt={recipe.name} loading="lazy" onError={() => handleImageError(recipe.id)} className="h-full w-full object-cover" /> : <SvgIllustration type={recipe.svgFallbackIcon || 'koshari'} />}
+                              {recipePhotoFallbacks[recipe.id] ? (
+                                <img src={recipePhotoFallbacks[recipe.id]} alt={recipe.name} loading="lazy" className="h-full w-full object-cover" />
+                              ) : recipe.imageUrl && !brokenImages[recipe.id] ? (
+                                <img src={recipe.imageUrl} alt={recipe.name} loading="lazy" onError={() => handleImageError(recipe.id, recipe.name)} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-[#F1F5EC] px-1 text-center text-[9px] font-bold text-gray-500">الصورة غير متاحة</div>
+                              )} alt={recipe.name} loading="lazy" onError={() => handleImageError(recipe.id)} className="h-full w-full object-cover" /> : <SvgIllustration type={recipe.svgFallbackIcon || 'koshari'} />}
                             </span>
                             <span className="min-w-0 flex-1">
                               <strong className="block truncate text-sm text-gray-900">{recipe.name}</strong>
