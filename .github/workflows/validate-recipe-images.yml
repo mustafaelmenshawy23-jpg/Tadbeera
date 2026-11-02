@@ -35,11 +35,11 @@ jobs:
           manifest_rows=$(grep -c '^|' "$manifest")
           mapped_urls=$(grep -c 'commons.wikimedia.org/wiki/Special:FilePath/' "$recipes")
           if [[ "$manifest_rows" -lt 22 ]]; then
-            echo "::error file=$manifest::Expected at least nineteen documented photo attribution rows"
+            echo "::error file=$manifest::Expected at least twenty documented photo attribution rows"
             exit 1
           fi
-          if [[ "$mapped_urls" -lt 19 ]]; then
-            echo "::error file=$recipes::Expected at least nineteen Commons recipe image mappings"
+          if [[ "$mapped_urls" -lt 20 ]]; then
+            echo "::error file=$recipes::Expected at least twenty Commons recipe image mappings"
             exit 1
           fi
           echo "Found $((manifest_rows - 2)) attribution rows and $mapped_urls Commons image mappings."
