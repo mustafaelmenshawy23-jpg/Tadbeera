@@ -204,7 +204,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['فطار', 'عشاء', 'سريع', 'اقتصادي'],
-    imageUrl: 'https://mediaaws-live.almasryalyoum.com/AMAYLivePictures/portalimages/news/original/2025/10/20/2794896_0.jpg',
+    imageUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/EgFoodShakshuka.jpg?width=800',
     svgFallbackIcon: 'egg'
   },
   {
@@ -272,7 +272,7 @@ export const RECIPES: Recipe[] = [
     isQuick: false,
     usesLeftovers: false,
     tags: ['غداء مصري', 'شعبي', 'عائلي', 'توفير'],
-    imageUrl: 'https://tiffinandteaofficial.com/wp-content/uploads/2025/08/koshari-1200-1.jpg',
+    imageUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Koshary.jpg?width=800',
     svgFallbackIcon: 'koshary'
   },
   {
@@ -391,7 +391,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['عشاء', 'شوربة', 'شتاء', 'صحي', 'بروتين نباتي'],
-    imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80',
+    imageUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/EgFoodLentilSoup.jpg?width=800',
     svgFallbackIcon: 'soup'
   },
   {
@@ -509,7 +509,7 @@ export const RECIPES: Recipe[] = [
     isQuick: true,
     usesLeftovers: false,
     tags: ['فطار', 'عشاء', 'بروتين', 'سريع جداً'],
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/e5/Ful_medames.jpg',
+    imageUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ful_medames.jpg?width=800',
     svgFallbackIcon: 'foul'
   },
   {
