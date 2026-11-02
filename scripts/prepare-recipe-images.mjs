@@ -12,7 +12,7 @@ const photos = [
   { file: 'public/images/recipes/basbousa-egyptian.jpg', url: 'https://commons.wikimedia.org/wiki/Special:Redirect/file/Basboosa.jpg', label: 'Egyptian basbousa (Stu Spivack, CC BY-SA 2.0)' },
   { file: 'public/images/recipes/taameya-egyptian.webp', url: 'https://afrotools.com/assets/img/kitchen/taameya-eg.webp', label: 'Egyptian taameya' },
   { file: 'public/images/recipes/mahshi-mixed-egyptian.webp', url: 'https://afrotools.com/assets/img/kitchen/mahshi-eg.webp', label: 'Egyptian mixed mahshi' },
-  { file: 'public/images/recipes/bessara-egyptian.jpg', url: 'https://www.vetogate.com/Upload/libfiles/453/7/811.jpg', label: 'Egyptian bessara' },
+  { file: 'public/images/recipes/bessara-egyptian.webp', url: 'https://www.vetogate.com/Upload/libfiles/453/7/811.jpg', label: 'Egyptian bessara' },
   { file: 'public/images/recipes/om-ali-egyptian.jpg', url: 'https://scoopempire.com/wp-content/uploads/2025/12/WhatsApp-Image-2025-12-31-at-4.06.18-PM.jpeg', label: 'Egyptian Om Ali' },
 ];
 
