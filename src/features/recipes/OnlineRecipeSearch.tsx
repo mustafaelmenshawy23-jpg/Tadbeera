@@ -565,7 +565,14 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
       // openly licensed real-food image is available. Otherwise keep the image absent.
       mapped = await Promise.all(mapped.map(async recipe => {
         if (recipe.imageUrl) return recipe;
-        const photo = await findLicensedRecipePhoto(englishTerm);
+        let imageSearchTerm = englishTerm;
+        try {
+          const translatedTitle = await translateText(recipe.title, 'ar', 'en');
+          if (translatedTitle.trim()) imageSearchTerm = translatedTitle;
+        } catch {
+          // Keep the original search phrase if title translation is unavailable.
+        }
+        const photo = await findLicensedRecipePhoto(imageSearchTerm);
         return photo ? { ...recipe, ...photo } : recipe;
       }));
 
