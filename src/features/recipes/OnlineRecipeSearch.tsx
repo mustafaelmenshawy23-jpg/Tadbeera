@@ -561,21 +561,6 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
         ...mapped.filter(recipe => !localMatches.some(local => normalize(local.title) === normalize(recipe.title))),
       ];
 
-      // Fill missing online photos from Wikimedia Commons only when a relevant,
-      // openly licensed real-food image is available. Otherwise keep the image absent.
-      mapped = await Promise.all(mapped.map(async recipe => {
-        if (recipe.imageUrl) return recipe;
-        let imageSearchTerm = englishTerm;
-        try {
-          const translatedTitle = await translateText(recipe.title, 'ar', 'en');
-          if (translatedTitle.trim()) imageSearchTerm = translatedTitle;
-        } catch {
-          // Keep the original search phrase if title translation is unavailable.
-        }
-        const photo = await findLicensedRecipePhoto(imageSearchTerm);
-        return photo ? { ...recipe, ...photo } : recipe;
-      }));
-
       if (!mapped.length) {
         const wikiUrl = new URL(WIKIBOOKS_API);
         wikiUrl.search = new URLSearchParams({
@@ -631,6 +616,21 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
           }
         }
       }
+
+      // Fill missing online photos from Wikimedia Commons only when a relevant,
+      // openly licensed real-food image is available. Otherwise keep the image absent.
+      mapped = await Promise.all(mapped.map(async recipe => {
+        if (recipe.imageUrl) return recipe;
+        let imageSearchTerm = englishTerm;
+        try {
+          const translatedTitle = await translateText(recipe.title, 'ar', 'en');
+          if (translatedTitle.trim()) imageSearchTerm = translatedTitle;
+        } catch {
+          // Keep the original search phrase if title translation is unavailable.
+        }
+        const photo = await findLicensedRecipePhoto(imageSearchTerm);
+        return photo ? { ...recipe, ...photo } : recipe;
+      }));
 
       if (!mapped.length) {
         setError('ملقيناش وصفة عربية مطابقة حاليًا. جرّب اسم أكلة تانية أو استخدم الوصفات المصرية الجاهزة. مش هنعرض وصفة بالإنجليزي.');
