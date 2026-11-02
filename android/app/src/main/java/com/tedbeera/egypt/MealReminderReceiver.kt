@@ -181,20 +181,26 @@ class MealReminderReceiver : BroadcastReceiver() {
                 102 -> "حان وقت الغداء 🍲" to "شوف اقتراحات الغداء واحسب تكلفة الوجبة قبل ما تبدأ."
                 else -> "مساء الخير من تدبيرة 🌙" to "جهّز عشاء بسيط وراجع نواقص البيت لبكرة."
             }
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
             val mealType = when (id) {
                 101 -> "breakfast"
                 102 -> "lunch"
                 else -> "dinner"
             }
-            val contentIntent = launchIntent?.let {
-                it.putExtra("tadbeera_target_tab", "food")
-                it.putExtra("tadbeera_meal_type", mealType)
-                PendingIntent.getActivity(
-                    context, id, it,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
+            // Use an explicit activity intent and reuse the existing task. This
+            // guarantees the routing extras reach MainActivity.onNewIntent when
+            // the app is already running, instead of reopening the home screen.
+            val launchIntent = Intent(context, MainActivity::class.java).apply {
+                action = "com.tedbeera.egypt.action.OPEN_MEAL_REMINDER"
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("tadbeera_target_tab", "food")
+                putExtra("tadbeera_meal_type", mealType)
             }
+            val contentIntent = PendingIntent.getActivity(
+                context, id, launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(title)
