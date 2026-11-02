@@ -1,12 +1,14 @@
-name: Validate offline recipe images
+name: Validate recipe photo sources
 
 on:
   push:
     paths:
+      - "src/data/seedData.ts"
       - "public/images/recipes/**"
       - ".github/workflows/validate-recipe-images.yml"
   pull_request:
     paths:
+      - "src/data/seedData.ts"
       - "public/images/recipes/**"
       - ".github/workflows/validate-recipe-images.yml"
   workflow_dispatch:
@@ -15,46 +17,30 @@ permissions:
   contents: read
 
 jobs:
-  validate-recipe-images:
+  validate-recipe-photo-sources:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Verify all 16 recipe image files exist
+      - name: Verify recipe photo source records
         shell: bash
         run: |
           set -euo pipefail
-          dir="public/images/recipes"
-          files=(
-            "01-shakshuka.jpg"
-            "02-koshari.jpg"
-            "03-baked-pasta.jpg"
-            "04-lentil-soup.jpg"
-            "05-egyptian-fatta.jpg"
-            "06-ful-medames.jpg"
-            "07-potato-salad.jpg"
-            "08-pasta-tomato.jpg"
-            "09-mashed-potatoes-eggs.jpg"
-            "10-omelet.jpg"
-            "11-moussaka.jpg"
-            "12-stuffed-pigeon.jpg"
-            "13-mahshi.jpg"
-            "14-kebda.jpg"
-            "15-basbousa.jpg"
-            "16-kunafa.jpg"
-          )
-          missing=0
-          for file in "${files[@]}"; do
-            if [[ ! -s "$dir/$file" ]]; then
-              echo "::error file=$dir/$file::Missing or empty recipe image"
-              missing=1
-            else
-              echo "Found: $file ($(stat -c%s "$dir/$file") bytes)"
-            fi
-          done
-          if [[ "$missing" -ne 0 ]]; then
-            echo "Upload the missing files to $dir using the exact filenames listed in its README."
+          manifest="public/images/recipes/README.md"
+          recipes="src/data/seedData.ts"
+          test -s "$manifest"
+          test -s "$recipes"
+          # Seven Commons photos are currently mapped to seven recipe records.
+          manifest_rows=$(grep -c '^|' "$manifest")
+          mapped_urls=$(grep -c 'commons.wikimedia.org/wiki/Special:FilePath/' "$recipes")
+          if [[ "$manifest_rows" -lt 9 ]]; then
+            echo "::error file=$manifest::Expected at least seven documented photo attribution rows"
             exit 1
           fi
-          echo "All 16 recipe image files are present."
+          if [[ "$mapped_urls" -lt 7 ]]; then
+            echo "::error file=$recipes::Expected at least seven Commons recipe image mappings"
+            exit 1
+          fi
+          echo "Found $((manifest_rows - 2)) attribution rows and $mapped_urls Commons image mappings."
+          echo "Note: these are remote photos; this check does not claim they are bundled for first-launch offline use."
