@@ -1,6 +1,6 @@
 # Recipe photo sources and licenses
 
-This phase uses Wikimedia Commons-hosted image URLs for thirteen matching seed recipes. Images are remote and become available to the service worker cache after a successful online load; they are **not bundled local image files**, so a first-ever offline install will still need the fallback illustration.
+This phase uses Wikimedia Commons-hosted image URLs for sixteen matching seed recipes. Images are remote and become available to the service worker cache after a successful online load; they are **not bundled local image files**, so a first-ever offline install will still need the fallback illustration.
 
 | Tadbeera recipe | Commons file | Author | License | Source |
 |---|---|---|---|---|
