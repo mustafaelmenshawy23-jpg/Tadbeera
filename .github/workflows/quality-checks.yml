@@ -65,6 +65,21 @@ jobs:
       - name: Build web assets
         run: npm run build
 
+      - name: Verify corrected recipe photos are bundled
+        run: |
+          for image in chicken-pasta-white-sauce.jpg mashed-potato-eggs.jpg; do
+            image_path="dist/images/recipes/$image"
+            if [ ! -s "$image_path" ]; then
+              echo "::error file=$image_path::Required offline recipe photo is missing or empty."
+              exit 1
+            fi
+            if ! file --mime-type "$image_path" | grep -q "image/jpeg"; then
+              echo "::error file=$image_path::Recipe photo is not a valid JPEG."
+              exit 1
+            fi
+            echo "Verified bundled offline photo: $image_path ($(stat -c%s "$image_path") bytes)"
+          done
+
       - name: Sync Capacitor Android project
         run: npx cap sync android
 
