@@ -302,16 +302,19 @@ function stripRecipeListPrefix(value: string): string {
 
 function parseRecipeSections(extract: string, familySize: number, baseServings: number): { ingredients: string[]; steps: string[] } {
   const normalized = normalizeRecipeLineBreaks(extract);
-  const separator = normalized.match(/(?:طريقة التحضير|الطريقة)\s*[:：]?/);
+  const separator = normalized.match(/(?:طريقة التحضير|الطريقة)(?:\s+خطوة بخطوة)?\s*[:：]?/);
   const splitIndex = separator?.index ?? -1;
   const ingredientsText = splitIndex >= 0 ? normalized.slice(0, splitIndex) : '';
   const methodText = splitIndex >= 0 ? normalized.slice(splitIndex + separator![0].length) : normalized;
   const ingredients = scaleArabicRecipeExtract(ingredientsText, baseServings, familySize)
-    .replace(/^المكونات(?:\s*\([^)]*\))?\s*[:：]?/,'')
+    .replace(/^\s*المقادير محسوبة[^\n]*\n?/gm, '')
+    .replace(/^\s*#{1,6}\s*/gm, '')
+    .replace(/^\s*المكونات(?:\s+المطلوبة)?(?:\s*\([^)]*\))?\s*[:：]?/,'')
     .split(/[\n،,؛]+/)
     .map(item => stripRecipeListPrefix(item))
     .filter(item => item.length > 1);
   const steps = methodText
+    .replace(/^\s*#{1,6}\s*/gm, '')
     .split(/\n+|(?<=[.!؟])\s+/)
     .map(step => stripRecipeListPrefix(step))
     .filter(step => step.length > 2);
