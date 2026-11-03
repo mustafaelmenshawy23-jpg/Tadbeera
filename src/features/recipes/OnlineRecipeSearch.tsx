@@ -702,13 +702,13 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
       .trim();
     const spokenText = [
       `يلا بينا نحضّر ${cleanForSpeech(recipe.title)}.`,
-      `الوصفة دي مقاديرها على قد ${familySize} أفراد.`,
-      'خلّينا نجهّز كل حاجة الأول، وبعدها نبدأ على رواق.',
+      `المقادير دي تكفي ${familySize} أفراد.`,
+      'تعالى نجهّز المكونات الأول، وبعدها نبدأ واحدة واحدة.',
       'المقادير:',
       ...sections.ingredients.map(item => cleanForSpeech(item)),
-      'تمام، كده كل حاجة جاهزة. ندخل بقى على طريقة التحضير.',
-      ...sections.steps.map((step, index) => `الخطوة ${index + 1}. ${cleanForSpeech(step)}. خد وقتك فيها، ولما تخلص نكمّل.`),
-      'وبكده خلصنا! يا رب تطلع حلوة وتعجبكم. وبالهنا والشفا.',
+      'حلو أوي. كده المقادير جاهزة، نبدأ طريقة التحضير.',
+      ...sections.steps.map((step, index) => `الخطوة ${index + 1}. ${cleanForSpeech(step)}.`),
+      'وبس كده، خلصنا وصفتنا. ألف هنا وشفا، وإن شاء الله تعجبكم.',
     ].filter(Boolean).join('. ');
     try {
       if (Capacitor.isNativePlatform()) {
