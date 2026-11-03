@@ -164,8 +164,18 @@ class MicrophonePermissionPlugin : Plugin() {
                 return
             }
         }
-        engine.setSpeechRate(0.82f)
-        engine.setPitch(0.96f)
+        // Prefer the best installed Egyptian Arabic voice instead of an arbitrary
+        // Arabic voice that may pronounce Egyptian dialect unnaturally.
+        val egyptianVoices = engine.voices
+            ?.filter { it.locale.language == "ar" && it.locale.country.equals("EG", ignoreCase = true) }
+            .orEmpty()
+        val preferredVoice = egyptianVoices.maxWithOrNull(
+            compareBy<android.speech.tts.Voice> { it.quality }
+                .thenBy { !it.isNetworkConnectionRequired }
+        )
+        if (preferredVoice != null) engine.voice = preferredVoice
+        engine.setSpeechRate(0.92f)
+        engine.setPitch(1.0f)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 notifyListeners("speechPlaybackStatus", JSObject().put("status", "speaking"))

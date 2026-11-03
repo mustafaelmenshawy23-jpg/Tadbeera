@@ -60,17 +60,18 @@ jobs:
 
       - name: Verify corrected recipe photos are bundled
         run: |
-          for image in chicken-pasta-white-sauce.jpg mashed-potato-eggs.jpg; do
+          for image in chicken-pasta-white-sauce.jpg mashed-potato-eggs.jpg baked-eggs-vegetables.webp feteer-meshaltet.webp molokhia-egyptian.jpg basbousa-egyptian.jpg taameya-egyptian.webp mahshi-mixed-egyptian.webp bessara-egyptian.webp om-ali-egyptian.jpg; do
             image_path="dist/images/recipes/$image"
             if [ ! -s "$image_path" ]; then
-              echo "::error file=$image_path::Required offline recipe photo is missing or empty."
+              echo "::error file=$image_path::Required offline recipe photograph is missing or empty."
               exit 1
             fi
-            if ! file --mime-type "$image_path" | grep -q "image/jpeg"; then
-              echo "::error file=$image_path::Recipe photo is not a valid JPEG."
-              exit 1
-            fi
-            echo "Verified bundled offline photo: $image_path ($(stat -c%s "$image_path") bytes)"
+            mime_type="$(file --mime-type -b "$image_path")"
+            case "$image:$mime_type" in
+              *.webp:image/webp|*.jpg:image/jpeg) ;;
+              *) echo "::error file=$image_path::Unexpected image MIME type: $mime_type"; exit 1 ;;
+            esac
+            echo "Verified bundled original recipe photo: $image_path ($(stat -c%s "$image_path") bytes)"
           done
 
       - name: Sync Capacitor Android Project
