@@ -72,6 +72,19 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
   const search = async () => {
     if (!availableIngredients.length || loading) return;
     setLoading(true); setError(''); setSelected(null); setResults([]);
+      const localResults: Result[] = findRecipesByIngredients(RECIPES, availableIngredients).map(match => ({
+        id: match.recipe.id,
+        title: match.recipe.name,
+        image: match.recipe.imageUrl,
+        ingredients: match.recipe.ingredients.map(ingredient => ingredient.quantity + ' ' + ingredient.name),
+        isLocal: true,
+        matched: match.matchedCount,
+        total: match.totalCount,
+        missing: match.missingIngredients,
+        instructions: match.recipe.steps.join('\n'),
+        url: '',
+      }));
+    setResults(localResults);
     try {
       const english = await Promise.all(availableIngredients.map(async name => {
         const key = normalize(name);
@@ -118,18 +131,6 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
       const mapped: Result[] = mappedResults.flatMap(item =>
         item.status === 'fulfilled' ? [item.value] : [],
       );
-      const localResults: Result[] = findRecipesByIngredients(RECIPES, availableIngredients).map(match => ({
-        id: match.recipe.id,
-        title: match.recipe.name,
-        image: match.recipe.imageUrl,
-        ingredients: match.recipe.ingredients.map(ingredient => ingredient.quantity + ' ' + ingredient.name),
-        isLocal: true,
-        matched: match.matchedCount,
-        total: match.totalCount,
-        missing: match.missingIngredients,
-        instructions: match.recipe.steps.join('\n'),
-        url: '',
-      }));
       const combined = [...mapped,...localResults].filter(item=>item.matched>0);
       const unique = Array.from(new Map(combined.map(item=>[item.title,item])).values())
         .sort((a,b)=>b.matched-a.matched);
@@ -156,7 +157,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
     </button>)}</div>}
     {selected && <article className="rounded-xl border bg-white p-3 space-y-2">
       {selected.image && <img src={selected.image} alt={selected.title} loading="lazy" className="max-h-48 w-full rounded-lg object-cover"/>}
-      <h4 className="text-sm font-black">{selected.title}</h4>{selected.ingredients.length > 0 && <div className="space-y-1"><b className="text-xs">{selected.isLocal ? 'المكونات الأساسية' : `المكونات لـ ${familySize} أفراد`}</b><ul className="list-disc pr-5 text-xs leading-6">{selected.ingredients.map((item,index)=><li key={index}>{scaleMeasure(item, familySize)}</li>)}</ul></div>}<b className="text-xs">طريقة التحضير</b><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
+      <h4 className="text-sm font-black">{selected.title}</h4>{selected.isLocal && selected.missing.length > 0 && <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">المكونات الناقصة: {selected.missing.join('، ')}</p>}{selected.ingredients.length > 0 && <div className="space-y-1"><b className="text-xs">{selected.isLocal ? 'المكونات الأساسية' : `المكونات لـ ${familySize} أفراد`}</b><ul className="list-disc pr-5 text-xs leading-6">{selected.ingredients.map((item,index)=><li key={index}>{scaleMeasure(item, familySize)}</li>)}</ul></div>}<b className="text-xs">طريقة التحضير</b><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
       {!selected.isLocal && <a href={selected.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-700 underline">المصدر الأصلي</a>}
     </article>}
   </section>;
