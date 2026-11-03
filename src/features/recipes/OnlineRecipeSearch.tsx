@@ -1,6 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import { ArrowRight, Mic, MicOff, Volume2, VolumeX, Search, Bookmark } from 'lucide-react';
 import { normalizeArabicSearchTerm as normalize, matchesArabicSearchAlias } from './arabicSearch';
 import { hasRecipeStructure, isRelevantRecipe } from './recipeValidation';
+import { RECIPES, type Recipe } from '../../data/seedData';
+
+interface RecipeVoicePlugin {
+  request(): Promise<{ granted: boolean }>;
+  startListening(): Promise<void>;
+  stopListening(): Promise<void>;
+  speak(options: { text: string }): Promise<void>;
+  stopSpeaking(): Promise<void>;
+  addListener(eventName: 'speechResult', listener: (event: { transcript?: string }) => void): Promise<{ remove(): Promise<void> }>;
+  addListener(eventName: 'speechError', listener: (event: { error?: string }) => void): Promise<{ remove(): Promise<void> }>;
+  addListener(eventName: 'speechPlaybackStatus', listener: (event: { status?: string }) => void): Promise<{ remove(): Promise<void> }>;
+}
+const recipeVoice = registerPlugin<RecipeVoicePlugin>('MicrophonePermission');
 
 type OnlineRecipe = {
   title: string;
@@ -27,21 +42,44 @@ const MEAL_DB_API = 'https://www.themealdb.com/api/json/v1/1/search.php';
 const WIKIBOOKS_API = 'https://en.wikibooks.org/w/api.php';
 
 const ARABIC_ALIASES: Array<{ terms: string[]; english: string }> = [
-  { terms: ['سمبوسك', 'سمبوسة', 'سمبوسه', 'سمبوسك باللحمة', 'سمبوسك بالجبنة'], english: 'samosa' },
+  { terms: ['فايش', 'عيش فايش', 'فايش صعيدي', 'فايش ناشف'], english: 'egyptian faysh bread' },
+  { terms: ['شابورة', 'شابوره', 'عيش شابورة', 'بقسماط'], english: 'egyptian shaboura rusk' },
+  { terms: ['عيش شمسي', 'عيش بلدي', 'عيش فلاحي'], english: 'egyptian bread' },
+  { terms: ['فطير مشلتت', 'فطير', 'فطير فلاحي'], english: 'egyptian feteer meshaltet' },
+  { terms: ['حواوشي', 'حواوشى', 'عيش باللحمة'], english: 'egyptian hawawshi' },
+  { terms: ['كبدة اسكندراني', 'كبدة إسكندراني', 'كبدة', 'كبدة بالردة'], english: 'alexandrian liver' },
+  { terms: ['سجق اسكندراني', 'سجق', 'سجق شرقي'], english: 'egyptian sausage' },
+  { terms: ['كحك', 'كحك العيد', 'كعك'], english: 'egyptian kahk' },
+  { terms: ['غريبة', 'غريبه'], english: 'egyptian ghorayeba cookies' },
+  { terms: ['بيتي فور', 'بيتى فور', 'بتيفور'], english: 'petit four cookies' },
+  { terms: ['كنافة', 'كنافه'], english: 'kunafa' },
+  { terms: ['قطايف', 'قطايف بالقشطة', 'قطايف بالمكسرات'], english: 'qatayef' },
+  { terms: ['عيش فينو', 'فينو', 'قرص', 'قرص طرية', 'قرص بالعجوة'], english: 'egyptian bakery bread' },
+  { terms: ['رز بلبن', 'أرز باللبن', 'مهلبية', 'عاشوراء'], english: 'egyptian rice pudding' },
+  { terms: ['عدس', 'شوربة عدس'], english: 'egyptian lentil soup' },
+  { terms: ['بامية', 'بامية باللحمة'], english: 'egyptian okra stew' },
+  { terms: ['بسلة', 'بسلة بالجزر'], english: 'egyptian peas and carrots stew' },
+  { terms: ['طاجن', 'طاجن بطاطس', 'طاجن لحمة'], english: 'egyptian casserole' },
+  { terms: ['شوربة لسان عصفور', 'لسان عصفور', 'شوربه لسان عصفور'], english: 'orzo soup' },
+  { terms: ['بصارة', 'بصاره'], english: 'egyptian bessara' },
+  { terms: ['زلابية', 'لقمة القاضي', 'لقيمات'], english: 'zalabia' },
+  { terms: ['بسبوسة', 'بسبوسه', 'هريسة'], english: 'basbousa' },
+  { terms: ['فول مدمس', 'فول', 'فول بلدي'], english: 'egyptian ful medames' },
+  { terms: ['رز معمر', 'أرز معمر'], english: 'egyptian baked rice' },
+  { terms: ['مسقعة مصرية', 'مسقعة باللحمة', 'مسقعة'], english: 'egyptian moussaka' },
+  { terms: ['فتة مصرية', 'فتة باللحمة', 'فتة', 'فته'], english: 'egyptian fatta meat rice' },
+  { terms: ['سمبوسك', 'سمبوسة', 'سمبوسه'], english: 'samosa' },
   { terms: ['كبسة', 'كبسه', 'كبسة دجاج', 'كبسة فراخ'], english: 'kabsa' },
-  { terms: ['كشري', 'كشرى'], english: 'koshari' },
-  { terms: ['ملوخية', 'ملوخيه'], english: 'molokhia' },
-  { terms: ['محشي', 'محشى', 'محشي كرنب', 'محشي ملفوف', 'كرنب', 'ملفوف', 'ورق كرنب', 'ورق ملفوف', 'ورق عنب', 'كوسة محشية', 'باذنجان محشي', 'فلفل محشي'], english: 'stuffed cabbage' },
-  { terms: ['فتة', 'فته'], english: 'fatteh' },
-  { terms: ['طعمية', 'فلافل'], english: 'falafel' },
-  { terms: ['شكشوكة'], english: 'shakshuka' },
-  { terms: ['برياني', 'بريانى'], english: 'biryani' },
-  { terms: ['مكرونة بشاميل', 'بشاميل'], english: 'macaroni bechamel' },
-  { terms: ['مسقعة'], english: 'moussaka' },
-  { terms: ['شاورما'], english: 'shawarma' },
-  { terms: ['بامية'], english: 'okra' },
+  { terms: ['كشري', 'كشرى', 'كشري مصري'], english: 'egyptian koshari' },
+  { terms: ['ملوخية', 'ملوخيه'], english: 'egyptian molokhia' },
+  { terms: ['محشي', 'محشى', 'محشي مشكل', 'كرنب', 'ورق عنب', 'كوسة محشية', 'باذنجان محشي'], english: 'egyptian mahshi stuffed vegetables' },
+  { terms: ['حمام محشي', 'حمام بالفريك', 'حمام صعيدي'], english: 'egyptian stuffed pigeon freekeh' },
+  { terms: ['مكرونة بشاميل', 'بشاميل', 'مكرونه بالبشاميل'], english: 'egyptian macaroni bechamel' },
+  { terms: ['رقاق', 'رقاق باللحمة', 'صينية رقاق'], english: 'egyptian roqaq meat pie' },
+  { terms: ['ام علي', 'أم علي', 'طاجن ام علي'], english: 'egyptian om ali dessert' },
+  { terms: ['طعمية', 'طعميه', 'فلافل'], english: 'egyptian taameya falafel' },
 ];
-
+ 
 const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
   {
     terms: ['سمبوسك', 'سمبوسة', 'سمبوسه', 'samosa'],
@@ -140,6 +178,71 @@ const LOCAL_RECIPES: Array<{ terms: string[]; recipe: OnlineRecipe }> = [
       url: 'https://www.themealdb.com/',
       extract: 'المكونات (4 أفراد): نصف كيلو مكرونة قلم، 300 جم لحم مفروم، بصلة، 3 ملاعق دقيق، 3 ملاعق زبدة، 3 أكواب حليب، ملح وفلفل وجوزة الطيب.\n\nالطريقة: اسلق المكرونة نصف سلقة. شوّح البصل واللحم وتبّله. حضّر البشاميل بتحمير الدقيق في الزبدة ثم أضف الحليب تدريجيًا مع التقليب. ضع طبقة بشاميل ثم المكرونة واللحم وباقي البشاميل، واخبز حتى يحمر الوجه.',
     },
+  },
+  {
+    terms: ['شوربة لسان عصفور', 'لسان عصفور', 'orzo soup'],
+    recipe: { title: 'شوربة لسان عصفور مصرية', servings: 4, pageId: 900011, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): كوب لسان عصفور، ملعقة سمن أو زيت، 5 أكواب شوربة دجاج أو لحم، ملح وفلفل، ورشة حبهان حسب الرغبة.\n\nطريقة التحضير: سخّن السمن في حلة على نار متوسطة. أضف لسان العصفور وقلّبه حتى يصبح ذهبي اللون. أضف الشوربة الساخنة تدريجيًا مع التقليب. اتركه على نار هادئة من 10 إلى 15 دقيقة حتى ينضج. اضبط الملح والفلفل وقدّمه ساخنًا.' }
+  },
+  {
+    terms: ['بصارة', 'بصاره', 'egyptian bessara'],
+    recipe: { title: 'بصارة مصرية', servings: 4, pageId: 900012, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): 2 كوب فول مدشوش منقوع، بصلة، 4 فصوص ثوم، حزمة كزبرة خضراء، شبت، ملح وكمون، ملعقة كزبرة ناشفة، وبصل للتقلية.\n\nطريقة التحضير: صفّي الفول المدشوش وضعه في حلة مع البصل والثوم والماء. اتركه حتى ينضج تمامًا. أضف الكزبرة والشبت والكمون والملح، ثم اخلط المكونات بالخلاط حتى يصبح القوام ناعمًا. حمّر شرائح البصل في قليل من الزيت حتى تصبح ذهبية. قدّم البصارة ساخنة مع البصل المحمّر.' }
+  },
+  {
+    terms: ['زلابية', 'لقمة القاضي', 'zalabia'],
+    recipe: { title: 'زلابية مصرية', servings: 4, pageId: 900013, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): 2 كوب دقيق، ملعقة صغيرة خميرة فورية، ملعقة صغيرة سكر، رشة ملح، نحو كوب ونصف ماء دافئ، وزيت للقلي. للشربات: كوب سكر ونصف كوب ماء وعصرة ليمون.\n\nطريقة التحضير: اخلط الدقيق والخميرة والسكر والملح. أضف الماء تدريجيًا حتى تحصل على عجينة لينة. غطّها واتركها تختمر حتى يتضاعف حجمها. حضّر الشربات بغلي السكر والماء ثم أضف الليمون واتركه يبرد. شكّل كرات صغيرة بملعقة مبللة واقلها في زيت متوسط الحرارة حتى تصبح ذهبية. صفّها ثم ضعها في الشربات البارد.' }
+  },
+  {
+    terms: ['بسبوسة', 'بسبوسه', 'basbousa'],
+    recipe: { title: 'بسبوسة مصرية', servings: 8, pageId: 900014, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (8 أفراد): 2 كوب سميد، نصف كوب سكر، نصف كوب سمن مذاب، كوب زبادي، ملعقة صغيرة بيكنج بودر، لوز للتزيين. للشربات: كوب ونصف سكر، كوب ماء، عصرة ليمون.\n\nطريقة التحضير: اخلط السميد والسكر والبيكنج بودر. أضف السمن وافركه برفق، ثم أضف الزبادي وقلّب دون عجن زائد. افرد الخليط في صينية مدهونة وقطّعه وزيّنه باللوز. اخبزه في فرن متوسط الحرارة حتى يحمر الوجه. اسقِ البسبوسة بالشربات الساخن فور خروجها من الفرن واتركها تبرد.' }
+  },
+  {
+    terms: ['فايش', 'عيش فايش', 'فايش صعيدي', 'egyptian faysh bread'],
+    recipe: { title: 'فايش صعيدي', servings: 8, pageId: 900020, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (8 أفراد): كيلو دقيق، كوب حليب دافئ، نصف كوب سمن أو زبدة، ملعقتان كبيرتان سكر، ملعقة كبيرة خميرة فورية، ملعقة صغيرة محلب، نصف ملعقة صغيرة كركم اختياري، ورشة ملح، وماء دافئ حسب الحاجة.\n\nطريقة التحضير: ذوّب الخميرة والسكر في الحليب الدافئ واتركهما دقائق حتى تنشط الخميرة. اخلط الدقيق والملح والمحلب والكركم. أضف السمن وخليط الخميرة واعجن مع إضافة الماء تدريجيًا حتى تتكون عجينة متماسكة وطرية. غطّ العجين واتركه يختمر حتى يتضاعف. شكّل العجين أصابع أو أرغفة طويلة واتركها ترتاح. اخبزها في فرن متوسط الحرارة حتى تنضج ويصبح لونها ذهبيًا فاتحًا. اتركها تبرد تمامًا ثم قطّعها شرائح طولية وأعد الشرائح إلى فرن هادئ حتى تجف وتقرمش. اترك الفايش يبرد واحفظه في علبة محكمة.' }
+  },
+  {
+    terms: ['شابورة', 'شابوره', 'عيش شابورة', 'بقسماط', 'egyptian shaboura rusk'],
+    recipe: { title: 'شابورة مصرية مقرمشة', servings: 8, pageId: 900021, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (8 أفراد): 4 أكواب دقيق، نصف كوب سكر، نصف كوب زيت أو زبدة، 2 بيضة، نصف كوب حليب دافئ تقريبًا، ملعقة كبيرة خميرة فورية، ملعقة صغيرة يانسون أو شمر، رشة ملح، وملعقة صغيرة فانيليا.\n\nطريقة التحضير: اخلط الخميرة مع الحليب الدافئ وملعقة من السكر واتركها حتى تنشط. اخفق البيض مع باقي السكر والزيت والفانيليا. أضف الدقيق واليانسون والملح ثم خليط الخميرة واعجن حتى تحصل على عجينة لينة متماسكة. غطّ العجين واتركه يختمر حتى يتضاعف. شكّل أصابع متساوية ورصّها في صينية واتركها ترتاح. اخبزها في فرن متوسط حتى تتماسك ويصبح لونها ذهبيًا خفيفًا. اتركها تبرد ثم قطّعها شرائح، ورصّ الشرائح مرة أخرى في الصينية وحمّصها في فرن هادئ حتى تجف وتصبح مقرمشة من الجانبين.' }
+  },
+  {
+    terms: ['فطير مشلتت', 'فطير', 'فطير فلاحي', 'egyptian feteer meshaltet'],
+    recipe: { title: 'فطير مشلتت فلاحي', servings: 6, pageId: 900022, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (6 أفراد): كيلو دقيق، نحو كوبين ماء دافئ حسب الحاجة، ملعقة صغيرة ملح، وسمن بلدي أو زبدة مذابة للفرد.\n\nطريقة التحضير: اخلط الدقيق والملح وأضف الماء تدريجيًا واعجن جيدًا حتى تصبح العجينة ناعمة ومرنة. قسّمها كرات وادهنها بالزيت واتركها ترتاح نصف ساعة على الأقل. افرد كل كرة على سطح مدهون حتى تصبح رقيقة جدًا وشفافة. ادهنها بالسمن واطوِ الأطراف للداخل مع إضافة السمن بين الطبقات. كرر الفرد والطي للحصول على طبقات متعددة. ضع الفطيرة في صينية مدهونة وافردها برفق. اخبزها في فرن ساخن حتى تنتفخ وتحمر. قدّمها ساخنة مع العسل أو الجبن.' }
+  },
+  {
+    terms: ['حواوشي', 'حواوشى', 'عيش باللحمة', 'egyptian hawawshi'],
+    recipe: { title: 'حواوشي إسكندراني', servings: 4, pageId: 900023, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): 500 جرام لحم مفروم، 4 أرغفة خبز بلدي، بصلة كبيرة مفرومة ناعمًا، فلفل أخضر، فلفل حار حسب الرغبة، ملح وفلفل أسود وبهارات، ورشة قرفة، وملعقة زيت.\n\nطريقة التحضير: اخلط اللحم مع البصل والفلفل والتوابل والزيت جيدًا. افتح كل رغيف من الجانب ووزع الحشوة بطبقة رقيقة ومتساوية. ادهن الخبز بقليل من الزيت. ضع الأرغفة في فرن ساخن على درجة متوسطة مع تقليبها حتى ينضج اللحم تمامًا ويتحمص الخبز من الجانبين. يمكن تسويته في طاسة ثقيلة مغطاة على نار هادئة مع التقليب. تأكد من تمام نضج اللحم قبل التقديم.' }
+  },
+  {
+    terms: ['كبدة اسكندراني', 'كبدة إسكندراني', 'كبدة', 'alexandrian liver'],
+    recipe: { title: 'كبدة إسكندراني', servings: 4, pageId: 900024, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (4 أفراد): نصف كيلو كبدة شرائح، 5 فصوص ثوم مفروم، فلفل أخضر وأحمر، فلفل حار حسب الرغبة، عصير ليمونة، كمون وكزبرة ناشفة وملح وفلفل، وملعقتان زيت.\n\nطريقة التحضير: سخّن الزيت في طاسة واسعة على نار عالية. أضف الثوم وقلّبه سريعًا دون أن يحترق. أضف شرائح الكبدة وقلّبها حتى يتغير لونها. أضف الفلفل والتوابل واستمر في التقليب حتى تنضج الكبدة تمامًا. أضف عصير الليمون في النهاية وقدّمها ساخنة مع الخبز البلدي.' }
+  },
+  {
+    terms: ['كحك', 'كحك العيد', 'egyptian kahk'],
+    recipe: { title: 'كحك العيد المصري', servings: 10, pageId: 900025, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (10 أفراد): كيلو دقيق، نصف كيلو سمن، ملعقة كبيرة سمسم، ملعقة صغيرة رائحة كحك، ملعقة صغيرة خميرة، رشة ملح، ونحو كوب ماء أو حليب دافئ. للحشو اختياريًا: ملبن أو عجوة أو مكسرات.\n\nطريقة التحضير: سخّن السمن حتى يصبح دافئًا وليس ساخنًا. اخلط الدقيق والسمسم ورائحة الكحك والخميرة والملح. أضف السمن وافركه مع الدقيق حتى يتشربه. أضف الماء أو الحليب تدريجيًا واعجن بخفة حتى تتماسك العجينة. شكّل كرات واحشها حسب الرغبة ثم انقشها. رص الكحك في صينية واخبزه في فرن متوسط حتى ينضج دون أن يغمق لونه كثيرًا. اتركه يبرد تمامًا ثم رش السكر البودرة.' }
+  },
+  {
+    terms: ['غريبة', 'غريبه', 'egyptian ghorayeba cookies'],
+    recipe: { title: 'غريبة مصرية', servings: 8, pageId: 900026, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (8 أفراد): 3 أكواب دقيق، كوب سمن بدرجة حرارة الغرفة، كوب سكر بودرة، ورشة فانيليا، وفستق أو لوز للتزيين.\n\nطريقة التحضير: اخفق السمن مع السكر البودرة حتى يصبح الخليط كريميًا وفاتح اللون. أضف الفانيليا ثم الدقيق تدريجيًا وقلّب حتى تتكون عجينة ناعمة. شكّل كرات صغيرة واضغط عليها برفق وضع حبة فستق في المنتصف. رص القطع في صينية واترك مسافات بسيطة. اخبزها في فرن هادئ حتى تتماسك مع الحفاظ على لونها الفاتح. اتركها تبرد قبل نقلها.' }
+  },
+  {
+    terms: ['بيتي فور', 'بيتى فور', 'بتيفور', 'petit four cookies'],
+    recipe: { title: 'بيتي فور مصري', servings: 8, pageId: 900027, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (8 أفراد): 3 أكواب دقيق، كوب زبدة طرية، ثلاثة أرباع كوب سكر بودرة، بيضتان، ملعقة صغيرة فانيليا، وملعقة صغيرة بيكنج بودر. للتزيين: مربى وشوكولاتة وجوز هند.\n\nطريقة التحضير: اخفق الزبدة مع السكر حتى يصبح الخليط هشًا. أضف البيض والفانيليا واخلط جيدًا. أضف الدقيق والبيكنج بودر تدريجيًا حتى تتكون عجينة طرية قابلة للتشكيل. ضع العجينة في كيس حلواني وشكّل وحدات صغيرة في صينية. اخبزها في فرن متوسط الحرارة حتى تنضج دون أن يتغير لونها كثيرًا. اتركها تبرد ثم الصق كل قطعتين بالمربى وزيّنها بالشوكولاتة أو جوز الهند.' }
+  },
+  {
+    terms: ['كنافة', 'كنافه', 'kunafa'],
+    recipe: { title: 'كنافة مصرية بالقشطة', servings: 8, pageId: 900028, url: 'https://www.themealdb.com/',
+      extract: 'المكونات (8 أفراد): نصف كيلو كنافة، كوب سمن مذاب، كوبان حليب، ملعقتان نشا، ملعقتان سكر، فانيليا. للشربات: كوبان سكر، كوب ماء، عصرة ليمون.\n\nطريقة التحضير: فتّت الكنافة وقلّبها مع السمن. حضّر القشطة بتذويب النشا في قليل من الحليب ثم أضف باقي الحليب والسكر وقلّب على النار حتى يثخن القوام ثم أضف الفانيليا. افرد نصف الكنافة في صينية واضغطها، وزع القشطة مع ترك الحواف، ثم غطها بباقي الكنافة. اخبزها حتى تصبح ذهبية. اسقها بالشربات الدافئ بعد خروجها واتركها تهدأ قبل التقطيع.' }
   },
 ];
 
@@ -270,7 +373,35 @@ async function mapMeal(meal: MealDbMeal, familySize: number): Promise<OnlineReci
   };
 }
 
-export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) {
+function localSeedRecipeToOnline(recipe: Recipe, familySize: number): OnlineRecipe {
+  const scaledIngredients = recipe.ingredients.map(item => {
+    const ratio = Math.max(1, Math.min(30, Math.round(familySize))) / Math.max(1, recipe.baseServings);
+    const quantity = item.baseAmount > 0
+      ? `${Math.round(item.baseAmount * ratio * 100) / 100} ${item.unit}`
+      : item.quantity;
+    return `• ${item.name} — ${quantity}`;
+  });
+  return {
+    title: recipe.name,
+    servings: recipe.baseServings,
+    pageId: 910000 + Math.abs(recipe.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)),
+    url: 'https://www.themealdb.com/',
+    imageUrl: recipe.imageUrl || undefined,
+    imageCredit: recipe.imageUrl ? 'صورة الوصفة المحفوظة في تدبيرة' : undefined,
+    extract: `المكونات (المقادير الأساسية لـ ${recipe.baseServings} أفراد):\\n${scaledIngredients.join('\\n')}\\n\\nطريقة التحضير:\\n${recipe.steps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}`,
+  };
+}
+
+function findBundledEgyptianRecipes(term: string): OnlineRecipe[] {
+  const normalized = normalize(term);
+  return RECIPES.filter(recipe => {
+    const haystack = [recipe.name, ...recipe.tags, ...recipe.ingredients.map(item => item.name)]
+      .map(normalize).join(' ');
+    return haystack.includes(normalized) || normalized.split(' ').some(word => word.length > 2 && haystack.includes(word));
+  }).slice(0, 12).map(recipe => localSeedRecipeToOnline(recipe, 4));
+}
+
+export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: number; onBack?: () => void }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<OnlineRecipe[]>([]);
   const [selected, setSelected] = useState<OnlineRecipe | null>(null);
@@ -278,14 +409,18 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
   const [showSaved, setShowSaved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceMessage, setVoiceMessage] = useState('');
+  const [speaking, setSpeaking] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const voiceListenersRef = useRef<Array<{ remove(): Promise<void> }>>([]);
 
   useEffect(() => {
     try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch { /* storage may be full */ }
   }, [saved]);
 
-  const search = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const term = query.trim();
+  const searchForTerm = async (rawTerm: string) => {
+    const term = rawTerm.trim();
     if (!term || loading) return;
     setLoading(true);
     setError('');
@@ -294,18 +429,8 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
     setResults([]);
 
     try {
-      // Resolve common Egyptian dishes locally first. This makes colloquial
-      // aliases reliable even when translation or an external recipe API is down.
-      const localMatches = LOCAL_RECIPES.filter(item =>
-        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
-      ).map(item => ({ ...item.recipe }));
-      if (localMatches.length) {
-        setResults(localMatches);
-        setSelected(localMatches[0]);
-        setLoading(false);
-        return;
-      }
-
+      // Always try the online recipe services first. Bundled recipes remain a
+      // fallback only when the online services return no suitable recipe.
       const englishTerm = await getEnglishSearchTerm(term);
       const mealUrl = new URL(MEAL_DB_API);
       mealUrl.searchParams.set('s', englishTerm);
@@ -323,12 +448,19 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
         item.status === 'fulfilled' ? [item.value] : [],
       );
 
-      if (!mapped.length) {
-        const localMatches = LOCAL_RECIPES.filter(item =>
-          item.terms.some(alias => matchesArabicSearchAlias(term, alias) || matchesArabicSearchAlias(englishTerm, alias))
-        ).map(item => ({ ...item.recipe }));
-        mapped = localMatches;
-      }
+      // Put a precise Egyptian home-style match first, then append relevant
+      // international matches without replacing the requested Egyptian dish.
+      const curatedMatches = LOCAL_RECIPES.filter(item =>
+        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
+      ).map(item => ({ ...item.recipe }));
+      const bundledMatches = findBundledEgyptianRecipes(term);
+      const localMatches = [...curatedMatches, ...bundledMatches].filter((recipe, index, all) =>
+        all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index
+      );
+      mapped = [
+        ...localMatches,
+        ...mapped.filter(recipe => !localMatches.some(local => normalize(local.title) === normalize(recipe.title))),
+      ];
 
       if (!mapped.length) {
         const wikiUrl = new URL(WIKIBOOKS_API);
@@ -394,9 +526,10 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       setResults(mapped);
       setSelected(mapped[0]);
     } catch {
-      const fallbackLocalMatches = LOCAL_RECIPES.filter(item =>
-        item.terms.some(alias => matchesArabicSearchAlias(term, alias))
-      ).map(item => ({ ...item.recipe }));
+      const fallbackLocalMatches = [
+        ...LOCAL_RECIPES.filter(item => item.terms.some(alias => matchesArabicSearchAlias(term, alias))).map(item => ({ ...item.recipe })),
+        ...findBundledEgyptianRecipes(term),
+      ].filter((recipe, index, all) => all.findIndex(item => normalize(item.title) === normalize(recipe.title)) === index);
       if (fallbackLocalMatches.length) {
         setResults(fallbackLocalMatches);
         setSelected(fallbackLocalMatches[0]);
@@ -408,6 +541,174 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
     }
   };
 
+  const search = (event: React.FormEvent) => {
+    event.preventDefault();
+    void searchForTerm(query);
+  };
+
+  const stopVoiceSearch = async () => {
+    try {
+      recognitionRef.current?.stop?.();
+      recognitionRef.current = null;
+      if (Capacitor.isNativePlatform()) await recipeVoice.stopListening();
+    } catch { /* recognition may already have stopped */ }
+    setVoiceListening(false);
+  };
+
+  const startVoiceSearch = async () => {
+    if (voiceListening) {
+      await stopVoiceSearch();
+      return;
+    }
+    setVoiceMessage('');
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const permission = await recipeVoice.request();
+        if (!permission.granted) {
+          setVoiceMessage('اسمح لتدبيرة باستخدام الميكروفون من إعدادات الجهاز ثم حاول مرة أخرى.');
+          return;
+        }
+        voiceListenersRef.current.forEach(listener => { void listener.remove(); });
+        voiceListenersRef.current = [];
+        const resultListener = await recipeVoice.addListener('speechResult', event => {
+          const transcript = (event.transcript || '').trim();
+          setVoiceListening(false);
+          if (!transcript) {
+            setVoiceMessage('ملقطناش كلام واضح. اضغط على الميكروفون وجرب تاني.');
+            return;
+          }
+          setQuery(transcript);
+          setVoiceMessage(`سمعت: ${transcript}`);
+          void searchForTerm(transcript);
+        });
+        const errorListener = await recipeVoice.addListener('speechError', event => {
+          setVoiceListening(false);
+          const reason = event.error === 'no-speech' ? 'ملقطناش صوت. اتكلم بوضوح وجرب تاني.' :
+            event.error === 'network' ? 'خدمة التعرف على الكلام محتاجة إنترنت.' :
+            event.error === 'not-allowed' ? 'إذن الميكروفون غير متاح. فعّله من إعدادات التطبيق.' :
+            'تعذر تشغيل الميكروفون. تأكد من توفر خدمة التعرف على الكلام على جهازك.';
+          setVoiceMessage(reason);
+        });
+        voiceListenersRef.current = [resultListener, errorListener];
+        await recipeVoice.startListening();
+        setVoiceListening(true);
+        setVoiceMessage('بتسمعك دلوقتي… قول اسم الأكلة 🎙️');
+        return;
+      }
+
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setVoiceMessage('البحث الصوتي غير مدعوم في المتصفح الحالي. استخدم الكتابة أو افتح التطبيق على جهاز يدعم التعرف على الكلام.');
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ar-EG';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onstart = () => {
+        setVoiceListening(true);
+        setVoiceMessage('بتسمعك دلوقتي… قول اسم الأكلة 🎙️');
+      };
+      recognition.onresult = (event: any) => {
+        const transcript = (event.results?.[0]?.[0]?.transcript || '').trim();
+        setVoiceListening(false);
+        if (transcript) {
+          setQuery(transcript);
+          setVoiceMessage(`سمعت: ${transcript}`);
+          void searchForTerm(transcript);
+        } else {
+          setVoiceMessage('ملقطناش كلام واضح. جرب تاني.');
+        }
+      };
+      recognition.onerror = (event: any) => {
+        setVoiceListening(false);
+        setVoiceMessage(event.error === 'not-allowed' ? 'فعّل إذن الميكروفون من إعدادات الجهاز.' : 'تعذر سماع طلبك. حاول مرة أخرى.');
+      };
+      recognition.onend = () => setVoiceListening(false);
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setVoiceListening(false);
+      setVoiceMessage('مش قادرين نشغل الميكروفون دلوقتي. راجع الإذن وحاول تاني.');
+    }
+  };
+
+  const stopRecipeSpeech = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) await recipeVoice.stopSpeaking();
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    } catch { /* playback may already have stopped */ }
+    setSpeaking(false);
+  };
+
+  const speakRecipe = async (recipe: OnlineRecipe) => {
+    const sections = parseRecipeSections(recipe.extract, familySize, recipe.servings || 4);
+    const cleanForSpeech = (value: string) => value
+      .replace(/[•*_#]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/\bجم\b/g, 'جرام')
+      .replace(/\bمل\b/g, 'مليلتر')
+      .replace(/\bم ص\b/g, 'ملعقة صغيرة')
+      .replace(/\bم ك\b/g, 'ملعقة كبيرة')
+      .replace(/\b\d+\s*\/\s*\d+\b/g, ' ')
+      .trim();
+    const spokenText = [
+      cleanForSpeech(recipe.title),
+      `الوصفة تكفي ${familySize} أفراد`,
+      'أولًا، المكونات.',
+      ...sections.ingredients.map(cleanForSpeech),
+      'والآن طريقة التحضير، خطوة بخطوة.',
+      ...sections.steps.map((step, index) => `الخطوة رقم ${index + 1}. ${cleanForSpeech(step)}. ثم ننتقل للخطوة التالية.`),
+      'وبالهنا والشفا.',
+    ].filter(Boolean).join('، ');
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await recipeVoice.speak({ text: spokenText });
+        setSpeaking(true);
+        return;
+      }
+      if (!('speechSynthesis' in window)) {
+        setVoiceMessage('تشغيل الصوت غير مدعوم على هذا الجهاز.');
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(spokenText);
+      utterance.lang = 'ar-EG';
+      utterance.rate = 0.88;
+      utterance.onstart = () => setSpeaking(true);
+      utterance.onend = () => setSpeaking(false);
+      utterance.onerror = () => {
+        setSpeaking(false);
+        setVoiceMessage('تعذر تشغيل الصوت. تأكد من تثبيت صوت عربي على الجهاز.');
+      };
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      setSpeaking(false);
+      setVoiceMessage('تعذر تشغيل الصوت العربي. تأكد من وجود محرك تحويل النص إلى كلام وصوت عربي على الجهاز.');
+    }
+  };
+
+  useEffect(() => {
+    let playbackListener: { remove(): Promise<void> } | undefined;
+    if (Capacitor.isNativePlatform()) {
+      void recipeVoice.addListener('speechPlaybackStatus', event => {
+        if (event.status === 'completed' || event.status === 'stopped' || event.status === 'error') setSpeaking(false);
+        if (event.status === 'speaking') setSpeaking(true);
+      }).then(listener => { playbackListener = listener; });
+    }
+    return () => {
+      try { recognitionRef.current?.stop?.(); } catch {}
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+      voiceListenersRef.current.forEach(listener => { void listener.remove(); });
+      if (playbackListener) void playbackListener.remove();
+      if (Capacitor.isNativePlatform()) {
+        void recipeVoice.stopListening();
+        void recipeVoice.stopSpeaking();
+      }
+    };
+  }, []);
+
   const saveRecipe = (recipe: OnlineRecipe) => {
     setSaved(current => current.some(item => item.pageId === recipe.pageId) ? current : [recipe, ...current]);
   };
@@ -415,12 +716,16 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
   const currentItems = showSaved ? saved : results;
 
   return (
-    <section dir="rtl" className="rounded-2xl border border-emerald-200 bg-white p-3 shadow-sm space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-black text-gray-900">🌍 ابحث عن وصفة من العالم</h3>
-          <p className="text-[10px] text-gray-500 mt-1">بحث بالعربي أو الإنجليزي، والوصفة بتظهر بالعربي ومقاديرها محسوبة لأسرتك ({familySize} أفراد).</p>
+    <section dir="rtl" className="min-h-full space-y-3" aria-label="البحث الصوتي عن الوصفات أونلاين">
+      <div className="flex items-center gap-2">
+        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700"><ArrowRight className="h-4 w-4" /> رجوع</button>}
+        <div className="min-w-0 flex-1 rounded-2xl bg-gradient-to-l from-[#EEF6EC] to-white p-3">
+          <h3 className="text-base font-black text-gray-900">مساعد الوصفات الصوتي 🎙️</h3>
+          <p className="mt-1 text-[11px] leading-5 text-gray-600">ابحث بالكلام أو الكتابة، واسمع المكونات وطريقة التحضير بالعربي.</p>
         </div>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] text-gray-500">لأسرة من {familySize} أفراد</span>
         <button type="button" onClick={() => { setShowSaved(value => !value); setSelected(null); }}
           className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">
           {showSaved ? 'نتائج البحث' : 'المحفوظات'} ({saved.length})
@@ -430,15 +735,21 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
       {!showSaved && (
         <form onSubmit={search} className="flex gap-2">
           <input value={query} onChange={event => setQuery(event.target.value)}
-            placeholder="مثال: كبسة، ملوخية، sushi..." maxLength={80}
-            className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+            placeholder="قول أو اكتب اسم الأكلة..." maxLength={80}
+            className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none focus:border-emerald-500" />
+          <button type="button" onClick={() => void startVoiceSearch()} disabled={loading}
+            aria-label={voiceListening ? 'إيقاف الاستماع' : 'البحث بالصوت'}
+            className={`rounded-xl px-3 py-2 text-white disabled:opacity-50 ${voiceListening ? 'bg-red-600' : 'bg-[#667B58]'}`}>
+            {voiceListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+          </button>
           <button type="submit" disabled={loading || !query.trim()}
             className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
-            {loading ? 'جاري البحث…' : 'ابحث'}
+            {loading ? 'جاري البحث…' : <><Search className="inline h-4 w-4 ml-1" /> ابحث</>}
           </button>
         </form>
       )}
 
+      {voiceMessage && <p role="status" className="rounded-xl bg-blue-50 p-3 text-xs leading-6 text-blue-900">{voiceMessage}</p>}
       {error && <p role="status" className="rounded-xl bg-amber-50 p-3 text-xs leading-6 text-amber-900">{error}</p>}
 
       {currentItems.length > 0 && (
@@ -463,17 +774,21 @@ export function OnlineRecipeSearch({ familySize = 4 }: { familySize?: number }) 
               const sections = parseRecipeSections(selected.extract, familySize, selected.servings || 4);
               return <div className="space-y-3">
                 {sections.ingredients.length > 0 && <section>
-                  <h5 className="mb-1 text-xs font-black text-gray-900">المكونات المطلوبة</h5>
-                  <ul className="list-disc space-y-1 pr-5 text-xs leading-6 text-gray-700">{sections.ingredients.map((ingredient,index)=><li key={index}>{ingredient}</li>)}</ul>
+                  <h5 className="mb-1 text-base font-black text-gray-900">المكونات المطلوبة</h5>
+                  <ul className="list-disc space-y-1 pr-5 text-sm leading-8 text-gray-800">{sections.ingredients.map((ingredient,index)=><li key={index}>{ingredient}</li>)}</ul>
                 </section>}
                 <section>
-                  <h5 className="mb-1 text-xs font-black text-gray-900">طريقة التحضير خطوة بخطوة</h5>
-                  <ol className="list-decimal space-y-2 pr-5 text-xs leading-7 text-gray-700">{sections.steps.map((step,index)=><li key={index}>{step}</li>)}</ol>
+                  <h5 className="mb-1 text-base font-black text-gray-900">طريقة التحضير خطوة بخطوة</h5>
+                  <ol className="list-decimal space-y-2 pr-5 text-sm leading-8 text-gray-800">{sections.steps.map((step,index)=><li key={index}>{step}</li>)}</ol>
                 </section>
               </div>;
             })()}
             {selected.imageUrl && <p className="text-[9px] leading-5 text-gray-500">الصورة: {selected.imageCredit || 'TheMealDB'} — {selected.imageLicense || 'راجع المصدر الأصلي'}</p>}
             <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => void (speaking ? stopRecipeSpeech() : speakRecipe(selected))}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-[11px] font-bold text-white">
+                {speaking ? <><VolumeX className="h-4 w-4" /> إيقاف الاستماع</> : <><Volume2 className="h-4 w-4" /> اسمع الوصفة</>}
+              </button>
               <button type="button" onClick={() => saveRecipe(selected)}
                 className="rounded-xl bg-amber-100 px-3 py-2 text-[11px] font-bold text-amber-900">
                 {saved.some(item => item.pageId === selected.pageId) ? '✓ محفوظة' : '☆ احفظ الوصفة'}

@@ -29,6 +29,16 @@ import com.getcapacitor.annotation.PermissionCallback
 class NotificationPermissionPlugin : Plugin() {
 
     @PluginMethod
+    fun consumeLaunchTarget(call: PluginCall) {
+        val intent = activity.intent
+        val target = intent.getStringExtra("tadbeera_target_tab")
+        val meal = intent.getStringExtra("tadbeera_meal_type")
+        intent.removeExtra("tadbeera_target_tab")
+        intent.removeExtra("tadbeera_meal_type")
+        call.resolve(JSObject().put("target", target).put("meal", meal))
+    }
+
+    @PluginMethod
     fun openSettings(call: PluginCall) {
         val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(

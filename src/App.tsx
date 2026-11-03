@@ -3,6 +3,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import {
   Utensils,
+  BookOpen,
   Wallet,
   Lightbulb,
   Bookmark,
@@ -91,6 +92,9 @@ import {
   validateBackupPayload,
   calculateCategoryAnalytics,
   calculatePaydayCountdown,
+  getPayCycleRange,
+  filterExpensesForPayCycle,
+  removeSeedDemoExpenses,
   calculateDonutSegments,
   matchSpokenIngredients,
   calculateUniqueAchievementCount,
@@ -127,9 +131,18 @@ import {
 } from './data/affiliateDeals';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { ShoppingTotalsSummary } from './features/shopping/ShoppingTotalsSummary';
-import { HouseholdHub } from './features/household/HouseholdHub';
-import { OnlineRecipeSearch } from './features/recipes/OnlineRecipeSearch';
-import { IngredientRecipeFinder } from './features/recipes/IngredientRecipeFinder';
+// Online recipe discovery is intentionally mounted as its own focused kitchen sub-screen.
+// The dedicated online search always attempts remote recipe providers before local fallbacks.
+// Heavy feature screens are loaded on demand so the first app screen stays lighter.
+const HouseholdHub = React.lazy(() =>
+  import('./features/household/HouseholdHub').then(module => ({ default: module.HouseholdHub }))
+);
+const OnlineRecipeSearch = React.lazy(() =>
+  import('./features/recipes/OnlineRecipeSearch').then(module => ({ default: module.OnlineRecipeSearch }))
+);
+const IngredientRecipeFinder = React.lazy(() =>
+  import('./features/recipes/IngredientRecipeFinder').then(module => ({ default: module.IngredientRecipeFinder }))
+);
 import { householdProfileRepository } from './features/household/householdRepository';
 
 import type { ActiveTab, ViewMode, SavedSubTab, MealTypeFilter } from './app/navigation';
@@ -150,6 +163,11 @@ interface MicrophonePermissionPlugin {
 }
 
 const microphonePermission = registerPlugin<MicrophonePermissionPlugin>('MicrophonePermission');
+
+interface MealReminderLaunchPlugin {
+  consumeLaunchTarget(): Promise<{ target?: string; meal?: string }>;
+}
+const mealReminderLaunch = registerPlugin<MealReminderLaunchPlugin>('NotificationPermission');
 
 export interface SavedBudgetPlan {
   id: string;
@@ -189,8 +207,8 @@ function SvgIllustration({
       return (
         <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="100" height="100" rx="16" fill="#FEF3C7" />
-          <circle cx="50" cy="50" r="32" fill="#FDE68A" stroke="#F59E0B" strokeWidth="3" />
-          <ellipse cx="44" cy="46" rx="14" ry="12" fill="#F59E0B" />
+          <circle cx="50" cy="50" r="32" fill="#FDE68A" stroke="#A68B69" strokeWidth="3" />
+          <ellipse cx="44" cy="46" rx="14" ry="12" fill="#A68B69" />
           <ellipse cx="46" cy="44" rx="5" ry="4" fill="#FEF3C7" opacity="0.6" />
           <circle cx="62" cy="58" r="3" fill="#10B981" />
           <circle cx="36" cy="62" r="2.5" fill="#EF4444" />
@@ -214,7 +232,7 @@ function SvgIllustration({
       return (
         <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="100" height="100" rx="16" fill="#FEF9C3" />
-          <rect x="22" y="38" width="56" height="34" rx="8" fill="#F59E0B" />
+          <rect x="22" y="38" width="56" height="34" rx="8" fill="#A68B69" />
           <path d="M26 44C32 40 40 46 48 42C56 38 64 44 74 40" stroke="#78350F" strokeWidth="3" strokeLinecap="round" />
           <path d="M26 52C32 48 40 54 48 50C56 46 64 52 74 48" stroke="#78350F" strokeWidth="3" strokeLinecap="round" />
           <path d="M26 60C32 56 40 62 48 58C56 54 64 60 74 56" stroke="#78350F" strokeWidth="3" strokeLinecap="round" />
@@ -239,7 +257,7 @@ function SvgIllustration({
           <ellipse cx="50" cy="54" rx="28" ry="16" fill="#92400E" />
           <circle cx="44" cy="52" r="3" fill="#D97706" />
           <circle cx="56" cy="56" r="3" fill="#D97706" />
-          <circle cx="50" cy="48" r="3.5" fill="#F59E0B" />
+          <circle cx="50" cy="48" r="3.5" fill="#A68B69" />
           <circle cx="42" cy="58" r="2.5" fill="#EF4444" />
         </svg>
       );
@@ -249,7 +267,7 @@ function SvgIllustration({
     default:
       return (
         <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="100" height="100" rx="16" fill="#DBEAFE" />
+          <rect width="100" height="100" rx="16" fill="#E8EBDD" />
           <circle cx="50" cy="50" r="30" fill="#3B82F6" opacity="0.8" />
           <path d="M35 50L45 60L65 40" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -286,6 +304,35 @@ export default function App() {
     });
   }, [isNativeApp]);
 
+  // Route taps on native meal reminders to the matching kitchen filter.
+  useEffect(() => {
+    if (!isNativeApp) return;
+    let active = true;
+    const consumeTarget = async () => {
+      try {
+        const launch = await mealReminderLaunch.consumeLaunchTarget();
+        if (!active || !launch.target) return;
+        if (launch.target === 'food') {
+          setKitchenView('main');
+          setMealFilter(launch.meal === 'breakfast' || launch.meal === 'lunch' || launch.meal === 'dinner'
+            ? launch.meal : 'all');
+          setActiveTab('food');
+        }
+      } catch (error) {
+        console.warn('Unable to route from Tadbeera meal reminder:', error);
+      }
+    };
+    void consumeTarget();
+    const handleResume = () => { void consumeTarget(); };
+    window.addEventListener('focus', handleResume);
+    document.addEventListener('visibilitychange', handleResume);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', handleResume);
+      document.removeEventListener('visibilitychange', handleResume);
+    };
+  }, [isNativeApp]);
+
   const [viewMode, setViewMode] = useState<ViewMode>('emulator');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [savedSubTab, setSavedSubTab] = useState<SavedSubTab>('shopping');
@@ -307,6 +354,8 @@ export default function App() {
   const [usesLeftoversFilter, setUsesLeftoversFilter] = useState(false);
   const [isZeroMissingOnly, setIsZeroMissingOnly] = useState(false);
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
+  const [kitchenView, setKitchenView] = useState<'main' | 'offline' | 'online'>('main');
+  const [offlineRecipeQuery, setOfflineRecipeQuery] = useState('');
 
   // Budget & Expense State
   const [budgetAmount, setBudgetAmount] = useState<string>(() => {
@@ -353,20 +402,17 @@ export default function App() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          return parsed.filter(e => e && typeof e === 'object').map(e => ({
+          const normalizedExpenses = parsed.filter(e => e && typeof e === 'object').map(e => ({
             id: String(e.id || Math.random().toString(36).substring(2, 8)),
             categoryId: String(e.categoryId || 'food'),
             amount: parseSafePrice(e.amount) || 0,
             date: String(e.date || new Date().toISOString().split('T')[0]),
             description: String(e.description || 'مصروف عام')
           }));
+          return removeSeedDemoExpenses(normalizedExpenses);
         }
       }
-      return [
-        { id: 'exp_1', categoryId: 'food', amount: 350, date: '2026-10-24', description: 'سوق الخضار الأسبوعي وبصل وطماطم' },
-        { id: 'exp_2', categoryId: 'bills', amount: 220, date: '2026-10-22', description: 'فاتورة الكهرباء وشحن كارت العداد' },
-        { id: 'exp_3', categoryId: 'transport', amount: 85, date: '2026-10-25', description: 'اشتراك مترو ومواصلات شغل' }
-      ];
+      return [];
     } catch {
       return [];
     }
@@ -581,10 +627,11 @@ export default function App() {
 
   // Phase 4B: Visual Spending Donut Segment Selection State
   const [selectedDonutSegmentId, setSelectedDonutSegmentId] = useState<string | null>(null);
+  const [showAllExpenseHistory, setShowAllExpenseHistory] = useState(false);
 
   // AdMob State & Policy Compliance Controls (Google Mobile Ads)
   type AdStatus = 'loaded' | 'loading' | 'failed' | 'disabled';
-  const [adStatus, setAdStatus] = useState<AdStatus>('loaded');
+  const [adStatus, setAdStatus] = useState<AdStatus>('disabled');
   const [isInterstitialEnabled, setIsInterstitialEnabled] = useState<boolean>(false); // Strictly disabled by default
   const [sessionInterstitialCount, setSessionInterstitialCount] = useState<number>(0);
   const [lastInterstitialTime, setLastInterstitialTime] = useState<number>(0);
@@ -818,7 +865,9 @@ export default function App() {
       const currentList = [...prev];
       newItems.forEach(newItem => {
         const existingIndex = currentList.findIndex(
-          item => item.name.trim().toLowerCase() === newItem.name.trim().toLowerCase()
+          item =>
+            item.name.trim().toLocaleLowerCase() === newItem.name.trim().toLocaleLowerCase() &&
+            item.unit.trim().toLocaleLowerCase() === newItem.unit.trim().toLocaleLowerCase()
         );
         if (existingIndex >= 0) {
           currentList[existingIndex] = {
@@ -1350,17 +1399,28 @@ export default function App() {
     showToast(`تمت إضافة بند "${newCat.name}" وإعادة التوزيع بنسبة 100% بالتمام 🎉`);
   };
 
+  // Budget calculations use the active salary cycle, not every historical expense.
+  const payCycleRange = useMemo(() => getPayCycleRange(paydayDay), [paydayDay]);
+  const payCycleExpenses = useMemo(
+    () => filterExpensesForPayCycle(expenses, payCycleRange),
+    [expenses, payCycleRange]
+  );
+  const displayedExpenses = useMemo(
+    () => (showAllExpenseHistory ? [...expenses].sort((a, b) => b.date.localeCompare(a.date)) : payCycleExpenses),
+    [showAllExpenseHistory, expenses, payCycleExpenses]
+  );
+
   // Budget Reconciled Breakdown & Calculations
   const budgetBreakdown = useMemo(() => {
-    return reconcileBudgetAllocations(parsedBudgetAmount, categoryPercentages, categories, expenses);
-  }, [parsedBudgetAmount, categoryPercentages, categories, expenses]);
+    return reconcileBudgetAllocations(parsedBudgetAmount, categoryPercentages, categories, payCycleExpenses);
+  }, [parsedBudgetAmount, categoryPercentages, categories, payCycleExpenses]);
 
   const totalSpentAll = useMemo(() => {
-    return expenses.reduce((acc, curr) => {
+    return payCycleExpenses.reduce((acc, curr) => {
       const amt = parseSafePrice(curr.amount) || 0;
       return acc + amt;
     }, 0);
-  }, [expenses]);
+  }, [payCycleExpenses]);
 
   const totalRemainingAll = Math.round(parsedBudgetAmount - totalSpentAll);
 
@@ -1829,16 +1889,16 @@ export default function App() {
   return (
     <div className={isNativeApp ? "h-[100dvh] min-h-0 w-full overflow-hidden bg-[#FBF8F1] text-[#3F4037] font-['Cairo',sans-serif] flex flex-col" : "min-h-screen bg-[#F4F0E7] text-[#3F4037] font-['Cairo',sans-serif] flex flex-col items-center"}>
       {/* Top Header & View Mode Switcher */}
-      {!isNativeApp && <header className="w-full bg-[#0D47A1] text-white shadow-md sticky top-0 z-50">
+      {!isNativeApp && <header className="w-full bg-[#626B49] text-white shadow-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FFB300] text-[#0D47A1] font-black flex items-center justify-center text-xl shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-[#D8C69A] text-[#626B49] font-black flex items-center justify-center text-xl shadow-inner">
               تد
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-extrabold text-lg tracking-tight">تدبيرة — كل جنيه ليه قيمة 💛</h1>
-                <span className="bg-[#FFE54C] text-[#0D47A1] text-xs font-bold px-2 py-0.5 rounded-full">ميزانية مصري 🇪🇬</span>
+                <span className="bg-[#FFE54C] text-[#626B49] text-xs font-bold px-2 py-0.5 rounded-full">ميزانية مصري 🇪🇬</span>
               </div>
               <p className="text-xs text-blue-100">وفّر بذكاء، ودبّر بيتك، وخلي كل جنيه في مكانه.</p>
             </div>
@@ -1849,7 +1909,7 @@ export default function App() {
             <button
               onClick={() => setViewMode('emulator')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'emulator' ? 'bg-[#FFB300] text-[#0D47A1] shadow' : 'text-blue-100 hover:text-white'
+                viewMode === 'emulator' ? 'bg-[#D8C69A] text-[#626B49] shadow' : 'text-blue-100 hover:text-white'
               }`}
             >
               <Smartphone className="w-4 h-4" />
@@ -1858,7 +1918,7 @@ export default function App() {
             <button
               onClick={() => setViewMode('code')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'code' ? 'bg-[#FFB300] text-[#0D47A1] shadow' : 'text-blue-100 hover:text-white'
+                viewMode === 'code' ? 'bg-[#D8C69A] text-[#626B49] shadow' : 'text-blue-100 hover:text-white'
               }`}
             >
               <FolderCode className="w-4 h-4" />
@@ -1867,7 +1927,7 @@ export default function App() {
             <button
               onClick={() => setViewMode('tests')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'tests' ? 'bg-[#FFB300] text-[#0D47A1] shadow' : 'text-blue-100 hover:text-white'
+                viewMode === 'tests' ? 'bg-[#D8C69A] text-[#626B49] shadow' : 'text-blue-100 hover:text-white'
               }`}
             >
               <FlaskConical className="w-4 h-4" />
@@ -1883,7 +1943,7 @@ export default function App() {
               download="TedbeeraEgypt-Android.zip"
               className="flex items-center gap-1.5 bg-blue-800/80 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm px-3.5 py-1.5 rounded-xl border border-blue-400/30 transition"
             >
-              <Download className="w-4 h-4 text-[#FFB300]" />
+              <Download className="w-4 h-4 text-[#D8C69A]" />
               <span>تحميل (ZIP)</span>
             </a>
           </div>
@@ -1892,7 +1952,7 @@ export default function App() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 z-50 bg-[#0D47A1] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 border border-[#FFB300] animate-bounce">
+        <div role="status" aria-live="polite" className="fixed top-[calc(env(safe-area-inset-top)+12px)] left-3 right-3 z-[100] mx-auto max-w-md bg-[#626B49] text-white px-5 py-3 rounded-xl shadow-xl flex items-center justify-center gap-2 border border-[#D8C69A]">
           <Sparkles className="w-4 h-4 text-[#FFE54C]" />
           <span className="text-sm font-bold">{toastMessage}</span>
         </div>
@@ -1906,7 +1966,7 @@ export default function App() {
           <div className={isNativeApp ? "h-full min-h-0 w-full" : "flex flex-col items-center gap-4 w-full"}>
             <div className={isNativeApp ? "h-full min-h-0 w-full max-w-none bg-white overflow-hidden flex flex-col" : "w-full max-w-md bg-white rounded-3xl shadow-2xl border-4 border-gray-800 overflow-hidden flex flex-col h-[780px]"}>
             {/* Phone Top Notch / Status Bar */}
-            {!isNativeApp && ( <div className="bg-[#0D47A1] text-white px-5 py-2.5 flex items-center justify-between text-xs select-none">
+            {!isNativeApp && ( <div className="bg-[#626B49] text-white px-5 py-2.5 flex items-center justify-between text-xs select-none">
               <span className="font-bold tracking-wider">09:41</span>
               <div className="w-20 h-4 bg-gray-900 rounded-full mx-auto opacity-70"></div>
               <div className="flex items-center gap-1.5 text-[10px]">
@@ -1923,22 +1983,6 @@ export default function App() {
                 <span className="font-extrabold text-sm sm:text-base">تدبيرة — كل جنيه ليه قيمة 💛</span>
               </div>
               <div className="flex items-center gap-2">
-                {/* AdMob Test Mode Pill Button (Development Only) */}
-                {IS_DEV && (
-                  <button
-                    onClick={() => setIsAdControlsOpen(true)}
-                    className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition flex items-center gap-1 border ${
-                      adStatus === 'loaded' ? 'bg-[#FFB300] text-[#0D47A1] border-[#FFA000]' :
-                      adStatus === 'loading' ? 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse' :
-                      adStatus === 'failed' ? 'bg-rose-100 text-rose-800 border-rose-300' :
-                      'bg-gray-200 text-gray-700 border-gray-300'
-                    }`}
-                    title="لوحة اختبار ومحاكاة AdMob (وضع التطوير)"
-                  >
-                    <span>AdMob:</span>
-                    <span>{adStatus === 'loaded' ? 'نشط' : adStatus === 'loading' ? 'تحميل...' : adStatus === 'failed' ? 'فشل (انهيار)' : 'معطل'}</span>
-                  </button>
-                )}
                 <button
                   onClick={() => setIsSettingsModalOpen(true)}
                   className="p-1.5 rounded-lg bg-[#E8EDDF] hover:bg-[#DCE5D3] text-[#5F7651] transition"
@@ -1946,12 +1990,11 @@ export default function App() {
                 >
                   <Settings className="w-4 h-4" />
                 </button>
-                <span className="text-[11px] bg-blue-800 text-blue-200 px-2 py-0.5 rounded-md font-medium">أوفلاين</span>
               </div>
             </div>
 
             {/* Scrollable Screen Content with shared layout clearance ensuring 70-90px breathing room */}
-            <div className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 bg-[#FBF8F1] ${getBottomScrollPaddingClass(adStatus)} ${isNativeApp ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}>
+            <div className={`tadbeera-screen-content flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 bg-[#FBF8F1] ${getBottomScrollPaddingClass(adStatus)} ${isNativeApp ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}>
 
 
               {activeTab === 'home' && (
@@ -1973,25 +2016,83 @@ export default function App() {
                   <button type="button" onClick={() => setActiveTab('daily')} className="w-full rounded-2xl bg-[#FFFEFA] border border-[#E8E1D3] p-3 text-right flex items-center justify-between"><span className="text-xs font-bold text-[#555548]">💡 تدبيرة اليوم — أفكار وحيل للتوفير</span><ChevronRight className="w-4 h-4 text-[#9A927F]" /></button>
                 </section>
               )}
-              {activeTab === 'household' && <HouseholdHub />}
+              {activeTab === 'household' && (
+                <React.Suspense fallback={<div className="rounded-2xl bg-white border border-[#E8E0D1] p-4 text-center text-xs text-[#667B58]">بنجهز إدارة البيت…</div>}>
+                  <HouseholdHub />
+                </React.Suspense>
+              )}
               {/* ======================================================== */}
               {/* === TAB 1: تدبيرة الأكل === */}
               {/* ======================================================== */}
               {activeTab === 'food' && (
                 <div className="space-y-4">
+                  {kitchenView === 'online' ? (
+                    <React.Suspense fallback={<div className="rounded-2xl border border-emerald-200 bg-white p-5 text-center text-sm text-gray-600">بنجهز مساعد الوصفات الصوتي…</div>}>
+                      <OnlineRecipeSearch familySize={familySize} onBack={() => setKitchenView('main')} />
+                    </React.Suspense>
+                  ) : kitchenView === 'offline' ? (
+                    <section dir="rtl" className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <button type="button" onClick={() => setKitchenView('main')} className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                          <ChevronRight className="h-4 w-4" /> رجوع للمطبخ
+                        </button>
+                        <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-800">تعمل بدون إنترنت</span>
+                      </div>
+                      <div className="rounded-2xl bg-[#F1F5EC] p-4">
+                        <h2 className="text-lg font-black text-[#40533A]">مكتبة وصفات تدبيرة 🌿</h2>
+                        <p className="mt-1 text-xs leading-5 text-[#68745F]">كل الوصفات المصرية والبيتية المحفوظة داخل التطبيق في مكان واحد، وتقدر تفتحها بدون إنترنت.</p>
+                      </div>
+                      <input value={offlineRecipeQuery} onChange={event => setOfflineRecipeQuery(event.target.value)} placeholder="ابحث في الوصفات المجانية..." className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-500" />
+                      <div className="text-[11px] text-gray-500">عدد الوصفات: {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).length}</div>
+                      <div className="space-y-2">
+                        {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).map(recipe => (
+                          <button key={recipe.id} type="button" onClick={() => setSelectedRecipeModal(recipe)} className="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white p-2.5 text-right shadow-sm transition hover:border-emerald-300">
+                            <span className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#F1F5EC]">
+                              {recipe.imageUrl && !brokenImages[recipe.id] ? <img src={recipe.imageUrl} alt={recipe.name} loading="lazy" onError={() => handleImageError(recipe.id)} className="h-full w-full object-cover" /> : <SvgIllustration type={recipe.svgFallbackIcon || 'koshari'} />}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <strong className="block truncate text-sm text-gray-900">{recipe.name}</strong>
+                              <span className="mt-1 block text-[10px] text-gray-500">{recipe.mealType === 'breakfast' ? 'فطار' : recipe.mealType === 'lunch' ? 'غداء' : 'عشاء'} · {recipe.prepTimeMinutes} دقيقة · لـ {familySize} أفراد</span>
+                            </span>
+                            <span className="shrink-0 text-left">
+                              <strong className="block text-sm text-[#55764B]">~{getScaledCost(recipe)} ج.م</strong>
+                              <span className="text-[10px] text-gray-400">التفاصيل ←</span>
+                            </span>
+                          </button>
+                        ))}
+                        {allRecipes.filter(recipe => recipe.name.toLocaleLowerCase('ar').includes(offlineRecipeQuery.trim().toLocaleLowerCase('ar'))).length === 0 && (
+                          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 text-center text-xs text-gray-500">ملقيناش وصفة بالاسم ده. جرّب كلمة تانية.</div>
+                        )}
+                      </div>
+                    </section>
+                  ) : (
+                    <>
+                  <button type="button" onClick={() => setKitchenView('offline')} className="flex w-full items-center justify-between rounded-2xl border border-[#DCE5D3] bg-[#F1F5EC] p-3 text-right transition hover:bg-[#E8EFE1]">
+                    <span className="flex items-center gap-2">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#526748]"><BookOpen className="h-5 w-5" /></span>
+                      <span><strong className="block text-xs text-[#40533A]">مكتبة الوصفات</strong><small className="mt-0.5 block text-[10px] text-[#68745F]">وصفات مجانية جاهزة داخل التطبيق</small></span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-[#526748]" />
+                  </button>
+                  <button type="button" onClick={() => setKitchenView('online')} className="flex w-full items-center justify-between rounded-2xl border border-[#DCE2D0] bg-[#F1F3EA] p-3 text-right transition hover:bg-[#E8EBDD]">
+                    <span className="flex items-center gap-2">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#78815B]"><Mic className="h-5 w-5" /></span>
+                      <span><strong className="block text-xs text-[#626B49]">ابحث عن وصفة أونلاين 🎙️</strong><small className="mt-0.5 block text-[10px] text-[#78815B]">اتكلم أو اكتب اسم الأكلة، واسمع طريقة التحضير</small></span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-[#78815B]" />
+                  </button>
                   {/* Brand Concept Motto Card */}
-                  <div className="bg-[#0D47A1] text-white p-3 rounded-2xl shadow-sm flex items-center justify-between">
+                  <div className="bg-[#626B49] text-white p-3 rounded-2xl shadow-sm flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-black text-[#FFB300] block">تدبيرة — كل جنيه ليه قيمة 💛</span>
+                      <span className="text-xs font-black text-[#D8C69A] block">تدبيرة — كل جنيه ليه قيمة 💛</span>
                       <span className="text-[10px] text-blue-100">تكلفة الوجبة التقديرية ومقادير الأكل حسب عدد أفراد بيتك 🇪🇬</span>
                     </div>
-                    <span className="text-xs bg-[#FFB300] text-[#0D47A1] font-black px-2 py-0.5 rounded-lg">ج.م EGP</span>
+                    <span className="text-xs bg-[#D8C69A] text-[#626B49] font-black px-2 py-0.5 rounded-lg">ج.م EGP</span>
                   </div>
-                  <OnlineRecipeSearch familySize={familySize} />
                   {/* Family Size Scaler Bar */}
                   <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs">
-                      <div className="p-1.5 rounded-lg bg-blue-50 text-[#0D47A1]">
+                      <div className="p-1.5 rounded-lg bg-[#F1F3EA] text-[#626B49]">
                         <Users className="w-4 h-4" />
                       </div>
                       <div>
@@ -2002,14 +2103,14 @@ export default function App() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setFamilySize(prev => Math.max(1, prev - 1))}
-                        className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#0D47A1] font-black text-sm flex items-center justify-center transition"
+                        className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#626B49] font-black text-sm flex items-center justify-center transition"
                       >
                         -
                       </button>
-                      <span className="w-8 text-center font-extrabold text-[#0D47A1] text-sm">{familySize}</span>
+                      <span className="w-8 text-center font-extrabold text-[#626B49] text-sm">{familySize}</span>
                       <button
                         onClick={() => setFamilySize(prev => prev + 1)}
-                        className="w-7 h-7 rounded-lg bg-[#0D47A1] hover:bg-[#002171] text-white font-black text-sm flex items-center justify-center transition"
+                        className="w-7 h-7 rounded-lg bg-[#626B49] hover:bg-[#002171] text-white font-black text-sm flex items-center justify-center transition"
                       >
                         +
                       </button>
@@ -2020,19 +2121,19 @@ export default function App() {
                   <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3.5 space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-[#F7F0DE] text-amber-700 flex items-center justify-center shrink-0">
                           <CalendarCheck className="w-4 h-4" />
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <h3 className="font-extrabold text-xs text-[#0D47A1]">خطة وجبات الأسبوع التوفيرية الكاملة</h3>
+                            <h3 className="font-extrabold text-xs text-[#626B49]">خطة وجبات الأسبوع التوفيرية الكاملة</h3>
                             {isWeeklyPlanUnlocked ? (
                               <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
                                 <Unlock className="w-2.5 h-2.5" />
                                 <span>مفتوحة ✓</span>
                               </span>
                             ) : (
-                              <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                              <span className="bg-[#EFE5C8] text-[#765B3A] text-[10px] font-bold px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
                                 <Lock className="w-2.5 h-2.5" />
                                 <span>مقفولة</span>
                               </span>
@@ -2062,25 +2163,25 @@ export default function App() {
 
                     {!isWeeklyPlanUnlocked ? (
                       /* Locked State: Rewarded Ad Entry Point */
-                      <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 p-3 rounded-xl border border-amber-200/80 space-y-2.5">
+                      <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 p-3 rounded-xl border border-[#E6D9B8]/80 space-y-2.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-amber-950 flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
+                            <Sparkles className="w-3.5 h-3.5 text-[#D8C69A]" />
                             <span>فتح جدول وجبات 7 أيام وجدول التسوق المجمع</span>
                           </span>
-                          <span className="text-[10px] bg-amber-200/80 text-amber-900 font-bold px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] bg-amber-200/80 text-[#765B3A] font-bold px-1.5 py-0.5 rounded">
                             مجاني بمكافأة 🎁
                           </span>
                         </div>
-                        <p className="text-[11px] text-amber-900/80 leading-relaxed">
+                        <p className="text-[11px] text-[#765B3A]/80 leading-relaxed">
                           تخلصي من حيرة "هنطبخ إيه النهاردة؟" مع خطة متكاملة محسوبة بالجرام والتكلفة للأسبوع كله.
                         </p>
                         <button
                           type="button"
                           onClick={handleRequestRewardedAd}
-                          className="w-full bg-[#0D47A1] hover:bg-[#002171] text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm"
+                          className="w-full bg-[#626B49] hover:bg-[#002171] text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm"
                         >
-                          <Play className="w-3.5 h-3.5 text-[#FFB300] fill-[#FFB300]" />
+                          <Play className="w-3.5 h-3.5 text-[#D8C69A] fill-[#D8C69A]" />
                           <span>شاهد إعلاناً قصيراً لفتح جدول وجبات الأسبوع</span>
                         </button>
                         <div className="flex items-center justify-between text-[10px] text-gray-500 pt-0.5">
@@ -2100,7 +2201,7 @@ export default function App() {
                               onClick={() => setSelectedPlanDayId(day.dayId)}
                               className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition ${
                                 selectedPlanDayId === day.dayId
-                                  ? 'bg-[#0D47A1] text-white shadow-xs'
+                                  ? 'bg-[#626B49] text-white shadow-xs'
                                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                               }`}
                             >
@@ -2123,10 +2224,10 @@ export default function App() {
                             <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2.5">
                               <div className="flex items-center justify-between pb-1.5 border-b border-gray-200">
                                 <div>
-                                  <span className="font-extrabold text-xs text-[#0D47A1]">جدول يوم {activeDay.dayName}</span>
+                                  <span className="font-extrabold text-xs text-[#626B49]">جدول يوم {activeDay.dayName}</span>
                                   <span className="text-[10px] text-gray-500 block">{activeDay.theme}</span>
                                 </div>
-                                <span className="bg-[#FFE54C]/50 text-[#0D47A1] font-bold text-[11px] px-2 py-0.5 rounded-lg border border-[#FFB300]/50">
+                                <span className="bg-[#FFE54C]/50 text-[#626B49] font-bold text-[11px] px-2 py-0.5 rounded-lg border border-[#D8C69A]/50">
                                   تكلفة اليوم: ~{dayTotal} ج.م
                                 </span>
                               </div>
@@ -2136,13 +2237,13 @@ export default function App() {
                                 {bRecipe && (
                                   <div
                                     onClick={() => setSelectedRecipeModal(bRecipe)}
-                                    className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between cursor-pointer hover:border-[#0D47A1] transition"
+                                    className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between cursor-pointer hover:border-[#626B49] transition"
                                   >
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded">فطار</span>
+                                      <span className="text-[10px] bg-[#EFE5C8] text-[#765B3A] font-bold px-1.5 py-0.2 rounded">فطار</span>
                                       <span className="font-bold text-gray-800 text-[11px] truncate max-w-[170px]">{bRecipe.name}</span>
                                     </div>
-                                    <span className="text-[10px] text-[#0D47A1] font-bold">~{calculateRecipeScaledCost(bRecipe, familySize)} ج.م</span>
+                                    <span className="text-[10px] text-[#626B49] font-bold">~{calculateRecipeScaledCost(bRecipe, familySize)} ج.م</span>
                                   </div>
                                 )}
 
@@ -2150,13 +2251,13 @@ export default function App() {
                                 {lRecipe && (
                                   <div
                                     onClick={() => setSelectedRecipeModal(lRecipe)}
-                                    className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between cursor-pointer hover:border-[#0D47A1] transition"
+                                    className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between cursor-pointer hover:border-[#626B49] transition"
                                   >
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] bg-blue-100 text-blue-900 font-bold px-1.5 py-0.2 rounded">غداء</span>
+                                      <span className="text-[10px] bg-[#E8EBDD] text-[#626B49] font-bold px-1.5 py-0.2 rounded">غداء</span>
                                       <span className="font-bold text-gray-800 text-[11px] truncate max-w-[170px]">{lRecipe.name}</span>
                                     </div>
-                                    <span className="text-[10px] text-[#0D47A1] font-bold">~{calculateRecipeScaledCost(lRecipe, familySize)} ج.م</span>
+                                    <span className="text-[10px] text-[#626B49] font-bold">~{calculateRecipeScaledCost(lRecipe, familySize)} ج.م</span>
                                   </div>
                                 )}
 
@@ -2164,13 +2265,13 @@ export default function App() {
                                 {dRecipe && (
                                   <div
                                     onClick={() => setSelectedRecipeModal(dRecipe)}
-                                    className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between cursor-pointer hover:border-[#0D47A1] transition"
+                                    className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between cursor-pointer hover:border-[#626B49] transition"
                                   >
                                     <div className="flex items-center gap-1.5">
                                       <span className="text-[10px] bg-purple-100 text-purple-900 font-bold px-1.5 py-0.2 rounded">عشاء</span>
                                       <span className="font-bold text-gray-800 text-[11px] truncate max-w-[170px]">{dRecipe.name}</span>
                                     </div>
-                                    <span className="text-[10px] text-[#0D47A1] font-bold">~{calculateRecipeScaledCost(dRecipe, familySize)} ج.م</span>
+                                    <span className="text-[10px] text-[#626B49] font-bold">~{calculateRecipeScaledCost(dRecipe, familySize)} ج.م</span>
                                   </div>
                                 )}
                               </div>
@@ -2183,7 +2284,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => setIsConsolidatedShoppingModalOpen(true)}
-                            className="flex-1 bg-white hover:bg-gray-50 text-[#0D47A1] font-bold py-2 px-2.5 rounded-xl text-[11px] border border-blue-200 flex items-center justify-center gap-1.5 transition"
+                            className="flex-1 bg-white hover:bg-gray-50 text-[#626B49] font-bold py-2 px-2.5 rounded-xl text-[11px] border border-[#DCE2D0] flex items-center justify-center gap-1.5 transition"
                           >
                             <CalendarCheck className="w-3.5 h-3.5" />
                             <span>جدول التسوق المجمع 📋</span>
@@ -2214,7 +2315,7 @@ export default function App() {
                         onClick={() => setMealFilter(cat.key as MealTypeFilter)}
                         className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition ${
                           mealFilter === cat.key
-                            ? 'bg-[#0D47A1] text-white shadow-sm'
+                            ? 'bg-[#626B49] text-white shadow-sm'
                             : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                         }`}
                       >
@@ -2244,7 +2345,7 @@ export default function App() {
                   <div className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm">
                     <div className="flex items-center justify-between mb-2 gap-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-[#0D47A1]">
+                        <span className="text-xs font-bold text-[#626B49]">
                           المكونات المتوفرة في بيتك ({selectedIngredients.length}):
                         </span>
                       </div>
@@ -2257,7 +2358,7 @@ export default function App() {
                           className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-xl transition ${
                             voiceState === 'listening'
                               ? 'bg-rose-600 text-white animate-pulse shadow-sm ring-2 ring-rose-300'
-                              : 'bg-blue-50 hover:bg-blue-100 text-[#0D47A1] border border-blue-200'
+                              : 'bg-[#F1F3EA] hover:bg-[#E8EBDD] text-[#626B49] border border-[#DCE2D0]'
                           }`}
                           title="اختيار المكونات بالصوت باللهجة المصرية"
                           aria-label="اختيار المكونات بالصوت"
@@ -2269,7 +2370,7 @@ export default function App() {
                             </>
                           ) : (
                             <>
-                              <Mic className="w-3.5 h-3.5 text-[#0D47A1]" />
+                              <Mic className="w-3.5 h-3.5 text-[#626B49]" />
                               <span>بالصوت 🎙️</span>
                             </>
                           )}
@@ -2295,7 +2396,7 @@ export default function App() {
                           : voiceState === 'success'
                           ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
                           : voiceState === 'no-match'
-                          ? 'bg-amber-50 border-amber-200 text-amber-900'
+                          ? 'bg-[#F7F0DE] border-[#E6D9B8] text-[#765B3A]'
                           : 'bg-gray-50 border-gray-200 text-gray-800'
                       }`}>
                         <div className="flex items-center gap-1.5">
@@ -2328,7 +2429,7 @@ export default function App() {
                             onClick={() => toggleIngredient(ing)}
                             className={`text-xs px-2.5 py-1 rounded-lg font-medium transition flex items-center gap-1 ${
                               isSelected
-                                ? 'bg-[#0D47A1] text-white shadow-sm'
+                                ? 'bg-[#626B49] text-white shadow-sm'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
@@ -2339,14 +2440,16 @@ export default function App() {
                       })}
                     </div>
 
-                    <IngredientRecipeFinder availableIngredients={selectedIngredients} familySize={familySize} />
+                    <React.Suspense fallback={<div className="rounded-xl bg-white border border-gray-100 p-3 text-center text-[11px] text-gray-500">بنجهز اقتراحات الوجبات…</div>}>
+                      <IngredientRecipeFinder availableIngredients={selectedIngredients} familySize={familySize} />
+                    </React.Suspense>
 
                     {/* Quick Filters */}
                     <div className="flex flex-wrap gap-2 pt-3 mt-3 border-t border-gray-100 text-[11px]">
                       <button
                         onClick={() => setIsVeryBudgetFilter(!isVeryBudgetFilter)}
                         className={`px-2 py-0.5 rounded-md font-semibold transition ${
-                          isVeryBudgetFilter ? 'bg-[#FFB300] text-[#0D47A1]' : 'bg-gray-50 text-gray-600'
+                          isVeryBudgetFilter ? 'bg-[#D8C69A] text-[#626B49]' : 'bg-gray-50 text-gray-600'
                         }`}
                       >
                         💰 اقتصادي جداً
@@ -2354,7 +2457,7 @@ export default function App() {
                       <button
                         onClick={() => setIsQuickFilter(!isQuickFilter)}
                         className={`px-2 py-0.5 rounded-md font-semibold transition ${
-                          isQuickFilter ? 'bg-[#FFB300] text-[#0D47A1]' : 'bg-gray-50 text-gray-600'
+                          isQuickFilter ? 'bg-[#D8C69A] text-[#626B49]' : 'bg-gray-50 text-gray-600'
                         }`}
                       >
                         ⚡ وجبات سريعة
@@ -2362,7 +2465,7 @@ export default function App() {
                       <button
                         onClick={() => setUsesLeftoversFilter(!usesLeftoversFilter)}
                         className={`px-2 py-0.5 rounded-md font-semibold transition ${
-                          usesLeftoversFilter ? 'bg-[#FFB300] text-[#0D47A1]' : 'bg-gray-50 text-gray-600'
+                          usesLeftoversFilter ? 'bg-[#D8C69A] text-[#626B49]' : 'bg-gray-50 text-gray-600'
                         }`}
                       >
                         ♻️ استغلال بواقي الأكل
@@ -2374,144 +2477,16 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setIsAddCustomRecipeModalOpen(true)}
-                    className="w-full bg-white border border-[#0D47A1] text-[#0D47A1] hover:bg-blue-50 font-bold py-2.5 px-3 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
+                    className="w-full bg-white border border-[#626B49] text-[#626B49] hover:bg-[#F1F3EA] font-bold py-2.5 px-3 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
                   >
                     <Plus className="w-4 h-4" />
                     <span>أضف أكلتك الخاصة 🍳</span>
                   </button>
 
-                  {/* Matching Recipes Count */}
-                  <div className="flex items-center justify-between text-xs text-gray-500 px-1">
-                    <span className="font-bold text-[#1E293B]">الوجبات المقترحة ({matchedRecipes.length}):</span>
-                    <span>تكلفة تقديرية لـ {familySize} أفراد</span>
+                  <div className="rounded-2xl border border-[#E4DECF] bg-[#FFFDF8] p-4 text-center text-sm text-[#626B49]">
+                    كل وصفات تدبيرة موجودة في مكان واحد داخل <strong>مكتبة الوصفات</strong> بالأعلى. افتح المكتبة للبحث والاختيار وعرض المقادير والخطوات.
                   </div>
-
-                  {/* Recipe Cards List */}
-                  {matchedRecipes.length === 0 ? (
-                    isZeroMissingOnly ? (
-                      <div className="bg-white p-6 rounded-2xl text-center border border-dashed border-emerald-300 space-y-2.5">
-                        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full mx-auto flex items-center justify-center">
-                          <Sparkles className="w-6 h-6" />
-                        </div>
-                        <p className="text-sm font-bold text-gray-800">مفيش أكلات مطابقة 100% لمكوناتك الحالية، زوّد مكون أو شوف المقترحات التانية</p>
-                        <button
-                          onClick={() => setIsZeroMissingOnly(false)}
-                          className="mt-1 inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>إلغاء فلتر "اطبخ باللي عندي"</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="bg-white p-6 rounded-2xl text-center border border-dashed border-gray-300">
-                        <p className="text-sm font-bold text-gray-700">مفيش وصفات مطابقة للفلاتر دي</p>
-                        <p className="text-xs text-gray-500 mt-1">جرب تلغي بعض الفلاتر أو اختار مكونات إضافية من اللي في بيتك.</p>
-                      </div>
-                    )
-                  ) : (
-                    <div className="space-y-3">
-                      {matchedRecipes.map(({ recipe, scaledCost, missing, isCompleteMatch, availableCount, totalCount }) => {
-                        const isSaved = savedRecipeIds.includes(recipe.id);
-                        const isBrokenImg = brokenImages[recipe.id];
-
-                        return (
-                          <div
-                            key={recipe.id}
-                            className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition hover:border-[#0D47A1]"
-                          >
-                            {/* Card Header with Image & Fallback */}
-                            <div className="relative h-32 w-full bg-gray-100 overflow-hidden cursor-pointer" onClick={() => setSelectedRecipeModal(recipe)}>
-                              {!isBrokenImg ? (
-                                <img
-                                  src={recipe.imageUrl}
-                                  alt={recipe.name}
-                                  onError={() => handleImageError(recipe.id)}
-                                  className="w-full h-full object-cover transition duration-300 hover:scale-105"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center p-4">
-                                  <SvgIllustration type={recipe.svgFallbackIcon} className="w-24 h-24" />
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-
-                              {/* Top Action Tags */}
-                              <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
-                                <span className="bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-                                  {recipe.mealType === 'breakfast' ? 'فطار' : recipe.mealType === 'lunch' ? 'غداء' : 'عشاء'}
-                                </span>
-                              </div>
-
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleSaveRecipe(recipe.id);
-                                }}
-                                className={`absolute top-2.5 left-2.5 p-1.5 rounded-full backdrop-blur-xs transition ${
-                                  isSaved ? 'bg-[#FFB300] text-[#0D47A1]' : 'bg-black/40 text-white hover:bg-black/60'
-                                }`}
-                                title={isSaved ? 'محفوظة' : 'حفظ الوجبة'}
-                              >
-                                <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-[#0D47A1]' : ''}`} />
-                              </button>
-
-                              <div className="absolute bottom-2.5 right-2.5 left-2.5">
-                                <h3 className="font-bold text-sm text-white drop-shadow-sm">{recipe.name}</h3>
-                              </div>
-                            </div>
-
-                            <div className="p-3.5 space-y-2.5">
-                              {/* Meta Details */}
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">⏱️ {recipe.prepTimeMinutes} دقيقة</span>
-                                <div className="text-left">
-                                  <span className="bg-[#FFE54C]/40 text-[#0D47A1] font-bold text-xs px-2.5 py-0.5 rounded-md border border-[#FFB300]/40 inline-block">
-                                    🏷️ تكلفة تقديرية: ~{scaledCost} ج.م
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 block mt-0.5">
-                                    سعر استرشادي لـ {familySize} أفراد
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Completeness Badge */}
-                              {isCompleteMatch ? (
-                                <div className="bg-emerald-50 text-emerald-800 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-emerald-200">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>جاهزة بالكامل بمكوناتك الحالية! 🎉</span>
-                                </div>
-                              ) : (
-                                <div className="bg-[#FFE54C]/25 text-[#0D47A1] text-[11px] font-medium px-2.5 py-1 rounded-lg flex items-center justify-between border border-[#FFE54C]">
-                                  <span>متوفر {availableCount} من {totalCount} مكونات (ناقصك {missing.length})</span>
-                                  <button
-                                    onClick={() => handleAddMissingToShopping(missing, recipe.baseServings)}
-                                    className="text-xs font-bold text-[#0D47A1] flex items-center gap-1 hover:underline"
-                                  >
-                                    <ShoppingCart className="w-3 h-3" />
-                                    <span>+ النواقص</span>
-                                  </button>
-                                </div>
-                              )}
-
-                              {/* Missing Items Note */}
-                              {!isCompleteMatch && (
-                                <p className="text-[11px] text-gray-500 truncate">
-                                  النواقص: {missing.map(m => m.name).join('، ')}
-                                </p>
-                              )}
-
-                              <button
-                                onClick={() => setSelectedRecipeModal(recipe)}
-                                className="w-full text-center text-xs font-bold text-[#0D47A1] bg-gray-50 hover:bg-gray-100 py-2 rounded-xl transition"
-                              >
-                                عرض المقادير وبدائل المكونات والخطوات ←
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    </>
                   )}
                 </div>
               )}
@@ -2522,13 +2497,13 @@ export default function App() {
               {activeTab === 'budget' && (
                 <div className="space-y-4">
                   {/* Core Brand Identity Hero Banner */}
-                  <div className="bg-gradient-to-r from-[#0D47A1] via-[#1565C0] to-[#0D47A1] text-white p-3.5 rounded-2xl shadow-sm border-b-2 border-[#FFB300] space-y-1">
+                  <div className="bg-gradient-to-r from-[#626B49] via-[#1565C0] to-[#626B49] text-white p-3.5 rounded-2xl shadow-sm border-b-2 border-[#D8C69A] space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">💛</span>
-                        <h2 className="text-sm font-black text-[#FFB300]">تدبيرة — كل جنيه ليه قيمة</h2>
+                        <h2 className="text-sm font-black text-[#D8C69A]">تدبيرة — كل جنيه ليه قيمة</h2>
                       </div>
-                      <span className="bg-[#FFB300] text-[#0D47A1] text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                      <span className="bg-[#D8C69A] text-[#626B49] text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                         ميزانية البيت 🇪🇬
                       </span>
                     </div>
@@ -2545,19 +2520,19 @@ export default function App() {
                       setExpenseDesc('');
                       setIsAddExpenseModalOpen(true);
                     }}
-                    className="w-full bg-[#0D47A1] hover:bg-[#002171] text-white font-extrabold py-3 px-4 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition"
+                    className="w-full bg-[#626B49] hover:bg-[#002171] text-white font-extrabold py-3 px-4 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition"
                   >
-                    <Plus className="w-4 h-4 text-[#FFB300]" />
+                    <Plus className="w-4 h-4 text-[#D8C69A]" />
                     <span>⚡ تسجيل مصروف فوري</span>
                   </button>
 
                   {/* Smart Financial Advisor Banner */}
-                  <div className="bg-gradient-to-r from-amber-50 via-blue-50 to-emerald-50 p-3.5 rounded-2xl border border-amber-200/80 shadow-sm space-y-1.5">
+                  <div className="bg-gradient-to-r from-amber-50 via-[#78815B]50 to-emerald-50 p-3.5 rounded-2xl border border-[#E6D9B8]/80 shadow-sm space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-xl bg-[#EFE5C8] text-amber-800 flex items-center justify-center shrink-0">
                         <Lightbulb className="w-4 h-4" />
                       </div>
-                      <span className="font-extrabold text-xs text-[#0D47A1]">💡 توجيه ذكي للميزانية</span>
+                      <span className="font-extrabold text-xs text-[#626B49]">💡 توجيه ذكي للميزانية</span>
                     </div>
                     <p className="text-xs font-bold text-gray-800 leading-relaxed pr-9">
                       {(() => {
@@ -2580,10 +2555,10 @@ export default function App() {
                   </div>
 
                   {/* Feature 3: Monthly Payday Cycle & Countdown Widget */}
-                  <div className="bg-gradient-to-l from-blue-900 to-[#0D47A1] text-white p-3.5 rounded-2xl shadow-sm space-y-2.5">
+                  <div className="bg-gradient-to-l from-[#78815B]900 to-[#626B49] text-white p-3.5 rounded-2xl shadow-sm space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-[#FFB300]">
+                        <div className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-[#D8C69A]">
                           <Calendar className="w-4 h-4" />
                         </div>
                         <div>
@@ -2591,7 +2566,7 @@ export default function App() {
                           <span className="text-xs font-extrabold text-white">
                             {paydayAnalytics.isConfigured ? (
                               paydayAnalytics.isToday ? (
-                                <span className="text-[#FFB300]">النهارده موعد الراتب 🎉</span>
+                                <span className="text-[#D8C69A]">النهارده موعد الراتب 🎉</span>
                               ) : (
                                 <span>باقي {paydayAnalytics.daysRemaining} أيام على موعد الراتب القادم</span>
                               )
@@ -2610,7 +2585,7 @@ export default function App() {
                         className="text-[11px] bg-white/15 hover:bg-white/25 px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 text-white border border-white/20"
                         title="تعديل أو تحديد يوم نزول الراتب"
                       >
-                        <Clock className="w-3 h-3 text-[#FFB300]" />
+                        <Clock className="w-3 h-3 text-[#D8C69A]" />
                         <span>{paydayAnalytics.isConfigured ? `يوم ${paydayAnalytics.paydayDay}` : 'تحديد اليوم'}</span>
                       </button>
                     </div>
@@ -2621,7 +2596,7 @@ export default function App() {
                           <span className="text-[10px] text-blue-200 block">الحد المقترح للصرف اليومي:</span>
                           {!paydayAnalytics.isBudgetExhausted && paydayAnalytics.dailyCap !== null ? (
                             <div className="flex items-baseline gap-1">
-                              <span className="text-base font-black text-[#FFB300]">~{paydayAnalytics.dailyCap}</span>
+                              <span className="text-base font-black text-[#D8C69A]">~{paydayAnalytics.dailyCap}</span>
                               <span className="text-[10px] text-white">ج.م/يوم</span>
                               <span className="text-[10px] text-blue-200 mr-1 font-normal">
                                 ({paydayAnalytics.daysRemaining > 0 ? `على مدار ${paydayAnalytics.daysRemaining} يوم` : 'اليوم'})
@@ -2651,7 +2626,7 @@ export default function App() {
                             setTempPaydayInput('25');
                             setIsPaydayModalOpen(true);
                           }}
-                          className="bg-[#FFB300] hover:bg-[#FFA000] text-[#0D47A1] font-extrabold text-[11px] px-2.5 py-1 rounded-lg shrink-0 mr-2 transition"
+                          className="bg-[#D8C69A] hover:bg-[#FFA000] text-[#626B49] font-extrabold text-[11px] px-2.5 py-1 rounded-lg shrink-0 mr-2 transition"
                         >
                           ضبط الآن
                         </button>
@@ -2669,7 +2644,7 @@ export default function App() {
                           value={budgetAmount}
                           onChange={(e) => setBudgetAmount(e.target.value)}
                           placeholder="مثال: 2500"
-                          className="w-full text-lg font-extrabold text-[#0D47A1] border border-gray-300 rounded-xl px-3 py-2 pr-12 focus:outline-none focus:border-[#0D47A1]"
+                          className="w-full text-lg font-extrabold text-[#626B49] border border-gray-300 rounded-xl px-3 py-2 pr-12 focus:outline-none focus:border-[#626B49]"
                         />
                         <span className="absolute left-3 top-2.5 font-bold text-sm text-gray-400">ج.م</span>
                       </div>
@@ -2677,9 +2652,9 @@ export default function App() {
 
                     {/* Financial Snapshot Tiles */}
                     <div className="grid grid-cols-2 gap-2 pt-1 text-center">
-                      <div className="bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
+                      <div className="bg-[#F1F3EA]/70 p-2.5 rounded-xl border border-[#E4DECF]">
                         <span className="text-[10px] text-gray-500 block">إجمالي المصروف الفعلي</span>
-                        <span className="text-sm font-black text-[#0D47A1]">{totalSpentAll} ج.م</span>
+                        <span className="text-sm font-black text-[#626B49]">{totalSpentAll} ج.م</span>
                       </div>
                       <div className={`p-2.5 rounded-xl border ${
                         totalRemainingAll >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-700'
@@ -2694,12 +2669,12 @@ export default function App() {
                   <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-blue-50 text-[#0D47A1]">
+                        <div className="p-1.5 rounded-lg bg-[#F1F3EA] text-[#626B49]">
                           <PieChart className="w-4 h-4" />
                         </div>
                         <div>
                           <h3 className="text-xs font-extrabold text-gray-900">توزيع المصروف الفعلي حسب البنود</h3>
-                          <span className="text-[10px] text-gray-400">تحليل بياني لحجم إنفاقك الحقيقي حتى الآن</span>
+                          <span className="text-[10px] text-gray-400">تحليل إنفاق دورة الراتب الحالية ({payCycleRange.label})</span>
                         </div>
                       </div>
                       {selectedDonutSegmentId && (
@@ -2769,20 +2744,20 @@ export default function App() {
                           {/* Center Text in Donut */}
                           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
                             <span className="text-[10px] text-gray-400 font-medium">إجمالي المصروف</span>
-                            <span className="text-base font-black text-[#0D47A1] leading-tight">{totalSpentAll}</span>
+                            <span className="text-base font-black text-[#626B49] leading-tight">{totalSpentAll}</span>
                             <span className="text-[10px] font-bold text-gray-500">ج.م</span>
                           </div>
                         </div>
 
                         {/* Interactive Detail Panel */}
                         {selectedDonutSegment && (
-                          <div className="bg-blue-50/70 p-3 rounded-xl border border-blue-200 text-xs space-y-1.5 animate-fadeIn">
+                          <div className="bg-[#F1F3EA]/70 p-3 rounded-xl border border-[#DCE2D0] text-xs space-y-1.5 animate-fadeIn">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-1.5 font-bold text-gray-900">
                                 <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: selectedDonutSegment.color }} />
                                 <span>{selectedDonutSegment.categoryName}</span>
                               </div>
-                              <span className="bg-[#0D47A1] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                              <span className="bg-[#626B49] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                                 {selectedDonutSegment.sharePercentage}% من إجمالي الصرف
                               </span>
                             </div>
@@ -2790,7 +2765,7 @@ export default function App() {
                             <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
                               <div>
                                 <span className="text-gray-500 block">المنصرف الفعلي:</span>
-                                <span className="font-extrabold text-[#0D47A1]">{selectedDonutSegment.spent} ج.م</span>
+                                <span className="font-extrabold text-[#626B49]">{selectedDonutSegment.spent} ج.م</span>
                               </div>
                               <div>
                                 <span className="text-gray-500 block">الميزانية المخصصة:</span>
@@ -2819,7 +2794,7 @@ export default function App() {
                                   }
                                 }}
                                 className={`p-1.5 rounded-lg text-right transition flex items-center justify-between ${
-                                  isSelected ? 'bg-blue-50 border border-blue-300' : 'hover:bg-gray-50'
+                                  isSelected ? 'bg-[#F1F3EA] border border-blue-300' : 'hover:bg-gray-50'
                                 } ${cat.spent === 0 ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}
                               >
                                 <div className="flex items-center gap-1.5 truncate">
@@ -2848,7 +2823,7 @@ export default function App() {
                         <button
                           key={idx}
                           onClick={() => handleApplyPreset(preset.percentages)}
-                          className="bg-white border border-gray-200 hover:border-[#0D47A1] text-gray-700 text-xs px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap shadow-xs transition"
+                          className="bg-white border border-gray-200 hover:border-[#626B49] text-gray-700 text-xs px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap shadow-xs transition"
                         >
                           {preset.name}
                         </button>
@@ -2862,7 +2837,7 @@ export default function App() {
                       <span className="font-bold text-gray-900">بنود الميزانية والإنفاق:</span>
                       <button
                         onClick={() => setIsAddCategoryModalOpen(true)}
-                        className="text-xs font-bold text-[#0D47A1] flex items-center gap-1 hover:underline"
+                        className="text-xs font-bold text-[#626B49] flex items-center gap-1 hover:underline"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>إضافة بند مخصص</span>
@@ -2876,18 +2851,18 @@ export default function App() {
                         <div key={cat.id} className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-[#0D47A1]">
+                              <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-[#626B49]">
                                 {renderCategoryIcon(cat.iconName)}
                               </div>
                               <div>
                                 <span className="font-bold text-sm text-gray-800 block">{cat.name}</span>
                                 {cat.isCustom && (
-                                  <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold">مخصص</span>
+                                  <span className="text-[9px] bg-[#EFE5C8] text-amber-800 px-1 py-0.2 rounded font-bold">مخصص</span>
                                 )}
                               </div>
                             </div>
                             <div className="text-left">
-                              <span className="bg-blue-50 text-[#0D47A1] text-xs font-extrabold px-2 py-0.5 rounded-md inline-block">
+                              <span className="bg-[#F1F3EA] text-[#626B49] text-xs font-extrabold px-2 py-0.5 rounded-md inline-block">
                                 {cat.percentage}% من الميزانية
                               </span>
                               <span className="text-[10px] text-gray-400 block mt-0.5">
@@ -2899,7 +2874,7 @@ export default function App() {
                           {/* Amount, Spent & Remaining / Exceeded */}
                           <div className="flex items-baseline justify-between text-xs pt-0.5">
                             <div>
-                              <span className="text-base font-black text-[#0D47A1]">{cat.allocated} ج.م</span>
+                              <span className="text-base font-black text-[#626B49]">{cat.allocated} ج.م</span>
                               <span className="text-gray-400 text-[10px] mr-1">المخصص</span>
                             </div>
                             <div className="text-left">
@@ -2925,7 +2900,7 @@ export default function App() {
                                 analytics.colorStatus === 'red'
                                   ? 'bg-rose-500'
                                   : analytics.colorStatus === 'amber'
-                                  ? 'bg-amber-500'
+                                  ? 'bg-[#F7F0DE]0'
                                   : 'bg-emerald-500'
                               }`}
                               style={{ width: `${analytics.visualPercentage}%` }}
@@ -2967,7 +2942,7 @@ export default function App() {
                               step="1"
                               value={cat.percentage}
                               onChange={(e) => handleUpdatePercentage(idx, parseInt(e.target.value))}
-                              className="w-full accent-[#0D47A1] cursor-pointer"
+                              className="w-full accent-[#626B49] cursor-pointer"
                             />
                             <button
                               onClick={() => handleUpdatePercentage(idx, cat.percentage + 5)}
@@ -2983,7 +2958,7 @@ export default function App() {
 
                     <button
                       onClick={handleSaveBudgetPlan}
-                      className="w-full bg-[#0D47A1] hover:bg-[#002171] text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition"
+                      className="w-full bg-[#626B49] hover:bg-[#002171] text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition"
                     >
                       <Bookmark className="w-4 h-4 text-[#FFE54C]" />
                       <span>حفظ خطة الميزانية في المحفوظات</span>
@@ -2995,38 +2970,47 @@ export default function App() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-extrabold text-xs text-gray-900">سجل المصاريف الحقيقية:</h3>
-                        <span className="text-[10px] text-gray-400">سجل كل عملية شراء لحظة بلحظة</span>
+                        <span className="text-[10px] text-gray-400">{showAllExpenseHistory ? 'كل المصروفات المسجلة' : 'مصروفات دورة الراتب الحالية'}</span>
                       </div>
-                      <button
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setShowAllExpenseHistory(value => !value)}
+                          className="text-[10px] font-bold text-[#626B49] border border-[#E4DECF] rounded-lg px-2 py-1"
+                        >
+                          {showAllExpenseHistory ? 'الدورة الحالية' : 'كل السجل'}
+                        </button>
+                        <button
                         onClick={() => setIsAddExpenseModalOpen(true)}
-                        className="bg-[#0D47A1] hover:bg-[#002171] text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition"
+                        className="bg-[#626B49] hover:bg-[#002171] text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>تسجيل مصروف</span>
-                      </button>
+                        </button>
+                      </div>
                     </div>
 
-                    {expenses.length === 0 ? (
+                    <div className="text-[10px] text-gray-400 -mt-1">{showAllExpenseHistory ? 'كل السجل المالي' : `دورة الراتب الحالية: ${payCycleRange.label}`}</div>
+                    {displayedExpenses.length === 0 ? (
                       <div className="p-4 text-center text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">
-                        لسه مسجلتش مصاريف. اضغط على "تسجيل مصروف" عشان تتابع رصيدك.
+                        {showAllExpenseHistory ? 'لا توجد مصروفات مسجلة حتى الآن.' : 'لا توجد مصروفات مسجلة في دورة الراتب الحالية. المصروفات السابقة محفوظة ولا تؤثر على رصيد الدورة الجديدة.'}
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {expenses.slice(0, 5).map(exp => {
+                        {displayedExpenses.slice(0, 5).map(exp => {
                           const cat = categories.find(c => c.id === exp.categoryId);
                           return (
                             <div key={exp.id} className="p-2.5 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between text-xs">
                               <div className="flex-1">
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-bold text-gray-800">{exp.description}</span>
-                                  <span className="text-[10px] bg-blue-100 text-[#0D47A1] px-1.5 py-0.2 rounded font-medium">
+                                  <span className="text-[10px] bg-[#E8EBDD] text-[#626B49] px-1.5 py-0.2 rounded font-medium">
                                     {cat?.name || 'عام'}
                                   </span>
                                 </div>
                                 <span className="text-[10px] text-gray-400 mt-0.5 block">{exp.date}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="font-black text-[#0D47A1]">{exp.amount} ج.م</span>
+                                <span className="font-black text-[#626B49]">{exp.amount} ج.م</span>
                                 <button
                                   onClick={() => handleDeleteExpense(exp.id)}
                                   className="text-gray-400 hover:text-red-600 p-1"
@@ -3051,8 +3035,8 @@ export default function App() {
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <h2 className="text-lg font-extrabold text-[#0D47A1]">تدبيرة اليوم 💡</h2>
-                      <span className="text-xs bg-[#FFB300] text-[#0D47A1] font-black px-2 py-0.5 rounded-full">كل جنيه ليه قيمة 💛</span>
+                      <h2 className="text-lg font-extrabold text-[#626B49]">تدبيرة اليوم 💡</h2>
+                      <span className="text-xs bg-[#D8C69A] text-[#626B49] font-black px-2 py-0.5 rounded-full">كل جنيه ليه قيمة 💛</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
                       وفّر بذكاء، ودبّر بيتك، وخلي كل جنيه في مكانه مع حيل يومية مجربة.
@@ -3063,11 +3047,11 @@ export default function App() {
                   <div className={`p-4 rounded-2xl border transition ${
                     dailyCompleted
                       ? 'bg-emerald-50 border-emerald-300'
-                      : 'bg-[#FFE54C]/25 border-[#FFB300]'
+                      : 'bg-[#FFE54C]/25 border-[#D8C69A]'
                   }`}>
                     <div className="flex items-center justify-between">
                       <span className={`text-xs font-black px-2.5 py-0.5 rounded-md ${
-                        dailyCompleted ? 'bg-emerald-600 text-white' : 'bg-[#0D47A1] text-white'
+                        dailyCompleted ? 'bg-emerald-600 text-white' : 'bg-[#626B49] text-white'
                       }`}>
                         {dailyCompleted ? 'تم إنجاز التحدي! 🎉' : '🎯 تدبيرتك النهارده'}
                       </span>
@@ -3076,7 +3060,7 @@ export default function App() {
 
                     <h3 className="font-extrabold text-sm text-gray-900 mt-2">{todayChallenge.title}</h3>
                     <p className="text-xs text-gray-700 mt-1 leading-relaxed">{todayChallenge.description}</p>
-                    <span className="inline-block mt-2 text-[11px] text-amber-800 bg-amber-100 font-semibold px-2 py-0.5 rounded">
+                    <span className="inline-block mt-2 text-[11px] text-amber-800 bg-[#EFE5C8] font-semibold px-2 py-0.5 rounded">
                       ✨ {todayChallenge.impactTag}
                     </span>
 
@@ -3095,7 +3079,7 @@ export default function App() {
 
                       <button
                         onClick={handleShareDailyChallenge}
-                        className="text-xs font-bold text-[#0D47A1] bg-white border border-gray-200 hover:bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 transition"
+                        className="text-xs font-bold text-[#626B49] bg-white border border-gray-200 hover:bg-[#F1F3EA] px-3 py-1.5 rounded-lg flex items-center gap-1 transition"
                       >
                         <Share2 className="w-3.5 h-3.5" />
                         <span>مشاركة الإنجاز</span>
@@ -3104,15 +3088,15 @@ export default function App() {
                   </div>
 
                   {/* Phase 4C: Achievement Counter & "أفكاري المحفوظة" Toggle Banner */}
-                  <div className="bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 p-3 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 p-3 rounded-2xl border border-[#E6D9B8]/80 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-[#FFB300] text-[#0D47A1] font-black flex items-center justify-center text-sm shadow-inner shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-[#D8C69A] text-[#626B49] font-black flex items-center justify-center text-sm shadow-inner shrink-0">
                         🏆
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span className="font-extrabold text-xs text-gray-900">إنجازات تدابير التوفير:</span>
-                          <span className="bg-[#0D47A1] text-white text-[10px] font-black px-2 py-0.2 rounded-full">
+                          <span className="bg-[#626B49] text-white text-[10px] font-black px-2 py-0.2 rounded-full">
                             {calculateUniqueAchievementCount(triedTipIds)} حيل مُجربة
                           </span>
                         </div>
@@ -3130,8 +3114,8 @@ export default function App() {
                       onClick={() => setDailyTipsViewMode(prev => prev === 'saved' ? 'all' : 'saved')}
                       className={`text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1 border shrink-0 ${
                         dailyTipsViewMode === 'saved'
-                          ? 'bg-[#0D47A1] text-white border-[#0D47A1] shadow-xs'
-                          : 'bg-white text-[#0D47A1] border-blue-200 hover:bg-blue-50'
+                          ? 'bg-[#626B49] text-white border-[#626B49] shadow-xs'
+                          : 'bg-white text-[#626B49] border-[#DCE2D0] hover:bg-[#F1F3EA]'
                       }`}
                       title="عرض الحيل التي حفظتها للرجوع إليها"
                     >
@@ -3148,22 +3132,22 @@ export default function App() {
                         value={dailySearch}
                         onChange={(e) => setDailySearch(e.target.value)}
                         placeholder="ابحث في أفكار التوفير والمنزل..."
-                        className="w-full text-xs bg-white border border-gray-200 rounded-xl py-2 px-3 pl-8 focus:outline-none focus:border-[#0D47A1]"
+                        className="w-full text-xs bg-white border border-gray-200 rounded-xl py-2 px-3 pl-8 focus:outline-none focus:border-[#626B49]"
                       />
                       <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" />
                     </div>
 
                     {/* Active Saved Mode Indicator */}
                     {dailyTipsViewMode === 'saved' && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs">
-                        <span className="font-bold text-[#0D47A1] flex items-center gap-1">
-                          <Bookmark className="w-3.5 h-3.5 fill-[#0D47A1]" />
+                      <div className="bg-[#F1F3EA] border border-[#DCE2D0] rounded-xl px-3 py-1.5 flex items-center justify-between text-xs">
+                        <span className="font-bold text-[#626B49] flex items-center gap-1">
+                          <Bookmark className="w-3.5 h-3.5 fill-[#626B49]" />
                           <span>عرض أفكاري المحفوظة ({filteredDailyIdeas.length})</span>
                         </span>
                         <button
                           type="button"
                           onClick={() => setDailyTipsViewMode('all')}
-                          className="text-[11px] font-bold text-gray-600 hover:text-[#0D47A1] underline"
+                          className="text-[11px] font-bold text-gray-600 hover:text-[#626B49] underline"
                         >
                           عرض كل الحيل
                         </button>
@@ -3178,7 +3162,7 @@ export default function App() {
                           onClick={() => setSelectedDailyCategory(cat)}
                           className={`px-3 py-1 rounded-xl whitespace-nowrap font-bold transition ${
                             selectedDailyCategory === cat
-                              ? 'bg-[#0D47A1] text-white shadow-xs'
+                              ? 'bg-[#626B49] text-white shadow-xs'
                               : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                           }`}
                         >
@@ -3192,7 +3176,7 @@ export default function App() {
                   <div className="space-y-3">
                     {filteredDailyIdeas.length === 0 ? (
                       <div className="bg-white p-6 rounded-2xl border border-dashed border-gray-300 text-center space-y-2">
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-[#0D47A1] mx-auto flex items-center justify-center font-bold text-lg">
+                        <div className="w-10 h-10 rounded-full bg-[#F1F3EA] text-[#626B49] mx-auto flex items-center justify-center font-bold text-lg">
                           💡
                         </div>
                         <p className="text-xs font-bold text-gray-800">
@@ -3207,7 +3191,7 @@ export default function App() {
                             setSelectedDailyCategory('الكل');
                             setDailySearch('');
                           }}
-                          className="text-xs font-bold text-[#0D47A1] bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition"
+                          className="text-xs font-bold text-[#626B49] bg-[#F1F3EA] hover:bg-[#E8EBDD] px-3 py-1.5 rounded-xl transition"
                         >
                           عرض كل الحيل 💡
                         </button>
@@ -3256,7 +3240,7 @@ export default function App() {
                               </div>
                               <p className="text-xs text-gray-600 leading-relaxed">{idea.description}</p>
 
-                              <div className="bg-blue-50/70 p-2 rounded-xl text-[11px] text-[#0D47A1] flex items-center gap-1.5">
+                              <div className="bg-[#F1F3EA]/70 p-2 rounded-xl text-[11px] text-[#626B49] flex items-center gap-1.5">
                                 <span>💡</span>
                                 <span className="font-medium">{idea.practicalTip}</span>
                               </div>
@@ -3294,7 +3278,7 @@ export default function App() {
                                     onClick={() => toggleSaveTip(idea.id)}
                                     className={`text-xs font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition border ${
                                       isSaved
-                                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                        ? 'bg-[#EFE5C8] text-[#765B3A] border-amber-300'
                                         : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200'
                                     }`}
                                     title="حفظ في أفكاري المحفوظة"
@@ -3307,7 +3291,7 @@ export default function App() {
                                   <button
                                     type="button"
                                     onClick={() => handleShareTip(idea)}
-                                    className="text-xs font-bold text-[#0D47A1] hover:bg-blue-50 px-2.5 py-1.5 rounded-xl border border-gray-200 flex items-center gap-1 transition"
+                                    className="text-xs font-bold text-[#626B49] hover:bg-[#F1F3EA] px-2.5 py-1.5 rounded-xl border border-gray-200 flex items-center gap-1 transition"
                                     title="مشاركة النصيحة"
                                   >
                                     <Share2 className="w-3.5 h-3.5" />
@@ -3329,7 +3313,7 @@ export default function App() {
               {activeTab === 'saved' && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-extrabold text-[#0D47A1]">المحفوظات وقائمة النواقص 📋</h2>
+                    <h2 className="text-lg font-extrabold text-[#626B49]">المحفوظات وقائمة النواقص 📋</h2>
                     <p className="text-xs text-gray-500 mt-0.5">
                       طلبات السوق والوجبات والنصائح والميزانيات المحفوظة بدون إنترنت.
                     </p>
@@ -3340,7 +3324,7 @@ export default function App() {
                     <button
                       onClick={() => setSavedSubTab('shopping')}
                       className={`py-1.5 rounded-lg transition ${
-                        savedSubTab === 'shopping' ? 'bg-[#0D47A1] text-white shadow-sm' : 'text-gray-600'
+                        savedSubTab === 'shopping' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'
                       }`}
                     >
                       النواقص ({shoppingItems.length})
@@ -3348,7 +3332,7 @@ export default function App() {
                     <button
                       onClick={() => setSavedSubTab('recipes')}
                       className={`py-1.5 rounded-lg transition ${
-                        savedSubTab === 'recipes' ? 'bg-[#0D47A1] text-white shadow-sm' : 'text-gray-600'
+                        savedSubTab === 'recipes' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'
                       }`}
                     >
                       الوجبات ({savedRecipeIds.length})
@@ -3356,7 +3340,7 @@ export default function App() {
                     <button
                       onClick={() => setSavedSubTab('tips')}
                       className={`py-1.5 rounded-lg transition ${
-                        savedSubTab === 'tips' ? 'bg-[#0D47A1] text-white shadow-sm' : 'text-gray-600'
+                        savedSubTab === 'tips' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'
                       }`}
                     >
                       النصائح ({savedTipIds.length})
@@ -3364,14 +3348,14 @@ export default function App() {
                     <button
                       onClick={() => setSavedSubTab('budgets')}
                       className={`py-1.5 rounded-lg transition ${
-                        savedSubTab === 'budgets' ? 'bg-[#0D47A1] text-white shadow-sm' : 'text-gray-600'
+                        savedSubTab === 'budgets' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'
                       }`}
                     >
                       الميزانيات ({savedBudgets.length})
                     </button>
                     <button
                       onClick={() => setSavedSubTab('household')}
-                      className={`py-1.5 rounded-lg transition ${savedSubTab === 'household' ? 'bg-[#0D47A1] text-white shadow-sm' : 'text-gray-600'}`}
+                      className={`py-1.5 rounded-lg transition ${savedSubTab === 'household' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'}`}
                     >
                       إدارة البيت
                     </button>
@@ -3397,11 +3381,11 @@ export default function App() {
                         </button>
 
                         {/* Phase 4E: Smart Deals & Affiliate Widget */}
-                        <div className="bg-gradient-to-br from-blue-50 to-amber-50/50 p-3.5 rounded-2xl border border-blue-200 shadow-sm space-y-2.5">
-                          <div className="flex items-center justify-between border-b border-blue-100 pb-2">
+                        <div className="bg-gradient-to-br from-[#78815B]50 to-amber-50/50 p-3.5 rounded-2xl border border-[#DCE2D0] shadow-sm space-y-2.5">
+                          <div className="flex items-center justify-between border-b border-[#E4DECF] pb-2">
                             <div className="flex items-center gap-1.5">
-                              <Sparkles className="w-4 h-4 text-[#FFB300]" />
-                              <h3 className="text-xs font-extrabold text-[#0D47A1]">🛒 عروض وتخفيضات متاحة على طلباتك</h3>
+                              <Sparkles className="w-4 h-4 text-[#D8C69A]" />
+                              <h3 className="text-xs font-extrabold text-[#626B49]">🛒 عروض وتخفيضات متاحة على طلباتك</h3>
                             </div>
                             <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full">
                               خصومات مصرية معتمدة ✓
@@ -3416,7 +3400,7 @@ export default function App() {
                                     <div className="flex items-center gap-1.5">
                                       <span className="font-extrabold text-xs text-gray-900">{deal.partnerName}</span>
                                       {deal.verificationStatus === 'verified' && (
-                                        <span className="text-[9px] bg-blue-100 text-[#0D47A1] font-bold px-1.5 py-0.2 rounded">
+                                        <span className="text-[9px] bg-[#E8EBDD] text-[#626B49] font-bold px-1.5 py-0.2 rounded">
                                           مؤكد ✓
                                         </span>
                                       )}
@@ -3424,7 +3408,7 @@ export default function App() {
                                     <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">{deal.description}</p>
                                   </div>
                                   {deal.couponCode && (
-                                    <div className="bg-amber-50 border border-amber-200 px-2 py-1 rounded-xl text-center shrink-0">
+                                    <div className="bg-[#F7F0DE] border border-[#E6D9B8] px-2 py-1 rounded-xl text-center shrink-0">
                                       <span className="text-[9px] text-amber-800 block">كود الخصم:</span>
                                       <span className="font-mono font-bold text-xs text-amber-950">{deal.couponCode}</span>
                                     </div>
@@ -3448,7 +3432,7 @@ export default function App() {
                                           showToast(`كود الخصم: ${deal.couponCode} (انسخه يدوياً)`);
                                         }
                                       }}
-                                      className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-2.5 rounded-xl text-[11px] flex items-center justify-center gap-1 transition shadow-sm"
+                                      className="flex-1 bg-[#F7F0DE]0 hover:bg-amber-600 text-white font-bold py-1.5 px-2.5 rounded-xl text-[11px] flex items-center justify-center gap-1 transition shadow-sm"
                                     >
                                       <Copy className="w-3.5 h-3.5" />
                                       <span>نسخ الكود</span>
@@ -3458,7 +3442,7 @@ export default function App() {
                                     href={deal.affiliateTrackingUrl || deal.officialUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 bg-[#0D47A1] hover:bg-[#002171] text-white font-bold py-1.5 px-2.5 rounded-xl text-[11px] flex items-center justify-center gap-1 transition shadow-sm text-center"
+                                    className="flex-1 bg-[#626B49] hover:bg-[#002171] text-white font-bold py-1.5 px-2.5 rounded-xl text-[11px] flex items-center justify-center gap-1 transition shadow-sm text-center"
                                   >
                                     <span>شراء النواقص مع كود الخصم</span>
                                     <ArrowRight className="w-3.5 h-3.5 rotate-180" />
@@ -3484,7 +3468,7 @@ export default function App() {
                               setNewItemUnitPrice('');
                               setIsAddItemModalOpen(true);
                             }}
-                            className="bg-[#0D47A1] hover:bg-[#002171] text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-sm transition"
+                            className="bg-[#626B49] hover:bg-[#002171] text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-sm transition"
                           >
                             <Plus className="w-3.5 h-3.5" />
                             <span>إضافة طلب جديد</span>
@@ -3516,7 +3500,7 @@ export default function App() {
                       {/* Empty State */}
                       {shoppingItems.length === 0 ? (
                         <div className="bg-white p-8 rounded-3xl text-center border border-dashed border-gray-300 space-y-3">
-                          <div className="w-14 h-14 bg-blue-50 text-[#0D47A1] rounded-full mx-auto flex items-center justify-center shadow-inner">
+                          <div className="w-14 h-14 bg-[#F1F3EA] text-[#626B49] rounded-full mx-auto flex items-center justify-center shadow-inner">
                             <ShoppingCart className="w-7 h-7" />
                           </div>
                           <h4 className="text-base font-extrabold text-gray-800">
@@ -3549,7 +3533,7 @@ export default function App() {
                                     className="flex items-center gap-2.5 cursor-pointer flex-1"
                                   >
                                     <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition ${
-                                      item.isChecked ? 'bg-[#0D47A1] border-[#0D47A1] text-white' : 'border-gray-300 bg-white'
+                                      item.isChecked ? 'bg-[#626B49] border-[#626B49] text-white' : 'border-gray-300 bg-white'
                                     }`}>
                                       {item.isChecked && <Check className="w-3.5 h-3.5" />}
                                     </div>
@@ -3568,7 +3552,7 @@ export default function App() {
                                                 currentPrice: item.unitPrice !== null ? item.unitPrice.toString() : ''
                                               });
                                             }}
-                                            className="text-[10px] text-gray-500 hover:text-[#0D47A1] flex items-center gap-0.5"
+                                            className="text-[10px] text-gray-500 hover:text-[#626B49] flex items-center gap-0.5"
                                             title="اضغط لتعديل سعر الوحدة"
                                           >
                                             <span>سعر الوحدة: {item.unitPrice} ج.م</span>
@@ -3584,10 +3568,10 @@ export default function App() {
                                                 currentPrice: ''
                                               });
                                             }}
-                                            className="text-[10px] text-amber-700 font-bold bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1"
+                                            className="text-[10px] text-amber-700 font-bold bg-[#F7F0DE] hover:bg-[#EFE5C8] px-1.5 py-0.5 rounded border border-[#E6D9B8] flex items-center gap-1"
                                           >
                                             <span>السعر غير محدد</span>
-                                            <span className="text-[#0D47A1] underline">حدد السعر</span>
+                                            <span className="text-[#626B49] underline">حدد السعر</span>
                                           </button>
                                         )}
                                       </div>
@@ -3619,11 +3603,11 @@ export default function App() {
                                     {/* Line Total Display (Never NaN) */}
                                     <div className="text-left min-w-[65px]">
                                       {lineTotal !== null ? (
-                                        <span className="font-black text-xs text-[#0D47A1] block">
+                                        <span className="font-black text-xs text-[#626B49] block">
                                           {Math.round(lineTotal)} ج.م
                                         </span>
                                       ) : (
-                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded block">
+                                        <span className="text-[10px] font-bold text-amber-700 bg-[#F7F0DE] px-1.5 py-0.5 rounded block">
                                           غير مسعر
                                         </span>
                                       )}
@@ -3651,7 +3635,7 @@ export default function App() {
                     <div className="space-y-3">
                       {savedRecipeIds.length === 0 ? (
                         <div className="bg-white p-8 rounded-3xl text-center border border-dashed border-gray-300 space-y-2">
-                          <div className="w-12 h-12 bg-amber-50 text-[#FFB300] rounded-full mx-auto flex items-center justify-center">
+                          <div className="w-12 h-12 bg-[#F7F0DE] text-[#D8C69A] rounded-full mx-auto flex items-center justify-center">
                             <Bookmark className="w-6 h-6" />
                           </div>
                           <p className="text-sm font-extrabold text-gray-800">
@@ -3667,7 +3651,7 @@ export default function App() {
                             <div onClick={() => setSelectedRecipeModal(r)} className="cursor-pointer flex-1">
                               <h4 className="font-bold text-sm text-gray-900">{r.name}</h4>
                               <p className="text-xs text-gray-500 mt-0.5">
-                                ⏱️ {r.prepTimeMinutes} دقيقة • <span className="text-[#0D47A1] font-bold">🏷️ تكلفة تقديرية: ~{getScaledCost(r)} ج.م ({familySize} أفراد)</span>
+                                ⏱️ {r.prepTimeMinutes} دقيقة • <span className="text-[#626B49] font-bold">🏷️ تكلفة تقديرية: ~{getScaledCost(r)} ج.م ({familySize} أفراد)</span>
                               </p>
                             </div>
                             <button
@@ -3689,7 +3673,7 @@ export default function App() {
                     <div className="space-y-3">
                       {savedTipIds.length === 0 ? (
                         <div className="bg-white p-8 rounded-3xl text-center border border-dashed border-gray-300 space-y-3">
-                          <div className="w-12 h-12 bg-blue-50 text-[#0D47A1] rounded-2xl mx-auto flex items-center justify-center text-xl shadow-inner">
+                          <div className="w-12 h-12 bg-[#F1F3EA] text-[#626B49] rounded-2xl mx-auto flex items-center justify-center text-xl shadow-inner">
                             🔖
                           </div>
                           <p className="text-sm font-extrabold text-gray-800">
@@ -3701,7 +3685,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => setActiveTab('daily')}
-                            className="text-xs font-bold text-white bg-[#0D47A1] hover:bg-[#002171] px-4 py-2 rounded-xl transition inline-flex items-center gap-1.5 shadow-sm"
+                            className="text-xs font-bold text-white bg-[#626B49] hover:bg-[#002171] px-4 py-2 rounded-xl transition inline-flex items-center gap-1.5 shadow-sm"
                           >
                             <span>تصفح تدبيرة اليوم 💡</span>
                           </button>
@@ -3713,7 +3697,7 @@ export default function App() {
                             <div key={idea.id} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2.5">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] bg-blue-50 text-[#0D47A1] px-2 py-0.5 rounded font-bold">
+                                  <span className="text-[10px] bg-[#F1F3EA] text-[#626B49] px-2 py-0.5 rounded font-bold">
                                     {idea.category}
                                   </span>
                                   {isTried && (
@@ -3739,7 +3723,7 @@ export default function App() {
                                 <p className="text-xs text-gray-600 leading-relaxed mt-1">{idea.description}</p>
                               </div>
 
-                              <div className="bg-blue-50/70 p-2 rounded-xl text-[11px] text-[#0D47A1] flex items-center gap-1.5">
+                              <div className="bg-[#F1F3EA]/70 p-2 rounded-xl text-[11px] text-[#626B49] flex items-center gap-1.5">
                                 <span>💡</span>
                                 <span className="font-medium">{idea.practicalTip}</span>
                               </div>
@@ -3771,7 +3755,7 @@ export default function App() {
                                 <button
                                   type="button"
                                   onClick={() => handleShareTip(idea)}
-                                  className="text-xs font-bold text-[#0D47A1] hover:bg-blue-50 px-2.5 py-1.5 rounded-xl border border-gray-200 flex items-center gap-1 transition"
+                                  className="text-xs font-bold text-[#626B49] hover:bg-[#F1F3EA] px-2.5 py-1.5 rounded-xl border border-gray-200 flex items-center gap-1 transition"
                                 >
                                   <Share2 className="w-3.5 h-3.5" />
                                   <span>مشاركة</span>
@@ -3789,7 +3773,7 @@ export default function App() {
                     <div className="space-y-3">
                       {savedBudgets.length === 0 ? (
                         <div className="bg-white p-8 rounded-3xl text-center border border-dashed border-gray-300 space-y-2">
-                          <div className="w-12 h-12 bg-amber-50 text-[#FFB300] rounded-full mx-auto flex items-center justify-center">
+                          <div className="w-12 h-12 bg-[#F7F0DE] text-[#D8C69A] rounded-full mx-auto flex items-center justify-center">
                             <Wallet className="w-6 h-6" />
                           </div>
                           <p className="text-sm font-extrabold text-gray-800">
@@ -3804,7 +3788,7 @@ export default function App() {
                           <div key={b.id} className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm space-y-2">
                             <div className="flex items-center justify-between">
                               <div>
-                                <h4 className="font-bold text-sm text-[#0D47A1]">{b.categoryTitle}</h4>
+                                <h4 className="font-bold text-sm text-[#626B49]">{b.categoryTitle}</h4>
                                 <span className="text-xs font-extrabold text-gray-800">{b.totalAmount} جنيه مصري</span>
                               </div>
                               <button
@@ -3857,7 +3841,7 @@ export default function App() {
                 {IS_DEV && (
                   <button
                     onClick={() => setIsAdControlsOpen(true)}
-                    className="text-[9px] text-[#0D47A1] font-bold hover:underline"
+                    className="text-[9px] text-[#626B49] font-bold hover:underline"
                   >
                     اختبار الحالة ⚙️
                   </button>
@@ -3867,13 +3851,13 @@ export default function App() {
               {/* Banner Area (Fixed 50px Height Reservation) */}
               <div className="h-[50px] w-full rounded-lg overflow-hidden relative">
                 {adStatus === 'loaded' && (
-                  <div className="h-full w-full bg-gradient-to-r from-blue-50 via-amber-50 to-blue-50 border border-blue-200/80 rounded-lg flex items-center justify-between px-3 text-xs select-none shadow-inner">
+                  <div className="h-full w-full bg-gradient-to-r from-[#78815B]50 via-amber-50 to-[#626B49]50 border border-[#DCE2D0]/80 rounded-lg flex items-center justify-between px-3 text-xs select-none shadow-inner">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-[#0D47A1] text-[#FFB300] font-black text-[10px] flex items-center justify-center shrink-0">
+                      <div className="w-6 h-6 rounded-md bg-[#626B49] text-[#D8C69A] font-black text-[10px] flex items-center justify-center shrink-0">
                         Ad
                       </div>
                       <div>
-                        <span className="font-extrabold text-[#0D47A1] block leading-tight text-[11px]">
+                        <span className="font-extrabold text-[#626B49] block leading-tight text-[11px]">
                           Google AdMob • Test Ad
                         </span>
                         <span className="text-[10px] text-gray-600 block leading-tight">
@@ -3881,7 +3865,7 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                    <span className="text-[9px] font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full shrink-0">
+                    <span className="text-[9px] font-bold bg-amber-200/80 text-[#765B3A] px-2 py-0.5 rounded-full shrink-0">
                       Sample Unit
                     </span>
                   </div>
@@ -3889,7 +3873,7 @@ export default function App() {
 
                 {adStatus === 'loading' && (
                   <div className="h-full w-full bg-gray-100 border border-dashed border-gray-300 rounded-lg flex items-center justify-center gap-2 px-3 text-xs animate-pulse">
-                    <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-[#626B49] border-t-transparent rounded-full animate-spin"></div>
                     <span className="text-[11px] text-gray-500 font-medium">
                       جارِ حجز المساحة وتحميل إعلان AdMob...
                     </span>
@@ -3919,8 +3903,8 @@ export default function App() {
           {IS_DEV && (
             <div className="w-full max-w-md bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                <span className="text-xs font-extrabold text-[#0D47A1] flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
+                <span className="text-xs font-extrabold text-[#626B49] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#D8C69A]" />
                   <span>محاكي إعلانات Google AdMob (اختبار فوري)</span>
                 </span>
                 <span className="text-[10px] text-gray-500 font-medium">Test Mode • SDK v23.0.0</span>
@@ -3936,7 +3920,7 @@ export default function App() {
                   <button
                     onClick={() => { setAdStatus('loaded'); showToast('تم تفعيل البانر (Loaded 320x50) ✓'); }}
                     className={`py-1.5 px-1 rounded-xl text-center font-bold transition text-[10px] ${
-                      adStatus === 'loaded' ? 'bg-[#0D47A1] text-white shadow-sm' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                      adStatus === 'loaded' ? 'bg-[#626B49] text-white shadow-sm' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                     }`}
                   >
                     محمّل (Loaded)
@@ -3944,7 +3928,7 @@ export default function App() {
                   <button
                     onClick={() => { setAdStatus('loading'); showToast('محاكاة جارِ التحميل مع حجز المساحة ⏳'); }}
                     className={`py-1.5 px-1 rounded-xl text-center font-bold transition text-[10px] ${
-                      adStatus === 'loading' ? 'bg-amber-500 text-white animate-pulse shadow-sm' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                      adStatus === 'loading' ? 'bg-[#F7F0DE]0 text-white animate-pulse shadow-sm' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                     }`}
                   >
                     تحميل (Reserve)
@@ -3979,7 +3963,7 @@ export default function App() {
                       setIsInterstitialEnabled(e.target.checked);
                       showToast(e.target.checked ? 'تم تفعيل الإعلانات البينية تجريبياً ⚡' : 'تم تعطيل الإعلانات البينية (افتراضي) 🛡️');
                     }}
-                    className="w-4 h-4 text-[#0D47A1] rounded cursor-pointer"
+                    className="w-4 h-4 text-[#626B49] rounded cursor-pointer"
                   />
                   <label htmlFor="interstitialToggle" className="text-[11px] text-gray-700 font-bold cursor-pointer">
                     الإعلانات البينية {isInterstitialEnabled ? '(مفعلة)' : '(معطلة افتراضياً)'}
@@ -3988,7 +3972,7 @@ export default function App() {
 
                 <button
                   onClick={triggerTestInterstitial}
-                  className="bg-[#0D47A1] hover:bg-[#002171] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 shadow-sm"
+                  className="bg-[#626B49] hover:bg-[#002171] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 shadow-sm"
                 >
                   <span>اختبار إعلان بيني 🎬</span>
                 </button>
@@ -4006,11 +3990,11 @@ export default function App() {
               <div className="pt-2 border-t border-gray-100 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-gray-700 font-bold flex items-center gap-1">
-                    <CalendarCheck className="w-3.5 h-3.5 text-[#0D47A1]" />
+                    <CalendarCheck className="w-3.5 h-3.5 text-[#626B49]" />
                     <span>إعلان المكافأة (Rewarded Video Ad):</span>
                   </span>
                   <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                    isWeeklyPlanUnlocked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                    isWeeklyPlanUnlocked ? 'bg-emerald-100 text-emerald-800' : 'bg-[#EFE5C8] text-[#765B3A]'
                   }`}>
                     {isWeeklyPlanUnlocked ? 'الخطة مفتوحة' : 'الخطة مقفولة'}
                   </span>
@@ -4022,7 +4006,7 @@ export default function App() {
                   <div className="flex gap-1">
                     <button
                       onClick={handleRequestRewardedAd}
-                      className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-xl transition shadow-xs flex items-center gap-1"
+                      className="bg-[#F7F0DE]0 hover:bg-amber-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-xl transition shadow-xs flex items-center gap-1"
                     >
                       <Play className="w-2.5 h-2.5 fill-white" />
                       <span>محاكاة المكافأة 🎬</span>
@@ -4056,7 +4040,7 @@ export default function App() {
             {/* Sidebar File Tree */}
             <div className="w-full md:w-80 bg-[#1E293B] text-gray-200 p-4 border-l border-gray-700 flex flex-col overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-gray-700">
-                <span className="font-bold text-xs text-[#FFB300] flex items-center gap-1.5">
+                <span className="font-bold text-xs text-[#D8C69A] flex items-center gap-1.5">
                   <FolderCode className="w-4 h-4" />
                   <span>مشروع الأندرويد الأصلي (42 ملف)</span>
                 </span>
@@ -4096,7 +4080,7 @@ export default function App() {
                     }}
                     className={`w-full text-right px-2.5 py-1.5 rounded-lg text-xs truncate transition flex items-center justify-between ${
                       selectedAndroidFile === item.path
-                        ? 'bg-[#0D47A1] text-white font-bold'
+                        ? 'bg-[#626B49] text-white font-bold'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
                   >
@@ -4127,7 +4111,7 @@ export default function App() {
                   <a
                     href="/TedbeeraEgypt-Android.zip"
                     download="TedbeeraEgypt-Android.zip"
-                    className="text-xs bg-[#FFB300] hover:bg-[#FFA000] text-[#0D47A1] font-bold px-3 py-1 rounded-md flex items-center gap-1 transition"
+                    className="text-xs bg-[#D8C69A] hover:bg-[#FFA000] text-[#626B49] font-bold px-3 py-1 rounded-md flex items-center gap-1 transition"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>تحميل ZIP</span>
@@ -4152,8 +4136,8 @@ export default function App() {
           <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-gray-200 p-6 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-gray-200">
               <div>
-                <h2 className="text-lg font-extrabold text-[#0D47A1] flex items-center gap-2">
-                  <FlaskConical className="w-5 h-5 text-[#FFB300]" />
+                <h2 className="text-lg font-extrabold text-[#626B49] flex items-center gap-2">
+                  <FlaskConical className="w-5 h-5 text-[#D8C69A]" />
                   <span>نتائج الاختبارات الآلية (Unit Tests)</span>
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">هذه الشاشة تعرض مجالات الفحص؛ لا تُعد النتائج ناجحة إلا بعد تشغيل الاختبارات والتحقق من مخرجات البناء.</p>
@@ -4436,11 +4420,11 @@ export default function App() {
           <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl max-h-[88vh] overflow-y-auto space-y-4">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-extrabold text-[#0D47A1]">{selectedRecipeModal.name}</h3>
+                <h3 className="text-lg font-extrabold text-[#626B49]">{selectedRecipeModal.name}</h3>
                 <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                   <span>⏱️ {selectedRecipeModal.prepTimeMinutes} دقيقة</span>
                   <span>•</span>
-                  <span className="text-[#0D47A1] font-bold">
+                  <span className="text-[#626B49] font-bold">
                     💵 ~{getScaledCost(selectedRecipeModal)} ج.م ({familySize} أفراد)
                   </span>
                 </div>
@@ -4476,10 +4460,10 @@ export default function App() {
                             {isAvailable ? '✓' : '✗'}
                           </span>
                           <span className="font-bold text-gray-900">{ing.name}</span>
-                          <span className="text-xs font-semibold text-[#0D47A1] bg-blue-50 px-2 py-1 rounded-lg">{scaled.text}</span>
+                          <span className="text-xs font-semibold text-[#626B49] bg-[#F1F3EA] px-2 py-1 rounded-lg">{scaled.text}</span>
                         </div>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                          isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-[#EFE5C8] text-amber-800'
                         }`}>
                           {isAvailable ? 'متوفر' : 'ناقص'}
                         </span>
@@ -4487,8 +4471,8 @@ export default function App() {
 
                       {/* Practical Alternative Suggestion if missing */}
                       {!isAvailable && ing.alternatives && ing.alternatives.length > 0 && (
-                        <div className="mt-1 pt-1 border-t border-gray-200/60 text-[11px] text-gray-600 bg-amber-50/60 p-1.5 rounded-lg">
-                          <span className="font-bold text-amber-900">بديل عملي مقترح: </span>
+                        <div className="mt-1 pt-1 border-t border-gray-200/60 text-[11px] text-gray-600 bg-[#F7F0DE]/60 p-1.5 rounded-lg">
+                          <span className="font-bold text-[#765B3A]">بديل عملي مقترح: </span>
                           <span className="font-bold text-gray-900">{ing.alternatives[0].name}</span>
                           <p className="text-[10px] text-gray-500 mt-0.5">{ing.alternatives[0].impact}</p>
                         </div>
@@ -4504,8 +4488,8 @@ export default function App() {
               <h4 className="font-bold text-xs text-gray-800 mb-2">طريقة التحضير خطوة بخطوة:</h4>
               <div className="space-y-2.5">
                 {selectedRecipeModal.steps.map((st, i) => (
-                  <div key={i} className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-3">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0D47A1] text-xs font-extrabold text-white">{['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠'][i] || String(i + 1)}</span>
+                  <div key={i} className="flex items-start gap-3 rounded-xl border border-[#E4DECF] bg-[#F1F3EA]/50 p-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#626B49] text-xs font-extrabold text-white">{['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠'][i] || String(i + 1)}</span>
                     <p className="min-w-0 flex-1 text-sm leading-7 font-medium text-gray-800">{st}</p>
                   </div>
                 ))}
@@ -4521,14 +4505,14 @@ export default function App() {
                   handleAddMissingToShopping(missing, selectedRecipeModal.baseServings);
                   setSelectedRecipeModal(null);
                 }}
-                className="flex-1 bg-white border border-[#0D47A1] text-[#0D47A1] font-bold py-2.5 rounded-xl text-xs hover:bg-blue-50 transition flex items-center justify-center gap-1"
+                className="flex-1 bg-white border border-[#626B49] text-[#626B49] font-bold py-2.5 rounded-xl text-xs hover:bg-[#F1F3EA] transition flex items-center justify-center gap-1"
               >
                 <ShoppingCart className="w-3.5 h-3.5" />
                 <span>إضافة النواقص لقائمة المشتريات</span>
               </button>
               <button
                 onClick={() => setSelectedRecipeModal(null)}
-                className="bg-[#0D47A1] text-white font-bold py-2.5 px-4 rounded-xl text-xs hover:bg-[#002171] transition"
+                className="bg-[#626B49] text-white font-bold py-2.5 px-4 rounded-xl text-xs hover:bg-[#002171] transition"
               >
                 تمام، فهمت
               </button>
@@ -4543,7 +4527,7 @@ export default function App() {
       {isAddItemModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
-            <h3 className="text-base font-extrabold text-[#0D47A1]">إضافة طلب لقائمة النواقص</h3>
+            <h3 className="text-base font-extrabold text-[#626B49]">إضافة طلب لقائمة النواقص</h3>
             <div className="space-y-2.5 text-xs">
               <div>
                 <label className="block text-gray-700 font-bold mb-1">اسم الصنف:</label>
@@ -4552,7 +4536,7 @@ export default function App() {
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   placeholder="مثال: جبنة قريش، عدس، عيش بلدي"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 />
               </div>
 
@@ -4566,7 +4550,7 @@ export default function App() {
                     value={newItemQty}
                     onChange={(e) => setNewItemQty(e.target.value)}
                     placeholder="1"
-                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                   />
                 </div>
                 <div>
@@ -4574,7 +4558,7 @@ export default function App() {
                   <select
                     value={newItemUnit}
                     onChange={(e) => setNewItemUnit(e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                   >
                     <option value="حبة">حبة</option>
                     <option value="كيلو">كيلو</option>
@@ -4600,7 +4584,7 @@ export default function App() {
                   value={newItemUnitPrice}
                   onChange={(e) => setNewItemUnitPrice(e.target.value)}
                   placeholder="مثال: 15 (أو اتركه فارغاً)"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 />
               </div>
             </div>
@@ -4638,7 +4622,7 @@ export default function App() {
                     showToast('يرجى إدخال اسم الصنف أولاً');
                   }
                 }}
-                className="flex-1 bg-[#0D47A1] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
+                className="flex-1 bg-[#626B49] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
               >
                 إضافة للقائمة
               </button>
@@ -4654,7 +4638,7 @@ export default function App() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-extrabold text-[#0D47A1]">تحديد سعر الوحدة</h3>
+              <h3 className="text-base font-extrabold text-[#626B49]">تحديد سعر الوحدة</h3>
               <button onClick={() => setEditingPriceItem(null)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
@@ -4674,7 +4658,7 @@ export default function App() {
                 value={editingPriceItem.currentPrice}
                 onChange={(e) => setEditingPriceItem({ ...editingPriceItem, currentPrice: e.target.value })}
                 placeholder="مثال: 20 (أو امسحه ليكون غير مسعر)"
-                className="w-full border border-gray-300 rounded-xl p-2.5 font-bold text-[#0D47A1] focus:outline-none focus:border-[#0D47A1]"
+                className="w-full border border-gray-300 rounded-xl p-2.5 font-bold text-[#626B49] focus:outline-none focus:border-[#626B49]"
               />
               <span className="text-[10px] text-gray-400 block">إذا تركت الحقل فارغاً سيعتبر الصنف غير محدد السعر.</span>
             </div>
@@ -4688,7 +4672,7 @@ export default function App() {
               </button>
               <button
                 onClick={handleSaveItemPrice}
-                className="flex-1 bg-[#0D47A1] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
+                className="flex-1 bg-[#626B49] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
               >
                 حفظ السعر
               </button>
@@ -4703,7 +4687,7 @@ export default function App() {
       {isAddExpenseModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
-            <h3 className="text-base font-extrabold text-[#0D47A1]">تسجيل مصروف جديد</h3>
+            <h3 className="text-base font-extrabold text-[#626B49]">تسجيل مصروف جديد</h3>
             <div className="space-y-2.5 text-xs">
               <div>
                 <label className="block text-gray-700 font-bold mb-1">المبلغ المدفوع (ج.م):</label>
@@ -4714,7 +4698,7 @@ export default function App() {
                   value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)}
                   placeholder="مثال: 120"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 font-bold text-[#0D47A1] focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 font-bold text-[#626B49] focus:outline-none focus:border-[#626B49]"
                 />
               </div>
 
@@ -4723,7 +4707,7 @@ export default function App() {
                 <select
                   value={expenseCategoryId}
                   onChange={(e) => setExpenseCategoryId(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 >
                   {categories.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
@@ -4738,7 +4722,7 @@ export default function App() {
                   value={expenseDesc}
                   onChange={(e) => setExpenseDesc(e.target.value)}
                   placeholder="مثال: خضار وسوق الأسبوع، فاتورة مياه"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 />
               </div>
 
@@ -4748,7 +4732,7 @@ export default function App() {
                   type="date"
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 />
               </div>
             </div>
@@ -4762,7 +4746,7 @@ export default function App() {
               </button>
               <button
                 onClick={handleAddExpense}
-                className="flex-1 bg-[#0D47A1] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
+                className="flex-1 bg-[#626B49] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
               >
                 تسجيل وحفظ
               </button>
@@ -4777,7 +4761,7 @@ export default function App() {
       {isAddCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
-            <h3 className="text-base font-extrabold text-[#0D47A1]">إضافة بند ميزانية مخصص</h3>
+            <h3 className="text-base font-extrabold text-[#626B49]">إضافة بند ميزانية مخصص</h3>
             <div className="space-y-2.5 text-xs">
               <div>
                 <label className="block text-gray-700 font-bold mb-1">اسم البند:</label>
@@ -4786,7 +4770,7 @@ export default function App() {
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   placeholder="مثال: دروس خصوصية، علاج وصيدلية"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 />
               </div>
 
@@ -4797,7 +4781,7 @@ export default function App() {
                   value={newCatTip}
                   onChange={(e) => setNewCatTip(e.target.value)}
                   placeholder="مثال: مصروفات كتب خارجية واشتراكات المدارس"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 />
               </div>
             </div>
@@ -4811,7 +4795,7 @@ export default function App() {
               </button>
               <button
                 onClick={handleAddCustomCategory}
-                className="flex-1 bg-[#0D47A1] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
+                className="flex-1 bg-[#626B49] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
               >
                 إضافة وإعادة ضبط 100%
               </button>
@@ -4827,8 +4811,8 @@ export default function App() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-              <div className="flex items-center gap-2 text-[#0D47A1]">
-                <Calendar className="w-5 h-5 text-[#FFB300]" />
+              <div className="flex items-center gap-2 text-[#626B49]">
+                <Calendar className="w-5 h-5 text-[#D8C69A]" />
                 <h3 className="text-base font-extrabold">تحديد موعد الراتب الشهري</h3>
               </div>
               <button onClick={() => setIsPaydayModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -4850,7 +4834,7 @@ export default function App() {
                     max="31"
                     value={tempPaydayInput}
                     onChange={(e) => setTempPaydayInput(e.target.value)}
-                    className="flex-1 text-center font-black text-lg text-[#0D47A1] border border-gray-300 rounded-xl p-2 focus:outline-none focus:border-[#0D47A1]"
+                    className="flex-1 text-center font-black text-lg text-[#626B49] border border-gray-300 rounded-xl p-2 focus:outline-none focus:border-[#626B49]"
                     placeholder="25"
                   />
                   <span className="text-xs font-bold text-gray-500">من كل شهر</span>
@@ -4871,7 +4855,7 @@ export default function App() {
                       onClick={() => setTempPaydayInput(day.toString())}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
                         tempPaydayInput === day.toString()
-                          ? 'bg-[#0D47A1] text-white shadow-xs'
+                          ? 'bg-[#626B49] text-white shadow-xs'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -4900,7 +4884,7 @@ export default function App() {
                     showToast('يرجى إدخال يوم صالح بين 1 و 31');
                   }
                 }}
-                className="flex-1 bg-[#0D47A1] text-white font-bold py-2.5 rounded-xl text-xs hover:bg-[#002171] transition"
+                className="flex-1 bg-[#626B49] text-white font-bold py-2.5 rounded-xl text-xs hover:bg-[#002171] transition"
               >
                 حفظ الموعد
               </button>
@@ -4916,7 +4900,7 @@ export default function App() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-              <div className="flex items-center gap-2 text-[#0D47A1]">
+              <div className="flex items-center gap-2 text-[#626B49]">
                 <Settings className="w-5 h-5" />
                 <h3 className="text-base font-extrabold">إعدادات التطبيق والبيانات</h3>
               </div>
@@ -4926,8 +4910,8 @@ export default function App() {
             </div>
 
             {/* Household profile: saved locally and available offline */}
-            <div className="space-y-2 rounded-2xl border border-blue-100 bg-blue-50/50 p-3">
-              <div className="flex items-center gap-2 text-[#0D47A1]">
+            <div className="space-y-2 rounded-2xl border border-[#E4DECF] bg-[#F1F3EA]/50 p-3">
+              <div className="flex items-center gap-2 text-[#626B49]">
                 <Users className="w-4 h-4" />
                 <span className="text-xs font-extrabold">بيانات الأسرة</span>
                 <span className="mr-auto text-[10px] text-gray-500">محفوظة على جهازك</span>
@@ -4974,7 +4958,7 @@ export default function App() {
                   });
                   showToast(saved ? 'تم حفظ بيانات الأسرة على هذا الجهاز ✓' : 'تعذر حفظ البيانات. تحققي من مساحة التخزين بالجهاز.');
                 }}
-                className="w-full rounded-xl bg-[#0D47A1] px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-800"
+                className="w-full rounded-xl bg-[#626B49] px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-800"
               >
                 حفظ بيانات الأسرة
               </button>
@@ -4986,10 +4970,10 @@ export default function App() {
 
               <button
                 onClick={handleExportData}
-                className="w-full bg-blue-50 hover:bg-blue-100 text-[#0D47A1] font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-blue-200"
+                className="w-full bg-[#F1F3EA] hover:bg-[#E8EBDD] text-[#626B49] font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-[#DCE2D0]"
               >
                 <div className="flex items-center gap-2">
-                  <FileDown className="w-4 h-4 text-[#0D47A1]" />
+                  <FileDown className="w-4 h-4 text-[#626B49]" />
                   <span>تصدير نسخة احتياطية (JSON)</span>
                 </div>
                 <span className="text-[10px] text-gray-500">تحميل ملف</span>
@@ -5020,7 +5004,7 @@ export default function App() {
                   setIsSettingsModalOpen(false);
                   setIsClearShoppingConfirmOpen(true);
                 }}
-                className="w-full text-right bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-amber-200"
+                className="w-full text-right bg-[#F7F0DE] hover:bg-[#EFE5C8] text-[#765B3A] font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-[#E6D9B8]"
               >
                 <span>إفراغ قائمة النواقص فقط</span>
                 <Trash2 className="w-4 h-4 text-amber-700" />
@@ -5047,13 +5031,13 @@ export default function App() {
                     setIsSettingsModalOpen(false);
                     setIsAdControlsOpen(true);
                   }}
-                  className="w-full bg-amber-50 hover:bg-amber-100 text-amber-950 font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-amber-200"
+                  className="w-full bg-[#F7F0DE] hover:bg-[#EFE5C8] text-amber-950 font-bold p-2.5 rounded-xl text-xs flex items-center justify-between transition border border-[#E6D9B8]"
                 >
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-600" />
                     <span>لوحة ضبط ومحاكاة الإعلانات (وضع التطوير)</span>
                   </div>
-                  <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-md font-extrabold">
+                  <span className="text-[10px] bg-amber-200/80 text-[#765B3A] px-2 py-0.5 rounded-md font-extrabold">
                     {adStatus === 'loaded' ? 'البانر نشط' : adStatus === 'loading' ? 'تحميل...' : adStatus === 'failed' ? 'منهار (أوفلاين)' : 'معطل'}
                   </span>
                 </button>
@@ -5078,18 +5062,18 @@ export default function App() {
               <p className="font-semibold text-gray-800">
                 هل تريد استبدال بيانات التطبيق الحالية بهذه النسخة؟
               </p>
-              <div className="bg-amber-50 text-amber-900 p-2.5 rounded-xl border border-amber-200 text-[11px] leading-relaxed">
+              <div className="bg-[#F7F0DE] text-[#765B3A] p-2.5 rounded-xl border border-[#E6D9B8] text-[11px] leading-relaxed">
                 ⚠️ تنبيه: سيتم استبدال الميزانية والمصاريف وقوائم النواقص الحالية بالبيانات المحفوظة في ملف النسخة الاحتياطية.
               </div>
 
               <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200 space-y-1.5 text-[11px]">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">حجم الأسرة:</span>
-                  <span className="font-bold text-[#0D47A1]">{pendingRestoreData.familySize} أفراد</span>
+                  <span className="font-bold text-[#626B49]">{pendingRestoreData.familySize} أفراد</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">مبلغ الميزانية:</span>
-                  <span className="font-bold text-[#0D47A1]">{pendingRestoreData.budgetAmount} ج.م</span>
+                  <span className="font-bold text-[#626B49]">{pendingRestoreData.budgetAmount} ج.م</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">عدد بنود النواقص:</span>
@@ -5118,7 +5102,7 @@ export default function App() {
               </button>
               <button
                 onClick={handleConfirmRestore}
-                className="flex-1 bg-[#0D47A1] hover:bg-[#002171] text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm"
+                className="flex-1 bg-[#626B49] hover:bg-[#002171] text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm"
               >
                 تأكيد الاستعادة
               </button>
@@ -5133,7 +5117,7 @@ export default function App() {
       {isClearShoppingConfirmOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
-            <h3 className="text-base font-extrabold text-amber-900">إفراغ قائمة النواقص؟</h3>
+            <h3 className="text-base font-extrabold text-[#765B3A]">إفراغ قائمة النواقص؟</h3>
             <p className="text-xs text-gray-600 leading-relaxed">
               سيتم حذف جميع الأصناف المسجلة في قائمة النواقص حالياً. الوجبات وخطط الميزانية والمصاريف ستظل محفوظة ولن تتأثر.
             </p>
@@ -5193,8 +5177,8 @@ export default function App() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-              <div className="flex items-center gap-2 text-[#0D47A1]">
-                <Sparkles className="w-5 h-5 text-[#FFB300]" />
+              <div className="flex items-center gap-2 text-[#626B49]">
+                <Sparkles className="w-5 h-5 text-[#D8C69A]" />
                 <h3 className="text-base font-extrabold">لوحة تحكم إعلانات Google AdMob</h3>
               </div>
               <button onClick={() => setIsAdControlsOpen(false)} className="text-gray-400 hover:text-gray-600 font-bold">
@@ -5215,7 +5199,7 @@ export default function App() {
                 <button
                   onClick={() => { setAdStatus('loaded'); showToast('تم تفعيل البانر (Loaded) ✓'); }}
                   className={`p-2 rounded-xl text-center font-bold text-xs transition border ${
-                    adStatus === 'loaded' ? 'bg-[#0D47A1] text-white border-[#0D47A1]' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+                    adStatus === 'loaded' ? 'bg-[#626B49] text-white border-[#626B49]' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
                   }`}
                 >
                   🟢 محمّل (Loaded)
@@ -5223,7 +5207,7 @@ export default function App() {
                 <button
                   onClick={() => { setAdStatus('loading'); showToast('محاكاة التحميل وحجز المساحة ⏳'); }}
                   className={`p-2 rounded-xl text-center font-bold text-xs transition border ${
-                    adStatus === 'loading' ? 'bg-amber-500 text-white border-amber-500 animate-pulse' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+                    adStatus === 'loading' ? 'bg-[#F7F0DE]0 text-white border-amber-500 animate-pulse' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
                   }`}
                 >
                   ⏳ تحميل (Reserve Space)
@@ -5266,14 +5250,14 @@ export default function App() {
                       setIsInterstitialEnabled(e.target.checked);
                       showToast(e.target.checked ? 'تم تفعيل الإعلانات البينية ⚡' : 'تم تعطيل الإعلانات البينية 🛡️');
                     }}
-                    className="w-4 h-4 text-[#0D47A1] rounded cursor-pointer"
+                    className="w-4 h-4 text-[#626B49] rounded cursor-pointer"
                   />
                   <span className="text-xs font-bold text-gray-800">تفعيل الإعلانات البينية</span>
                 </label>
 
                 <button
                   onClick={triggerTestInterstitial}
-                  className="bg-[#0D47A1] hover:bg-[#002171] text-white text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-sm"
+                  className="bg-[#626B49] hover:bg-[#002171] text-white text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-sm"
                 >
                   اختبار العرض الآن 🎬
                 </button>
@@ -5283,7 +5267,7 @@ export default function App() {
             <div className="pt-2">
               <button
                 onClick={() => setIsAdControlsOpen(false)}
-                className="w-full bg-[#0D47A1] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
+                className="w-full bg-[#626B49] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
               >
                 إغلاق اللوحة
               </button>
@@ -5316,8 +5300,8 @@ export default function App() {
             </div>
 
             {/* Ad Body Content */}
-            <div className="p-6 bg-gradient-to-b from-blue-50 to-white flex flex-col items-center text-center space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-[#0D47A1] text-[#FFB300] font-black flex items-center justify-center text-2xl shadow-lg">
+            <div className="p-6 bg-gradient-to-b from-[#78815B]50 to-white flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-[#626B49] text-[#D8C69A] font-black flex items-center justify-center text-2xl shadow-lg">
                 تد
               </div>
 
@@ -5325,7 +5309,7 @@ export default function App() {
                 <span className="text-[10px] font-bold text-gray-400 block mb-1">
                   Unit: ca-app-pub-3940256099942544/1033173712
                 </span>
-                <h3 className="text-lg font-black text-[#0D47A1]">تدبيرة مصر – Tedbeera Egypt</h3>
+                <h3 className="text-lg font-black text-[#626B49]">تدبيرة مصر – Tedbeera Egypt</h3>
                 <p className="text-xs text-gray-600 mt-1 max-w-[240px]">
                   تطبيق مصري ذكي لتوفير ميزانية الأسرة، أكلات التوفير، وبدائل المكونات بدون إنترنت!
                 </p>
@@ -5347,7 +5331,7 @@ export default function App() {
               <div className="w-full pt-2">
                 <button
                   onClick={handleDismissInterstitial}
-                  className="w-full bg-[#0D47A1] hover:bg-[#002171] text-white font-extrabold py-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-1.5"
+                  className="w-full bg-[#626B49] hover:bg-[#002171] text-white font-extrabold py-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-1.5"
                 >
                   <span>استئناف واستخدام تدبيرة</span>
                   <ArrowRight className="w-4 h-4" />
@@ -5365,9 +5349,9 @@ export default function App() {
         <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl flex flex-col space-y-0 animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
-            <div className="bg-[#0D47A1] text-white px-4 py-3 flex items-center justify-between select-none">
+            <div className="bg-[#626B49] text-white px-4 py-3 flex items-center justify-between select-none">
               <div className="flex items-center gap-2">
-                <span className="bg-[#FFB300] text-[#0D47A1] font-extrabold px-1.5 py-0.2 rounded text-[10px]">
+                <span className="bg-[#D8C69A] text-[#626B49] font-extrabold px-1.5 py-0.2 rounded text-[10px]">
                   AdMob Test
                 </span>
                 <span className="text-xs font-bold">Google Mobile Ads • Rewarded Ad</span>
@@ -5383,19 +5367,19 @@ export default function App() {
 
             {/* Body */}
             <div className="p-5 flex flex-col items-center text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center shadow-sm">
-                <CalendarCheck className="w-7 h-7 text-[#0D47A1]" />
+              <div className="w-14 h-14 rounded-2xl bg-[#EFE5C8] text-[#765B3A] flex items-center justify-center shadow-sm">
+                <CalendarCheck className="w-7 h-7 text-[#626B49]" />
               </div>
 
               <div>
-                <h3 className="text-base font-extrabold text-[#0D47A1]">فتح خطة الوجبات التوفيرية</h3>
+                <h3 className="text-base font-extrabold text-[#626B49]">فتح خطة الوجبات التوفيرية</h3>
                 <p className="text-xs text-gray-600 mt-1 leading-relaxed">
                   جرّب محاكاة الإعلان لفتح خطة وجبات الأسبوع الكاملة مع جدول التسوق المجمع.
                 </p>
               </div>
 
               {/* Simulation Environment Notice */}
-              <div className="w-full bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-right text-[11px] space-y-1 text-amber-950">
+              <div className="w-full bg-[#F7F0DE] border border-[#E6D9B8] p-2.5 rounded-xl text-right text-[11px] space-y-1 text-amber-950">
                 <div className="font-bold flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                   <span>محاكاة تجريبية مخصصة للمعاينة:</span>
@@ -5412,7 +5396,7 @@ export default function App() {
                 <div className="w-full space-y-2 pt-1">
                   <button
                     onClick={handleStartSimulationPlayback}
-                    className="w-full bg-[#0D47A1] hover:bg-[#002171] text-white font-extrabold py-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2"
+                    className="w-full bg-[#626B49] hover:bg-[#002171] text-white font-extrabold py-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2"
                   >
                     <Play className="w-4 h-4 fill-white" />
                     <span>ابدأ المحاكاة (5 ثوانٍ)</span>
@@ -5428,8 +5412,8 @@ export default function App() {
                 <div className="w-full space-y-3 pt-1">
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-[#0D47A1] flex items-center gap-1.5">
-                        <Tv className="w-3.5 h-3.5 animate-pulse text-[#FFB300]" />
+                      <span className="font-bold text-[#626B49] flex items-center gap-1.5">
+                        <Tv className="w-3.5 h-3.5 animate-pulse text-[#D8C69A]" />
                         <span>جارِ محاكاة تشغيل الإعلان...</span>
                       </span>
                       <span className="font-mono font-bold text-gray-700">{playbackCountdown} ثانية</span>
@@ -5438,7 +5422,7 @@ export default function App() {
                     {/* Progress Bar */}
                     <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
                       <div
-                        className="bg-[#0D47A1] h-full transition-all duration-1000 ease-linear rounded-full"
+                        className="bg-[#626B49] h-full transition-all duration-1000 ease-linear rounded-full"
                         style={{ width: `${((5 - playbackCountdown) / 5) * 100}%` }}
                       />
                     </div>
@@ -5465,8 +5449,8 @@ export default function App() {
           <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl max-h-[88vh] overflow-y-auto space-y-4">
             <div className="flex items-start justify-between border-b border-gray-100 pb-2">
               <div>
-                <h3 className="text-base font-extrabold text-[#0D47A1] flex items-center gap-1.5">
-                  <CalendarCheck className="w-5 h-5 text-[#FFB300]" />
+                <h3 className="text-base font-extrabold text-[#626B49] flex items-center gap-1.5">
+                  <CalendarCheck className="w-5 h-5 text-[#D8C69A]" />
                   <span>جدول التسوق المجمع لخطة الأسبوع</span>
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
@@ -5513,7 +5497,7 @@ export default function App() {
                             </span>
                           </div>
                           <div className="text-left">
-                            <span className="font-bold text-[#0D47A1] block">
+                            <span className="font-bold text-[#626B49] block">
                               {item.quantity} {item.unit}
                             </span>
                             <span className="text-[10px] text-gray-500">
@@ -5554,7 +5538,7 @@ export default function App() {
       {isAddCustomRecipeModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
-            <h3 className="text-base font-extrabold text-[#0D47A1]">أضف أكلتك الخاصة 🍳</h3>
+            <h3 className="text-base font-extrabold text-[#626B49]">أضف أكلتك الخاصة 🍳</h3>
             <div className="space-y-2.5 text-xs">
               <div>
                 <label className="block text-gray-700 font-bold mb-1">اسم الوجبة:</label>
@@ -5563,7 +5547,7 @@ export default function App() {
                   value={customRecipeName}
                   onChange={(e) => setCustomRecipeName(e.target.value)}
                   placeholder="مثال: مسقعة باللحمة المفرومة"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 />
               </div>
 
@@ -5572,7 +5556,7 @@ export default function App() {
                 <select
                   value={customRecipeMealType}
                   onChange={(e) => setCustomRecipeMealType(e.target.value as any)}
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 >
                   <option value="breakfast">فطار 🍳</option>
                   <option value="lunch">غداء 🍲</option>
@@ -5587,7 +5571,7 @@ export default function App() {
                     type="number"
                     value={customRecipePrepTime}
                     onChange={(e) => setCustomRecipePrepTime(e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                   />
                 </div>
                 <div>
@@ -5596,7 +5580,7 @@ export default function App() {
                     type="number"
                     value={customRecipeCost}
                     onChange={(e) => setCustomRecipeCost(e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                   />
                 </div>
               </div>
@@ -5608,7 +5592,7 @@ export default function App() {
                   value={customRecipeIngredientName}
                   onChange={(e) => setCustomRecipeIngredientName(e.target.value)}
                   placeholder="مثال: باذنجان، لحمة مفرومة، طماطم"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0D47A1]"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#626B49]"
                 />
               </div>
             </div>
@@ -5622,7 +5606,7 @@ export default function App() {
               </button>
               <button
                 onClick={handleSaveCustomRecipe}
-                className="flex-1 bg-[#0D47A1] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
+                className="flex-1 bg-[#626B49] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#002171] transition"
               >
                 حفظ وإضافة
               </button>

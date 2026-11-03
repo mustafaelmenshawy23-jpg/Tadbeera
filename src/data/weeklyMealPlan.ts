@@ -79,24 +79,43 @@ export const WEEKLY_DAYS_SCHEDULE: DayMealPlan[] = [
 ];
 
 // Reference market estimate per unit in EGP (for consolidated plan shopping list)
+// Prices are stored per the canonical unit returned below (EGP per gram for weight items).
+// Leftovers intentionally stay unpriced: they are stock already at home, not assumed purchases.
 const ESTIMATED_INGREDIENT_PRICES: Record<string, number> = {
-  'بيض': 6,          // 6 ج.م للبيضة
-  'طماطم': 15,       // 15 ج.م للكيلو/حبات
-  'بصل': 12,         // 12 ج.م
-  'بطاطس': 15,       // 15 ج.م
-  'أرز': 30,          // 30 ج.م للكوب/كيلو
-  'مكرونة': 18,       // 18 ج.م
-  'عدس أصفر': 25,    // 25 ج.م
-  'عدس بجبة': 25,    // 25 ج.م
-  'فول': 15,         // 15 ج.م
-  'تونة': 35,        // 35 ج.م للعلبة
-  'باذنجان': 12,     // 12 ج.م
-  'فلفل رومي': 15,   // 15 ج.م
-  'ثوم': 5,          // 5 ج.م
-  'جبنة': 20,        // 20 ج.م
-  'بواقي فراخ': 0,   // بواقي منزلية
-  'بواقي لحمة': 0    // بواقي منزلية
+  'بيض': 6, 'طماطم': 15, 'بصل': 12, 'بطاطس': 15,
+  'أرز': 30 / 185, 'مكرونة': 18 / 100,
+  'عدس أصفر': 25 / 190, 'عدس بجبة': 25 / 190,
+  'فول': 15, 'تونة': 35, 'باذنجان': 12, 'فلفل رومي': 15,
+  'ثوم': 5, 'جبنة': 20 / 100,
+  'بواقي فراخ': 0, 'بواقي لحمة': 0
 };
+
+const INGREDIENT_UNIT_RULES: Record<string, { canonicalUnit: string; factors: Record<string, number> }> = {
+  'مكرونة': { canonicalUnit: 'جرام', factors: { 'جرام': 1, 'جم': 1, 'g': 1, 'كيلو': 1000, 'كجم': 1000, 'كوب': 100 } },
+  'أرز': { canonicalUnit: 'جرام', factors: { 'جرام': 1, 'جم': 1, 'g': 1, 'كيلو': 1000, 'كجم': 1000, 'كوب': 185 } },
+  'عدس أصفر': { canonicalUnit: 'جرام', factors: { 'جرام': 1, 'جم': 1, 'g': 1, 'كيلو': 1000, 'كجم': 1000, 'كوب': 190 } },
+  'عدس بجبة': { canonicalUnit: 'جرام', factors: { 'جرام': 1, 'جم': 1, 'g': 1, 'كيلو': 1000, 'كجم': 1000, 'كوب': 190 } },
+  'جبنة': { canonicalUnit: 'جرام', factors: { 'جرام': 1, 'جم': 1, 'g': 1, 'كيلو': 1000, 'كجم': 1000, 'كوب': 100 } },
+  'بواقي فراخ': { canonicalUnit: 'كيلو', factors: { 'كيلو': 1, 'كجم': 1, 'جرام': 0.001, 'جم': 0.001, 'كوب': 0.15 } },
+  'بواقي لحمة': { canonicalUnit: 'كيلو', factors: { 'كيلو': 1, 'كجم': 1, 'جرام': 0.001, 'جم': 0.001, 'كوب': 0.15 } }
+};
+
+function normalizeIngredientUnit(unit: string): string {
+  const value = unit.trim().toLowerCase();
+  if (['جم', 'g', 'غرام', 'جرام'].includes(value)) return 'جرام';
+  if (['كجم', 'kg', 'كيلوجرام', 'كيلو جرام'].includes(value)) return 'كيلو';
+  return value;
+}
+
+function toCanonicalIngredientAmount(name: string, quantity: number, unit: string): { quantity: number; unit: string } {
+  const rule = INGREDIENT_UNIT_RULES[name];
+  if (!rule) return { quantity, unit: normalizeIngredientUnit(unit) };
+  const normalizedUnit = normalizeIngredientUnit(unit);
+  const factor = rule.factors[normalizedUnit];
+  // If a unit is unknown, keep it separate instead of adding unlike quantities.
+  if (factor === undefined) return { quantity, unit: normalizedUnit };
+  return { quantity: quantity * factor, unit: rule.canonicalUnit };
+}
 
 /**
  * Resolves a Recipe by ID from RECIPES catalog.
@@ -136,7 +155,7 @@ export function calculateWeeklyPlanTotalCost(familySize: number): number {
  */
 export function consolidateWeeklyPlanIngredients(familySize: number): ConsolidatedPlanIngredient[] {
   const safeFamilySize = Math.max(1, familySize);
-  const ingredientMap = new Map<string, { quantity: number; unit: string; count: number }>();
+  const ingredientMap = new Map<string, { name: string; quantity: number; unit: string; count: number }>();
 
   WEEKLY_DAYS_SCHEDULE.forEach(day => {
     const mealIds = [day.breakfastRecipeId, day.lunchRecipeId, day.dinnerRecipeId];
@@ -147,17 +166,20 @@ export function consolidateWeeklyPlanIngredients(familySize: number): Consolidat
 
       recipe.ingredients.forEach((ing: Ingredient) => {
         // Skip zero-cost leftovers as shopping items if desired, or include them with note
-        const key = ing.name.trim();
+        const name = ing.name.trim();
         const scaledQty = (ing.baseAmount || 1) * ratio;
+        const normalized = toCanonicalIngredientAmount(name, scaledQty, ing.unit || 'حبة');
+        const key = `${name.toLocaleLowerCase()}::${normalized.unit}`;
         const current = ingredientMap.get(key);
 
         if (current) {
-          current.quantity += scaledQty;
+          current.quantity += normalized.quantity;
           current.count += 1;
         } else {
           ingredientMap.set(key, {
-            quantity: scaledQty,
-            unit: ing.unit || 'حبة',
+            name,
+            quantity: normalized.quantity,
+            unit: normalized.unit,
             count: 1
           });
         }
@@ -166,13 +188,13 @@ export function consolidateWeeklyPlanIngredients(familySize: number): Consolidat
   });
 
   const consolidated: ConsolidatedPlanIngredient[] = [];
-  ingredientMap.forEach((val, name) => {
-    const roundedQty = Math.round(val.quantity * 10) / 10;
-    const estUnitPrice = ESTIMATED_INGREDIENT_PRICES[name] ?? 10;
+  ingredientMap.forEach((val) => {
+    const roundedQty = Math.round(val.quantity * 100) / 100;
+    const estUnitPrice = ESTIMATED_INGREDIENT_PRICES[val.name] ?? 0;
     const totalCost = Math.round(roundedQty * estUnitPrice);
 
     consolidated.push({
-      name,
+      name: val.name,
       quantity: roundedQty,
       unit: val.unit,
       estimatedUnitPrice: estUnitPrice,

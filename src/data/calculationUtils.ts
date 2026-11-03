@@ -595,6 +595,86 @@ export function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
+const SEEDED_DEMO_EXPENSES: Record<string, string> = {
+  exp_1: 'سوق الخضار الأسبوعي وبصل وطماطم',
+  exp_2: 'فاتورة الكهرباء وشحن كارت العداد',
+  exp_3: 'اشتراك مترو ومواصلات شغل'
+};
+
+/** Remove only the app's known demo rows; preserve every user-created transaction. */
+export function removeSeedDemoExpenses<T extends { id: string; description: string }>(expenses: T[]): T[] {
+  return expenses.filter(expense => SEEDED_DEMO_EXPENSES[expense.id] !== expense.description);
+}
+
+export interface PayCycleRange {
+  startDate: string;
+  endDateExclusive: string;
+  label: string;
+}
+
+function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Returns the active salary cycle as [startDate, endDateExclusive).
+ * Without a configured payday, the cycle is the current calendar month.
+ */
+export function getPayCycleRange(
+  paydayDay: number | null | undefined,
+  referenceDate: Date = new Date()
+): PayCycleRange {
+  const year = referenceDate.getFullYear();
+  const month = referenceDate.getMonth();
+
+  if (typeof paydayDay !== 'number' || !Number.isFinite(paydayDay) || paydayDay < 1 || paydayDay > 31) {
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 1);
+    return {
+      startDate: toLocalDateKey(start),
+      endDateExclusive: toLocalDateKey(end),
+      label: start.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })
+    };
+  }
+
+  const day = Math.round(paydayDay);
+  const effectiveDay = Math.min(day, getDaysInMonth(year, month));
+  const thisMonthPayday = new Date(year, month, effectiveDay);
+  let start: Date;
+  let end: Date;
+
+  if (referenceDate >= thisMonthPayday) {
+    start = thisMonthPayday;
+    end = new Date(year, month + 1, Math.min(day, getDaysInMonth(year, month + 1)));
+  } else {
+    const previousMonth = new Date(year, month - 1, 1);
+    const previousDay = Math.min(day, getDaysInMonth(previousMonth.getFullYear(), previousMonth.getMonth()));
+    start = new Date(previousMonth.getFullYear(), previousMonth.getMonth(), previousDay);
+    end = thisMonthPayday;
+  }
+
+  const endInclusive = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1);
+  return {
+    startDate: toLocalDateKey(start),
+    endDateExclusive: toLocalDateKey(end),
+    label: `${start.toLocaleDateString('ar-EG')} – ${endInclusive.toLocaleDateString('ar-EG')}`
+  };
+}
+
+export function filterExpensesForPayCycle<T extends { date: string }>(
+  expenses: T[],
+  range: PayCycleRange
+): T[] {
+  return expenses.filter(expense =>
+    typeof expense.date === 'string' &&
+    expense.date >= range.startDate &&
+    expense.date < range.endDateExclusive
+  );
+}
+
 /**
  * Calculates next payday date and remaining days countdown.
  * Defensively handles month lengths (e.g. day 31 in Feb/Apr), leap years, year rollovers,

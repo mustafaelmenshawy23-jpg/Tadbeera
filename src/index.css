@@ -55,21 +55,90 @@ button {
 }
 
 
-/* Tadbeera warm-home visual foundation */
 :root {
   color-scheme: light;
-  background: #FBF8F1;
-  --td-cream: #FBF8F1;
-  --td-paper: #FFFEFA;
-  --td-olive: #667B58;
-  --td-olive-dark: #526748;
-  --td-sand: #F3EBDD;
-  --td-clay: #A66D4C;
-  --td-ink: #454A3C;
-  --td-muted: #969184;
-  --td-line: #E8E0D1;
+  --td-cream: #F8F3E9;
+  --td-paper: #FFFDF8;
+  --td-olive: #78815B;
+  --td-olive-dark: #626B49;
+  --td-sand: #E6DFC9;
+  --td-clay: #A68B69;
+  --td-ink: #39382F;
+  --td-muted: #898575;
+  --td-line: #E4DECF;
 }
-body { background: #FBF8F1; color: #454A3C; }
-.tadbeera-appbar { min-height: 58px; }
-.tadbeera-bottom-nav button { min-height: 48px; }
-.tadbeera-bottom-nav button:focus-visible { outline: 2px solid #82966F; outline-offset: 2px; }
+html, body, #root { background: var(--td-cream) !important; }
+body { color: var(--td-ink); }
+::selection { background: #DCE1CB; color: var(--td-ink); }
+::-webkit-scrollbar-thumb { background: #C9C5B5; }
+
+/* Map legacy bright brand utilities to the calm olive-and-cream palette. */
+[class*="from-[#1565C0]"], [class*="via-[#1565C0]"], [class*="to-[#1565C0]"] { --tw-gradient-from: #78815B var(--tw-gradient-from-position); --tw-gradient-to: rgb(120 129 91 / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[class*="from-[#002171]"], [class*="via-[#002171]"], [class*="to-[#002171]"] { --tw-gradient-from: #626B49 var(--tw-gradient-from-position); --tw-gradient-to: rgb(98 107 73 / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[class*="bg-blue-"], [class*="bg-[#0D47A1]"], [class*="bg-[#002171]"], [class*="bg-[#1565C0]"],
+[class*="bg-[#1E40AF]"], [class*="bg-[#0D47A1]"] {
+  background-color: var(--td-olive-dark) !important;
+}
+[class*="bg-blue-50"], [class*="bg-blue-100"], [class*="bg-blue-200"] {
+  background-color: #EEF0E6 !important;
+}
+[class*="text-blue-"], [class*="text-[#0D47A1]"], [class*="text-[#1565C0]"], [class*="text-[#1E293B]"] {
+  color: var(--td-olive-dark) !important;
+}
+[class*="border-blue-"] { border-color: #D8DDCB !important; }
+[class*="bg-amber-"], [class*="bg-yellow-"], [class*="bg-orange-"],
+[class*="bg-[#FFE54C]"], [class*="bg-[#D8C69A]"] {
+  background-color: #EFE7D4 !important;
+}
+[class*="text-amber-"], [class*="text-yellow-"], [class*="text-orange-"] {
+  color: #796648 !important;
+}
+[class*="border-amber-"], [class*="border-yellow-"], [class*="border-orange-"] {
+  border-color: #E4D9C1 !important;
+}
+/* Lightweight, consistent feedback when switching between app sections. */
+html {
+  scroll-behavior: smooth;
+}
+
+.tadbeera-screen-content > section,
+.tadbeera-screen-content > div {
+  animation: tadbeera-screen-enter 180ms ease-out both;
+}
+
+button:not(:disabled),
+a {
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
+    box-shadow 160ms ease, transform 160ms ease;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+@keyframes tadbeera-screen-enter {
+  from {
+    opacity: 0.82;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .tadbeera-screen-content > section,
+  .tadbeera-screen-content > div {
+    animation: none;
+  }
+
+  button:not(:disabled),
+  a {
+    transition: none;
+  }
+}
