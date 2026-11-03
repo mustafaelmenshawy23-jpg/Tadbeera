@@ -308,26 +308,43 @@ export default function App() {
   useEffect(() => {
     if (!isNativeApp) return;
     let active = true;
+    const applyLaunchTarget = (launch: { target?: string; meal?: string }) => {
+      if (!active || launch.target !== 'food') return;
+      setKitchenView('main');
+      setMealFilter(
+        launch.meal === 'breakfast' || launch.meal === 'lunch' || launch.meal === 'dinner'
+          ? launch.meal
+          : 'all'
+      );
+      setActiveTab('food');
+    };
     const consumeTarget = async () => {
       try {
-        const launch = await mealReminderLaunch.consumeLaunchTarget();
-        if (!active || !launch.target) return;
-        if (launch.target === 'food') {
-          setKitchenView('main');
-          setMealFilter(launch.meal === 'breakfast' || launch.meal === 'lunch' || launch.meal === 'dinner'
-            ? launch.meal : 'all');
-          setActiveTab('food');
-        }
+        applyLaunchTarget(await mealReminderLaunch.consumeLaunchTarget());
       } catch (error) {
         console.warn('Unable to route from Tadbeera meal reminder:', error);
       }
     };
+    // Cold starts are consumed from the launch intent; warm starts arrive through
+    // a native event because singleTop onNewIntent does not guarantee WebView focus.
+    const handleNativeLaunch = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      let launch: { target?: string; meal?: string } | null = null;
+      if (typeof detail === 'string') {
+        try { launch = JSON.parse(detail) as { target?: string; meal?: string }; } catch { launch = null; }
+      } else if (detail && typeof detail === 'object') {
+        launch = detail as { target?: string; meal?: string };
+      }
+      if (launch) applyLaunchTarget(launch);
+    };
     void consumeTarget();
     const handleResume = () => { void consumeTarget(); };
+    window.addEventListener('tadbeeraMealReminderLaunch', handleNativeLaunch);
     window.addEventListener('focus', handleResume);
     document.addEventListener('visibilitychange', handleResume);
     return () => {
       active = false;
+      window.removeEventListener('tadbeeraMealReminderLaunch', handleNativeLaunch);
       window.removeEventListener('focus', handleResume);
       document.removeEventListener('visibilitychange', handleResume);
     };
@@ -1998,22 +2015,40 @@ export default function App() {
 
 
               {activeTab === 'home' && (
-                <section className="space-y-4" dir="rtl">
-                  <div className="rounded-[28px] bg-gradient-to-br from-[#667B58] via-[#758765] to-[#526748] text-white p-5 shadow-sm">
-                    <span className="text-xs text-[#F4EAD5] font-semibold">بيتك في إيدك 🌿</span>
-                    <h2 className="text-2xl font-extrabold mt-1">أهلاً بيك في تدبيرة</h2>
-                    <p className="text-xs text-white/85 mt-2 leading-6">خلّي تفاصيل البيت أبسط… وخطوة بخطوة كل حاجة تبقى في مكانها.</p>
-                    <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-[11px]"><Users className="w-4 h-4" /><span>أسرتك: {familySize} أفراد</span></div>
+                <section className="space-y-3.5" dir="rtl" aria-label="الرئيسية">
+                  <div className="rounded-[26px] bg-gradient-to-br from-[#667B58] via-[#758765] to-[#526748] text-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <span className="text-[11px] text-[#F4EAD5] font-semibold">بيتك في إيدك 🌿</span>
+                        <h2 className="text-xl font-extrabold mt-1">أهلاً بيك في تدبيرة</h2>
+                        <p className="text-[11px] text-white/85 mt-1 leading-5">كل احتياجات بيتك اليومية في مكان واحد.</p>
+                      </div>
+                      <div className="shrink-0 rounded-2xl bg-white/15 px-3 py-2 text-center">
+                        <Users className="w-5 h-5 mx-auto mb-1" />
+                        <span className="text-[10px] block">أفراد الأسرة</span>
+                        <strong className="text-lg leading-none">{familySize}</strong>
+                      </div>
+                    </div>
                   </div>
-                  <div><h3 className="font-extrabold text-base text-[#454A3C]">ملخص بيتك النهارده</h3><p className="text-[11px] text-[#8A887C] mt-0.5">نظرة سريعة على أهم احتياجاتك</p></div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => setActiveTab('saved')} className="text-right rounded-2xl border border-[#E9E1D3] bg-[#FFFEFA] p-3.5 shadow-sm"><ShoppingCart className="w-5 h-5 text-[#98764C]" /><b className="block text-xs mt-3">قائمة المشتريات</b><strong className="block text-2xl text-[#8A704D]">{shoppingItems.filter(item => !item.isChecked).length}</strong><small className="text-[10px] text-[#969184]">أصناف لسه محتاجة تتجاب</small></button>
-                    <button type="button" onClick={() => setActiveTab('budget')} className="text-right rounded-2xl border border-[#E2E8DC] bg-[#FFFEFA] p-3.5 shadow-sm"><Wallet className="w-5 h-5 text-[#667B58]" /><b className="block text-xs mt-3">ميزانية البيت</b><strong className="block text-xl text-[#667B58]">{budgetAmount || '—'}</strong><small className="text-[10px] text-[#969184]">الميزانية المحددة</small></button>
-                    <button type="button" onClick={() => setActiveTab('food')} className="text-right rounded-2xl border border-[#EEDFD4] bg-[#FFFEFA] p-3.5 shadow-sm"><Utensils className="w-5 h-5 text-[#A66D4C]" /><b className="block text-xs mt-3">المطبخ والوصفات</b><strong className="block text-sm text-[#A66D4C]">إيه طبخة النهارده؟</strong><small className="text-[10px] text-[#969184]">وصفات حسب الموجود</small></button>
-                    <button type="button" onClick={() => setActiveTab('household')} className="text-right rounded-2xl border border-[#E8E2D5] bg-[#FFFEFA] p-3.5 shadow-sm"><Home className="w-5 h-5 text-[#857B60]" /><b className="block text-xs mt-3">إدارة البيت</b><strong className="block text-sm text-[#857B60]">المخزون والمهام</strong><small className="text-[10px] text-[#969184]">كل تفاصيل البيت في مكانها</small></button>
+                  <div className="flex items-end justify-between gap-2">
+                    <div><h3 className="font-extrabold text-sm text-[#454A3C]">تحتاجي إيه النهارده؟</h3><p className="text-[10px] text-[#8A887C] mt-0.5">اختاري القسم وابدئي على طول</p></div>
+                    <span className="text-[10px] text-[#8A887C]">اختصارات سريعة</span>
                   </div>
-                  <div className="rounded-2xl border border-[#E8E1D3] bg-[#F3EBDD] p-4"><h3 className="text-sm font-extrabold text-[#66563F]">فكرة صغيرة توفر عليك ✨</h3><p className="text-[11px] text-[#796B56] leading-5 mt-1">راجع الموجود في البيت قبل ما تكتب قائمة السوق، وجرب تطبخ بالمكونات المتاحة.</p><button type="button" onClick={() => setActiveTab('food')} className="mt-2 text-[11px] font-extrabold text-[#657A55] underline">اكتشف وصفات بالموجود عندك</button></div>
-                  <button type="button" onClick={() => setActiveTab('daily')} className="w-full rounded-2xl bg-[#FFFEFA] border border-[#E8E1D3] p-3 text-right flex items-center justify-between"><span className="text-xs font-bold text-[#555548]">💡 تدبيرة اليوم — أفكار وحيل للتوفير</span><ChevronRight className="w-4 h-4 text-[#9A927F]" /></button>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button type="button" onClick={() => setActiveTab('food')} className="text-right rounded-2xl border border-[#EEDFD4] bg-[#FFFEFA] p-3 shadow-sm active:scale-[0.98] transition"><span className="w-9 h-9 rounded-xl bg-[#F7EDE4] text-[#A66D4C] flex items-center justify-center"><Utensils className="w-5 h-5" /></span><b className="block text-xs mt-2.5 text-[#454A3C]">المطبخ والوصفات</b><small className="block text-[10px] text-[#969184] mt-0.5">اختاري طبخة النهارده</small></button>
+                    <button type="button" onClick={() => { setSavedSubTab('shopping'); setActiveTab('saved'); }} className="text-right rounded-2xl border border-[#E9E1D3] bg-[#FFFEFA] p-3 shadow-sm active:scale-[0.98] transition"><span className="w-9 h-9 rounded-xl bg-[#F4EEE2] text-[#98764C] flex items-center justify-center"><ShoppingCart className="w-5 h-5" /></span><b className="block text-xs mt-2.5 text-[#454A3C]">قائمة المشتريات</b><small className="block text-[10px] text-[#969184] mt-0.5">{shoppingItems.filter(item => !item.isChecked).length} أصناف لسه محتاجة تتجاب</small></button>
+                    <button type="button" onClick={() => setActiveTab('budget')} className="text-right rounded-2xl border border-[#E2E8DC] bg-[#FFFEFA] p-3 shadow-sm active:scale-[0.98] transition"><span className="w-9 h-9 rounded-xl bg-[#EEF1E8] text-[#667B58] flex items-center justify-center"><Wallet className="w-5 h-5" /></span><b className="block text-xs mt-2.5 text-[#454A3C]">ميزانية البيت</b><small className="block text-[10px] text-[#969184] mt-0.5">المبلغ المحدد: {budgetAmount || '—'} ج.م</small></button>
+                    <button type="button" onClick={() => setActiveTab('household')} className="text-right rounded-2xl border border-[#E8E2D5] bg-[#FFFEFA] p-3 shadow-sm active:scale-[0.98] transition"><span className="w-9 h-9 rounded-xl bg-[#F0EEE7] text-[#857B60] flex items-center justify-center"><Home className="w-5 h-5" /></span><b className="block text-xs mt-2.5 text-[#454A3C]">إدارة البيت</b><small className="block text-[10px] text-[#969184] mt-0.5">المخزون والمهام المنزلية</small></button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => { setSavedSubTab('shopping'); setActiveTab('saved'); }} className="rounded-xl bg-[#667B58] text-white py-2.5 px-3 text-[11px] font-bold flex items-center justify-center gap-1.5"><Plus className="w-4 h-4" /> إضافة نواقص للسوق</button>
+                    <button type="button" onClick={() => { setExpenseAmount(''); setExpenseDesc(''); setIsAddExpenseModalOpen(true); }} className="rounded-xl bg-[#F3EBDD] text-[#526748] border border-[#E8E0D1] py-2.5 px-3 text-[11px] font-bold flex items-center justify-center gap-1.5"><Receipt className="w-4 h-4" /> تسجيل مصروف</button>
+                  </div>
+                  <div className="rounded-2xl border border-[#E8E1D3] bg-[#F3EBDD] p-3.5">
+                    <div className="flex items-center justify-between gap-2"><span className="text-[11px] font-extrabold text-[#66563F]">💡 تدبيرة اليوم</span><span className={dailyCompleted ? "text-[10px] font-bold text-[#526748]" : "text-[10px] font-bold text-[#8A704D]"}>{dailyCompleted ? "أنجزتي تحدي النهارده ✓" : "خطوة صغيرة لبيت أهدى"}</span></div>
+                    <p className="text-[11px] text-[#796B56] leading-5 mt-1.5">{todayChallenge.title}</p>
+                    <button type="button" onClick={() => setActiveTab('daily')} className="mt-2 text-[11px] font-extrabold text-[#657A55] underline underline-offset-2">{dailyCompleted ? "راجعي أفكار التوفير" : "اعرفي تفاصيل تدبيرة اليوم"}</button>
+                  </div>
                 </section>
               )}
               {activeTab === 'household' && (
@@ -3319,46 +3354,20 @@ export default function App() {
                     </p>
                   </div>
 
-                  {/* SubTabs */}
-                  <div className="grid grid-cols-5 bg-white p-1 rounded-xl border border-gray-200 text-[10px] font-bold text-center">
-                    <button
-                      onClick={() => setSavedSubTab('shopping')}
-                      className={`py-1.5 rounded-lg transition ${
-                        savedSubTab === 'shopping' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'
-                      }`}
-                    >
-                      النواقص ({shoppingItems.length})
-                    </button>
-                    <button
-                      onClick={() => setSavedSubTab('recipes')}
-                      className={`py-1.5 rounded-lg transition ${
-                        savedSubTab === 'recipes' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'
-                      }`}
-                    >
-                      الوجبات ({savedRecipeIds.length})
-                    </button>
-                    <button
-                      onClick={() => setSavedSubTab('tips')}
-                      className={`py-1.5 rounded-lg transition ${
-                        savedSubTab === 'tips' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'
-                      }`}
-                    >
-                      النصائح ({savedTipIds.length})
-                    </button>
-                    <button
-                      onClick={() => setSavedSubTab('budgets')}
-                      className={`py-1.5 rounded-lg transition ${
-                        savedSubTab === 'budgets' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'
-                      }`}
-                    >
-                      الميزانيات ({savedBudgets.length})
-                    </button>
-                    <button
-                      onClick={() => setSavedSubTab('household')}
-                      className={`py-1.5 rounded-lg transition ${savedSubTab === 'household' ? 'bg-[#626B49] text-white shadow-sm' : 'text-gray-600'}`}
-                    >
-                      إدارة البيت
-                    </button>
+                  {/* Scrollable saved-section navigation with larger mobile tap targets. */}
+                  <div className="flex gap-1.5 overflow-x-auto rounded-xl border border-[#E8E0D1] bg-[#F7F3EA] p-1.5 text-[11px] font-bold whitespace-nowrap" role="group" aria-label="أقسام المحفوظات">
+                    {([
+                      { id: 'shopping', label: 'النواقص (' + shoppingItems.length + ')' },
+                      { id: 'recipes', label: 'الوجبات (' + savedRecipeIds.length + ')' },
+                      { id: 'tips', label: 'النصائح (' + savedTipIds.length + ')' },
+                      { id: 'budgets', label: 'الميزانيات (' + savedBudgets.length + ')' },
+                      { id: 'household', label: 'إدارة البيت' }
+                    ] as const).map(({ id, label }) => (
+                      <button key={id} type="button" aria-pressed={savedSubTab === id} onClick={() => setSavedSubTab(id)}
+                        className={savedSubTab === id ? "min-h-10 shrink-0 rounded-lg bg-[#667B58] px-3 text-white shadow-sm" : "min-h-10 shrink-0 rounded-lg px-3 text-[#716E62] hover:bg-white"}>
+                        {label}
+                      </button>
+                    ))}
                   </div>
 
                   {/* SubTab 1: Reliable, Transparent Shopping List Interface (No NaN Ever) */}
@@ -3890,9 +3899,9 @@ export default function App() {
                 { id: 'budget', label: 'الميزانية', Icon: Wallet },
                 { id: 'household', label: 'البيت', Icon: Users }
               ] as const).map(({ id, label, Icon }) => (
-                <button key={id} type="button" onClick={() => setActiveTab(id)} aria-current={activeTab === id ? 'page' : undefined}
-                  className={activeTab === id ? "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#5F7651] bg-[#EEF1E8] font-extrabold" : "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#999487]"}>
-                  <Icon className="w-5 h-5" strokeWidth={activeTab === id ? 2.5 : 1.9} />
+                <button key={id} type="button" onClick={() => setActiveTab(id)} aria-current={activeTab === id || (id === 'home' && activeTab === 'daily') ? 'page' : undefined}
+                  className={activeTab === id || (id === 'home' && activeTab === 'daily') ? "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#5F7651] bg-[#EEF1E8] font-extrabold" : "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#999487]"}>
+                  <Icon className="w-5 h-5" strokeWidth={activeTab === id || (id === 'home' && activeTab === 'daily') ? 2.5 : 1.9} />
                   <span className="text-[10px] leading-4">{label}</span>
                 </button>
               ))}
