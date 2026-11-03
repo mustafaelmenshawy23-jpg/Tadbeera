@@ -67,6 +67,22 @@ export default defineConfig(() => {
             }
           ]
         },
+        workbox: {
+          runtimeCaching: [
+            {
+              // Cache recipe photos after their first successful online load so
+              // previously viewed dishes remain visible without connectivity.
+              urlPattern: ({ request, url }) =>
+                request.destination === 'image' || /\.(?:png|jpe?g|webp|avif)$/i.test(url.pathname),
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'tadbeera-recipe-images-v1',
+                expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] }
+              }
+            }
+          ]
+        },
         devOptions: {
           enabled: true,
           type: 'module'
