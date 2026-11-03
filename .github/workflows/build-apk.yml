@@ -18,6 +18,8 @@ on:
     paths:
       - 'android/**'
       - 'src/**'
+      - 'tests/**'
+      - 'tsconfig.json'
       - 'public/**'
       - 'capacitor.config.json'
       - 'package.json'
