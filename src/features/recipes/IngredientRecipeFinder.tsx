@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { RECIPES } from '../../data/seedData';
+import { findRecipesByIngredients } from './ingredientMatcher';
 
 type Meal = {
   idMeal: string; strMeal: string; strMealThumb?: string; strInstructions?: string;
@@ -15,13 +17,7 @@ const INGREDIENTS: Record<string, string> = {
   'فول':'broad beans','سبانخ':'spinach','جبنة':'cheese','لبن':'milk'
 };
 const normalize = (s: string) => s.toLocaleLowerCase('ar').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/[\u064B-\u065F]/g,'').trim();
-const local = [
-  { name:'مسقعة مصرية', terms:['بتنجان','باذنجان','طماطم','بصل','ثوم'], instructions:'قطّع البتنجان وحمّره أو اشوه. حضّر صلصة من البصل والثوم والطماطم، ثم رصّ البتنجان معها واتركه يتسبك.' },
-  { name:'بطاطس بالصلصة', terms:['بطاطس','طماطم','بصل','ثوم'], instructions:'شوّح البصل والثوم، أضف الطماطم والتوابل ثم البطاطس والماء واتركها حتى تنضج.' },
-  { name:'كشري مصري', terms:['رز','ارز','مكرونة','بصل','طماطم','عدس','حمص'], instructions:'اسلق العدس والأرز والمكرونة كلًّا على حدة. حضّر صلصة الطماطم وحمّر البصل وقدّم المكونات معًا.' },
-  { name:'شكشوكة', terms:['بيض','طماطم','بصل','فلفل'], instructions:'شوّح البصل والفلفل، أضف الطماطم حتى تتسبك، ثم أضف البيض واتركه حتى ينضج.' },
-  { name:'صينية بطاطس بالباذنجان', terms:['بطاطس','بتنجان','باذنجان','طماطم','بصل'], instructions:'قطّع الخضروات ورصّها في صينية مع عصير الطماطم والبصل والتوابل، ثم اخبزها حتى تنضج.' }
-];
+
 
 async function translate(value: string): Promise<string> {
   try {
@@ -122,22 +118,26 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
       const mapped: Result[] = mappedResults.flatMap(item =>
         item.status === 'fulfilled' ? [item.value] : [],
       );
-      const localResults: Result[] = local.map((recipe,index)=> {
-        const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
-        return {id:`local-${index}`,title:recipe.name,ingredients:recipe.terms,isLocal:true,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
-      }).filter(item=>item.matched>0);
+      const localResults: Result[] = findRecipesByIngredients(RECIPES, availableIngredients).map(match => ({
+        id: match.recipe.id,
+        title: match.recipe.name,
+        image: match.recipe.imageUrl,
+        ingredients: match.recipe.ingredients.map(ingredient => ingredient.quantity + ' ' + ingredient.name),
+        isLocal: true,
+        matched: match.matchedCount,
+        total: match.totalCount,
+        missing: match.missingIngredients,
+        instructions: match.recipe.steps.join('\n'),
+        url: '',
+      }));
       const combined = [...mapped,...localResults].filter(item=>item.matched>0);
       const unique = Array.from(new Map(combined.map(item=>[item.title,item])).values())
         .sort((a,b)=>b.matched-a.matched);
       setResults(cuisine === 'egyptian' ? unique.filter(item=>/مصري|كشري|مسقعة|شكشوكة|بطاطس|صينية/i.test(item.title)) : unique);
       if (!unique.length) setError('ملقيناش وصفات مناسبة للمكونات دي في المصادر المتاحة. جرّب إضافة مكونات تانية.');
     } catch {
-      const fallback = local.map((recipe,index)=> {
-        const matched = availableIngredients.filter(name => recipe.terms.some(term => normalize(term) === normalize(name))).length;
-        return {id:`local-${index}`,title:recipe.name,ingredients:recipe.terms,isLocal:true,matched,total:availableIngredients.length,missing:[],instructions:recipe.instructions,url:'https://www.themealdb.com/'};
-      }).filter(item=>item.matched>0).sort((a,b)=>b.matched-a.matched);
-      setResults(fallback);
-      if (!fallback.length) setError('تعذر الاتصال بمكتبة الوصفات. تحقق من الإنترنت وحاول مرة أخرى.');
+      setResults(localResults);
+      if (!localResults.length) setError('مفيش وصفة من المكتبة المحلية مناسبة للمكونات المختارة. جرّب اختيار مكونات إضافية.');
     } finally { setLoading(false); }
   };
 
@@ -147,17 +147,17 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
     <div className="flex flex-wrap gap-2 items-center">
       <button type="button" onClick={()=>setCuisine('all')} className={`rounded-lg px-3 py-2 text-xs font-bold ${cuisine==='all'?'bg-emerald-700 text-white':'bg-white text-gray-700 border'}`}>كل المطابخ</button>
       <button type="button" onClick={()=>setCuisine('egyptian')} className={`rounded-lg px-3 py-2 text-xs font-bold ${cuisine==='egyptian'?'bg-emerald-700 text-white':'bg-white text-gray-700 border'}`}>أكلات مصرية</button>
-      <button type="button" disabled={!availableIngredients.length||loading} onClick={search} className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{loading?'جاري البحث أونلاين…':'دور بالمكونات دي'}</button>
+      <button type="button" disabled={!availableIngredients.length||loading} onClick={search} className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{loading?'جاري البحث…':'اعرض الوصفات المناسبة'}</button>
     </div>
     <p className="text-[10px] text-gray-500">المكونات المختارة: {availableIngredients.join('، ') || 'اختار مكونات البيت أولاً'}</p>
     {error && <p role="status" className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">{error}</p>}
     {results.length>0 && <div className="space-y-2">{results.map(item=><button type="button" key={item.id} onClick={()=>setSelected(item)} className={`w-full rounded-xl border bg-white p-3 text-right ${selected?.id===item.id?'border-emerald-600':'border-gray-200'}`}>
-      <span className="block text-xs font-bold text-gray-900">{item.title}</span><span className="mt-1 block text-[10px] text-emerald-700">مطابقة {item.matched} من {item.total} مكوّن مختار</span>
+      <span className="block text-xs font-bold text-gray-900">{item.title}</span><span className="mt-1 block text-[10px] text-emerald-700">{item.isLocal ? 'متوفر عندك ' + item.matched + ' من ' + item.total + ' مكونات الوصفة • ' + Math.round(item.matched / Math.max(1,item.total) * 100) + '٪' : 'مطابقة ' + item.matched + ' من ' + item.total + ' مكوّن مختار'}</span>
     </button>)}</div>}
     {selected && <article className="rounded-xl border bg-white p-3 space-y-2">
       {selected.image && <img src={selected.image} alt={selected.title} loading="lazy" className="max-h-48 w-full rounded-lg object-cover"/>}
       <h4 className="text-sm font-black">{selected.title}</h4>{selected.ingredients.length > 0 && <div className="space-y-1"><b className="text-xs">{selected.isLocal ? 'المكونات الأساسية' : `المكونات لـ ${familySize} أفراد`}</b><ul className="list-disc pr-5 text-xs leading-6">{selected.ingredients.map((item,index)=><li key={index}>{scaleMeasure(item, familySize)}</li>)}</ul></div>}<b className="text-xs">طريقة التحضير</b><p className="whitespace-pre-wrap text-xs leading-6 text-gray-700">{selected.instructions}</p>
-      <a href={selected.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-700 underline">المصدر الأصلي</a>
+      {!selected.isLocal && <a href={selected.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-700 underline">المصدر الأصلي</a>}
     </article>}
   </section>;
 }
