@@ -154,8 +154,8 @@ class MicrophonePermissionPlugin : Plugin() {
     }
 
     private fun speakWithEngine(engine: TextToSpeech, text: String, call: PluginCall) {
-        val arabic = Locale("ar", "EG")
-        val languageResult = engine.setLanguage(arabic)
+        val arabicEgypt = Locale("ar", "EG")
+        val languageResult = engine.setLanguage(arabicEgypt)
         if (languageResult == TextToSpeech.LANG_MISSING_DATA || languageResult == TextToSpeech.LANG_NOT_SUPPORTED) {
             val fallbackResult = engine.setLanguage(Locale("ar"))
             if (fallbackResult == TextToSpeech.LANG_MISSING_DATA || fallbackResult == TextToSpeech.LANG_NOT_SUPPORTED) {
@@ -164,8 +164,27 @@ class MicrophonePermissionPlugin : Plugin() {
                 return
             }
         }
-        engine.setSpeechRate(0.82f)
-        engine.setPitch(0.96f)
+
+        // Prefer an installed Egyptian Arabic voice when the device TTS engine exposes one.
+        // Keep a local/offline voice ahead of network-only voices so recipe playback remains
+        // available without internet whenever the device has suitable Arabic voice data.
+        val availableArabicVoices = engine.voices.orEmpty()
+            .filter { it.locale.language.equals("ar", ignoreCase = true) }
+        val preferredVoice = availableArabicVoices
+            .sortedWith(
+                compareByDescending<android.speech.tts.Voice> {
+                    it.locale.country.equals("EG", ignoreCase = true)
+                }.thenByDescending { it.quality }
+                    .thenBy { it.isNetworkConnectionRequired }
+            )
+            .firstOrNull()
+        if (preferredVoice != null) {
+            engine.voice = preferredVoice
+        }
+
+        // A measured pace and neutral pitch are less robotic than an exaggerated slow/high voice.
+        engine.setSpeechRate(0.9f)
+        engine.setPitch(1.0f)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 notifyListeners("speechPlaybackStatus", JSObject().put("status", "speaking"))
