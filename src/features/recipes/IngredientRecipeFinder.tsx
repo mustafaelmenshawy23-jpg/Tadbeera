@@ -133,7 +133,22 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
       );
       const combined = [...mapped,...localResults].filter(item=>item.matched>0);
       const unique = Array.from(new Map(combined.map(item=>[item.title,item])).values())
-        .sort((a,b)=>b.matched-a.matched);
+        .sort((a,b) => {
+          // Local recipes have a real ingredient-by-ingredient comparison.
+          // Keep them ahead of remote suggestions, whose full pantry match is unknown.
+          if (a.isLocal !== b.isLocal) return a.isLocal ? -1 : 1;
+          if (a.isLocal && b.isLocal) {
+            const missingDifference = a.missing.length - b.missing.length;
+            if (missingDifference !== 0) return missingDifference;
+            const aPercentage = a.matched / Math.max(1, a.total);
+            const bPercentage = b.matched / Math.max(1, b.total);
+            if (aPercentage !== bPercentage) return bPercentage - aPercentage;
+            if (a.matched !== b.matched) return b.matched - a.matched;
+          } else if (a.matched !== b.matched) {
+            return b.matched - a.matched;
+          }
+          return a.title.localeCompare(b.title, 'ar');
+        });
       setResults(cuisine === 'egyptian' ? unique.filter(item=>/مصري|كشري|مسقعة|شكشوكة|بطاطس|صينية/i.test(item.title)) : unique);
       if (!unique.length) setError('ملقيناش وصفات مناسبة للمكونات دي في المصادر المتاحة. جرّب إضافة مكونات تانية.');
     } catch {
