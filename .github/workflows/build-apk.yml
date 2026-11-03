@@ -2,7 +2,7 @@ name: Build Tedbeera Android APK
 
 on:
   pull_request:
-    branches: [main, recovery/feature-complete-baseline]
+    branches: [main, recovery/feature-complete-baseline, stage-2-performance-stability]
     paths:
       - 'android/**'
       - 'src/**'
