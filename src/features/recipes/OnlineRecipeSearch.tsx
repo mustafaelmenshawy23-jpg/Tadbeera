@@ -701,14 +701,15 @@ export function OnlineRecipeSearch({ familySize = 4, onBack }: { familySize?: nu
       .replace(/\b\d+\s*\/\s*\d+\b/g, ' ')
       .trim();
     const spokenText = [
-      `يلا نعمل ${cleanForSpeech(recipe.title)}.`,
-      `المقادير دي تكفي ${familySize} أفراد.`,
-      'تعالوا نجهز المكونات الأول.',
+      `يلا بينا نحضّر ${cleanForSpeech(recipe.title)}.`,
+      `الوصفة دي مقاديرها على قد ${familySize} أفراد.`,
+      'خلّينا نجهّز كل حاجة الأول، وبعدها نبدأ على رواق.',
+      'المقادير:',
       ...sections.ingredients.map(item => cleanForSpeech(item)),
-      'كده نبدأ طريقة التحضير، واحدة واحدة.',
-      ...sections.steps.map((step, index) => `أول حاجة، الخطوة رقم ${index + 1}: ${cleanForSpeech(step)}. وبعدها نروح للي بعدها.`),
-      'وبس كده، وصفتنا جاهزة. وبالهنا والشفا!',
-    ].filter(Boolean).join('، ');
+      'تمام، كده كل حاجة جاهزة. ندخل بقى على طريقة التحضير.',
+      ...sections.steps.map((step, index) => `الخطوة ${index + 1}. ${cleanForSpeech(step)}. خد وقتك فيها، ولما تخلص نكمّل.`),
+      'وبكده خلصنا! يا رب تطلع حلوة وتعجبكم. وبالهنا والشفا.',
+    ].filter(Boolean).join('. ');
     try {
       if (Capacitor.isNativePlatform()) {
         await recipeVoice.speak({ text: spokenText });
