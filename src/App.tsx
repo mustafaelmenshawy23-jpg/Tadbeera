@@ -3392,7 +3392,7 @@ export default function App() {
                   </div>
 
                   {/* Scrollable sub-navigation: comfortable tap targets on narrow phones. */}
-                  <div className="flex gap-1.5 overflow-x-auto rounded-xl border border-[#E8E0D1] bg-[#F7F3EA] p-1.5 text-[11px] font-bold whitespace-nowrap" role="tablist" aria-label="أقسام المحفوظات">
+                  <div className="flex gap-1.5 overflow-x-auto rounded-xl border border-[#E8E0D1] bg-[#F7F3EA] p-1.5 text-[11px] font-bold whitespace-nowrap" role="group" aria-label="أقسام المحفوظات">
                     {([
                       { id: 'shopping', label: `النواقص ${shoppingItems.length}` },
                       { id: 'recipes', label: `الوجبات ${savedRecipeIds.length}` },
@@ -3400,7 +3400,7 @@ export default function App() {
                       { id: 'budgets', label: `الميزانيات ${savedBudgets.length}` },
                       { id: 'household', label: 'إدارة البيت' }
                     ] as const).map(({ id, label }) => (
-                      <button key={id} type="button" role="tab" aria-selected={savedSubTab === id} onClick={() => setSavedSubTab(id)}
+                      <button key={id} type="button" aria-pressed={savedSubTab === id} onClick={() => setSavedSubTab(id)}
                         className={savedSubTab === id ? "min-h-10 shrink-0 rounded-lg bg-[#667B58] px-3 text-white shadow-sm" : "min-h-10 shrink-0 rounded-lg px-3 text-[#716E62] hover:bg-white"}>
                         {label}
                       </button>
@@ -3936,9 +3936,9 @@ export default function App() {
                 { id: 'budget', label: 'الميزانية', Icon: Wallet },
                 { id: 'household', label: 'البيت', Icon: Users }
               ] as const).map(({ id, label, Icon }) => (
-                <button key={id} type="button" onClick={() => setActiveTab(id)} aria-current={activeTab === id ? 'page' : undefined}
-                  className={activeTab === id ? "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#5F7651] bg-[#EEF1E8] font-extrabold" : "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#999487]"}>
-                  <Icon className="w-5 h-5" strokeWidth={activeTab === id ? 2.5 : 1.9} />
+                <button key={id} type="button" onClick={() => setActiveTab(id)} aria-current={activeTab === id || (id === 'home' && activeTab === 'daily') ? 'page' : undefined}
+                  className={activeTab === id || (id === 'home' && activeTab === 'daily') ? "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#5F7651] bg-[#EEF1E8] font-extrabold" : "flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl text-[#999487]"}>
+                  <Icon className="w-5 h-5" strokeWidth={activeTab === id || (id === 'home' && activeTab === 'daily') ? 2.5 : 1.9} />
                   <span className="text-[10px] leading-4">{label}</span>
                 </button>
               ))}
