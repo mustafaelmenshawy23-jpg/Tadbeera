@@ -62,7 +62,7 @@ const buildLocalResults = (pantry: Set<string>, selectedCount: number): Result[]
     total: Math.max(1, names.length),
     selectedCount,
     missing,
-    instructions: recipe.steps.join('\\n'),
+    instructions: recipe.steps.join('\n'),
     url: 'https://www.themealdb.com/',
     cuisineText: recipe.tags.join(' ')
   };
@@ -71,14 +71,6 @@ const canonicalEnglish = (value: string) => {
   const n = value.toLowerCase().replace(/[_-]/g,' ').replace(/\s+/g,' ').trim();
   return EN_ALIASES[n] || n;
 };
-const local = [
-  { name:'مسقعة مصرية', terms:['باذنجان','طماطم','بصل','ثوم'], instructions:'قطّع الباذنجان وحمّره أو اشوه. حضّر صلصة من البصل والثوم والطماطم، ثم رصّ الباذنجان معها واتركه يتسبك.' },
-  { name:'بطاطس بالصلصة', terms:['بطاطس','طماطم','بصل','ثوم'], instructions:'شوّح البصل والثوم، أضف الطماطم والتوابل ثم البطاطس والماء واتركها حتى تنضج.' },
-  { name:'كشري مصري', terms:['أرز','مكرونة','بصل','طماطم','عدس بجبة','حمص'], instructions:'اسلق العدس والأرز والمكرونة كلًّا على حدة. حضّر صلصة الطماطم وحمّر البصل وقدّم المكونات معًا.' },
-  { name:'شكشوكة', terms:['بيض','طماطم','بصل','فلفل رومي'], instructions:'شوّح البصل والفلفل، أضف الطماطم حتى تتسبك، ثم أضف البيض واتركه حتى ينضج.' },
-  { name:'صينية بطاطس بالباذنجان', terms:['بطاطس','باذنجان','طماطم','بصل'], instructions:'قطّع الخضروات ورصّها في صينية مع عصير الطماطم والبصل والتوابل، ثم اخبزها حتى تنضج.' }
-];
-
 async function translate(value: string): Promise<string> {
   try {
     const url = new URL('https://translate.googleapis.com/translate_a/single');
