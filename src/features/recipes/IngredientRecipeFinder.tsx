@@ -8,7 +8,7 @@ type Meal = {
 type Result = {
   id: string; title: string; image?: string; ingredients: string[]; isLocal?: boolean;
   matched: number; total: number; selectedCount: number; missing: string[];
-  instructions: string; url: string;
+  instructions: string; url: string; cuisineText?: string;
 };
 
 const API = 'https://www.themealdb.com/api/json/v1/1';
@@ -63,7 +63,8 @@ const buildLocalResults = (pantry: Set<string>, selectedCount: number): Result[]
     selectedCount,
     missing,
     instructions: recipe.steps.join('\\n'),
-    url: 'https://www.themealdb.com/'
+    url: 'https://www.themealdb.com/',
+    cuisineText: recipe.tags.join(' ')
   };
 });
 const canonicalEnglish = (value: string) => {
@@ -168,7 +169,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         return {
           id:meal.idMeal,title,image:meal.strMealThumb,ingredients:ingredientsText.split('\n').filter(Boolean),
           matched,total:ingredientNames.length,selectedCount:availableIngredients.length,missing:missing.map(item=>item),
-          instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`
+          instructions,url:meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`,cuisineText:meal.strArea || ''
         } as Result;
       }));
       const mapped: Result[] = mappedResults.flatMap(item => item.status === 'fulfilled' ? [item.value] : []);
@@ -177,7 +178,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
       const unique = Array.from(new Map(combined.map(item=>[item.id,item])).values())
         .sort((a,b) => (b.matched/b.total)-(a.matched/a.total) || b.matched-a.matched || a.missing.length-b.missing.length);
       const filtered = cuisine === 'egyptian'
-        ? unique.filter(item => item.isLocal || /مصري|كشري|مسقعة|شكشوكة|فول|طعمية|ملوخية|فتة|محشي|بسبوسة|كنافة|حواوشي/i.test(item.title))
+        ? unique.filter(item => /مصري|كشري|مسقعة|شكشوكة|فول|طعمية|ملوخية|فتة|محشي|بسبوسة|كنافة|حواوشي|Egyptian/i.test(`${item.title} ${item.cuisineText || ''}`))
         : unique;
       setResults(filtered);
       if (!filtered.length) setError('ملقيناش وصفات مناسبة في المصادر المتاحة. جرّب مكونات تانية أو اختار كل المطابخ.');
