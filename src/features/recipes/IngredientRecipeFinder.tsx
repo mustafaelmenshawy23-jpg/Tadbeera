@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RECIPES } from '../../data/seedData';
 
 type Meal = {
   idMeal: string; strMeal: string; strMealThumb?: string; strInstructions?: string;
@@ -25,7 +26,12 @@ const INGREDIENTS: Record<string, string> = {
   'حمص':'chickpeas','فول':'broad beans','سبانخ':'spinach','جبنه':'cheese',
   'جبنة':'cheese','لبن':'milk','حليب':'milk','تونه':'tuna','تونة':'tuna',
   'عيش':'bread','خبز':'bread','ليمون':'lemon','زيت':'olive oil','سمن':'butter',
-  'كريمه':'cream','كريمة':'cream','مشروم':'mushrooms','بسله':'peas','بسلة':'peas'
+  'كريمه':'cream','كريمة':'cream','مشروم':'mushrooms','بسله':'peas','بسلة':'peas',
+  'بواقي فراخ':'chicken','بواقي لحمه':'beef','بواقي لحمة':'beef','لحم مفروم':'beef',
+  'فلفل اخضر':'green pepper','فلفل أخضر':'green pepper','عصير طماطم':'tomato',
+  'عدس بجبة':'brown lentils','عدس بجبه':'brown lentils','عدس اصفر':'red lentils','عدس أصفر':'red lentils',
+  'لبن كامل الدسم':'milk','حليب':'milk','جبنة قريش':'cheese','عيش بلدي':'bread',
+  'زيت':'olive oil','زيت زيتون':'olive oil','سمنة':'butter','سمن':'butter'
 };
 const EN_ALIASES: Record<string,string> = {
   'chicken breast':'chicken','chicken thighs':'chicken','chicken legs':'chicken',
@@ -40,6 +46,26 @@ const canonicalArabic = (value: string) => {
   const n = normalize(value);
   return INGREDIENTS[n] || n;
 };
+
+const buildLocalResults = (pantry: Set<string>, selectedCount: number): Result[] => RECIPES.map(recipe => {
+  const names = recipe.ingredients.map(item => item.name);
+  const terms = names.map(canonicalArabic);
+  const matched = terms.filter(term => pantry.has(term)).length;
+  const missing = names.filter((name,index) => !pantry.has(terms[index]));
+  return {
+    id: recipe.id,
+    title: recipe.name,
+    image: recipe.imageUrl,
+    ingredients: recipe.ingredients.map(item => `${item.quantity} ${item.name}`),
+    isLocal: true,
+    matched,
+    total: Math.max(1, names.length),
+    selectedCount,
+    missing,
+    instructions: recipe.steps.join('\\n'),
+    url: 'https://www.themealdb.com/'
+  };
+});
 const canonicalEnglish = (value: string) => {
   const n = value.toLowerCase().replace(/[_-]/g,' ').replace(/\s+/g,' ').trim();
   return EN_ALIASES[n] || n;
@@ -101,10 +127,11 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
     setLoading(true); setError(''); setSelected(null); setResults([]);
     const pantry = new Set(availableIngredients.map(canonicalArabic));
     try {
-      const english = await Promise.all(availableIngredients.map(async name => {
+      const englishRaw = await Promise.all(availableIngredients.map(async name => {
         const known = INGREDIENTS[normalize(name)];
         return known || canonicalEnglish(await translate(name));
       }));
+      const english = Array.from(new Set(englishRaw.map(canonicalEnglish)));
       const ingredientLists = await Promise.all(english.map(async ingredient => {
         const response = await fetch(`${API}/filter.php?i=${encodeURIComponent(ingredient)}`);
         if (!response.ok) return [];
@@ -123,7 +150,7 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         } catch { return null; }
       }));
       const valid = details.filter((meal): meal is Meal => !!meal);
-      const mappedResults = await Promise.allSettled(valid.map(async meal => {
+      const mappedResults = await Promise.allSettled(valid.slice(0, 20).map(async meal => {
         const rawIngredients = Array.from({length:20},(_,i) => {
           const name = meal[`strIngredient${i+1}`]?.trim() || '';
           const measure = meal[`strMeasure${i+1}`]?.trim() || '';
@@ -145,13 +172,8 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
         } as Result;
       }));
       const mapped: Result[] = mappedResults.flatMap(item => item.status === 'fulfilled' ? [item.value] : []);
-      const localResults: Result[] = local.map((recipe,index) => {
-        const terms = recipe.terms.map(canonicalArabic);
-        const matched = terms.filter(term => pantry.has(term)).length;
-        const missing = recipe.terms.filter(term => !pantry.has(canonicalArabic(term)));
-        return {id:`local-${index}`,title:recipe.name,ingredients:recipe.terms,isLocal:true,matched,total:terms.length,selectedCount:availableIngredients.length,missing,instructions:recipe.instructions,url:'https://www.themealdb.com/'};
-      });
-      const combined = [...mapped,...localResults];
+      const localResults = buildLocalResults(pantry, availableIngredients.length);
+      const combined = [...localResults,...mapped];
       const unique = Array.from(new Map(combined.map(item=>[item.id,item])).values())
         .sort((a,b) => (b.matched/b.total)-(a.matched/a.total) || b.matched-a.matched || a.missing.length-b.missing.length);
       const filtered = cuisine === 'egyptian'
@@ -160,12 +182,8 @@ export function IngredientRecipeFinder({ availableIngredients, familySize = 4 }:
       setResults(filtered);
       if (!filtered.length) setError('ملقيناش وصفات مناسبة في المصادر المتاحة. جرّب مكونات تانية أو اختار كل المطابخ.');
     } catch {
-      const fallback = local.map((recipe,index) => {
-        const terms = recipe.terms.map(canonicalArabic);
-        const matched = terms.filter(term => pantry.has(term)).length;
-        const missing = recipe.terms.filter(term => !pantry.has(canonicalArabic(term)));
-        return {id:`local-${index}`,title:recipe.name,ingredients:recipe.terms,isLocal:true,matched,total:terms.length,selectedCount:availableIngredients.length,missing,instructions:recipe.instructions,url:'https://www.themealdb.com/'} as Result;
-      }).sort((a,b)=>(b.matched/b.total)-(a.matched/a.total)||b.matched-a.matched);
+      const fallback = buildLocalResults(pantry, availableIngredients.length)
+        .sort((a,b)=>(b.matched/b.total)-(a.matched/a.total)||b.matched-a.matched);
       setResults(fallback);
       setError('تعذر الاتصال بمكتبة الوصفات أونلاين؛ المعروض الآن وصفات تدبيرة المحلية فقط.');
     } finally { setLoading(false); }
