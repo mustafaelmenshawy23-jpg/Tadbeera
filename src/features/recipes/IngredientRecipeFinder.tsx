@@ -29,7 +29,7 @@ const INGREDIENTS: Record<string, string> = {
   'كريمه':'cream','كريمة':'cream','مشروم':'mushrooms','بسله':'peas','بسلة':'peas',
   'بواقي فراخ':'chicken','بواقي لحمه':'beef','بواقي لحمة':'beef','لحم مفروم':'beef',
   'فلفل اخضر':'green pepper','فلفل أخضر':'green pepper','عصير طماطم':'tomato',
-  'عدس بجبة':'brown lentils','عدس بجبه':'brown lentils','عدس أصفر':'red lentils',
+  'عدس بجبة':'brown lentils','عدس أصفر':'red lentils',
   'لبن كامل الدسم':'milk','جبنة قريش':'cheese','عيش بلدي':'bread',
   'زيت زيتون':'olive oil','سمنة':'butter'
 };
